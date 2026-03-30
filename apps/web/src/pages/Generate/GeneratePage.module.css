@@ -1,0 +1,466 @@
+.page {
+  padding: 28px 32px;
+  font-family: 'Courier New', monospace;
+  min-height: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(22, 62, 140, 0.12);
+}
+
+.title {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(80, 160, 255, 0.6);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 8.5px;
+  color: rgba(55, 115, 195, 0.35);
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ─── Sections ─────────────────────────────────────────────────────────────── */
+
+.section {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(55, 115, 195, 0.45);
+  margin-bottom: 10px;
+}
+
+.loading {
+  color: rgba(55, 115, 195, 0.35);
+  font-size: 8px;
+}
+
+/* ─── Radio service selector ───────────────────────────────────────────────── */
+
+.radioGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.radioLabel {
+  cursor: pointer;
+}
+
+.radioInput {
+  display: none;
+}
+
+.radioBtn {
+  display: inline-block;
+  padding: 6px 14px;
+  border: 1px solid rgba(22, 62, 140, 0.25);
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(55, 115, 195, 0.5);
+  background: transparent;
+  transition: all 0.12s;
+  cursor: pointer;
+}
+
+.radioBtn:hover {
+  border-color: rgba(22, 62, 140, 0.5);
+  color: rgba(120, 180, 255, 0.8);
+}
+
+.radioBtnActive {
+  border-color: rgba(80, 160, 255, 0.4);
+  color: rgba(145, 192, 232, 0.9);
+  background: rgba(18, 55, 135, 0.2);
+}
+
+/* ─── Videos per account ────────────────────────────────────────────────────── */
+
+.countGroup {
+  display: flex;
+  gap: 6px;
+}
+
+.countBtn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(22, 62, 140, 0.25);
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(55, 115, 195, 0.5);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.countBtn:hover {
+  border-color: rgba(22, 62, 140, 0.5);
+  color: rgba(120, 180, 255, 0.8);
+}
+
+.countBtnActive {
+  border-color: rgba(80, 160, 255, 0.4);
+  color: rgba(145, 192, 232, 0.9);
+  background: rgba(18, 55, 135, 0.2);
+}
+
+/* ─── Topic input ───────────────────────────────────────────────────────────── */
+
+.topicInput {
+  width: 100%;
+  max-width: 400px;
+  padding: 8px 12px;
+  background: rgba(5, 14, 40, 0.72);
+  border: 1px solid rgba(22, 62, 140, 0.2);
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  color: rgba(145, 192, 232, 0.85);
+  outline: none;
+  transition: border-color 0.12s;
+  box-sizing: border-box;
+}
+
+.topicInput::placeholder {
+  color: rgba(55, 115, 195, 0.3);
+}
+
+.topicInput:focus {
+  border-color: rgba(22, 62, 140, 0.5);
+}
+
+/* ─── Account filters ───────────────────────────────────────────────────────── */
+
+.accountFilters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.filterBtn {
+  padding: 5px 10px;
+  border: 1px solid rgba(22, 62, 140, 0.2);
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(55, 115, 195, 0.5);
+  font-family: 'Courier New', monospace;
+  font-size: 7.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.filterBtn:hover {
+  border-color: rgba(22, 62, 140, 0.45);
+  color: rgba(120, 180, 255, 0.8);
+}
+
+.filterBtnActive {
+  border-color: rgba(80, 160, 255, 0.35);
+  color: rgba(145, 192, 232, 0.85);
+  background: rgba(18, 55, 135, 0.15);
+}
+
+.selCount {
+  font-size: 8px;
+  color: rgba(80, 160, 255, 0.5);
+  margin-left: 4px;
+}
+
+/* ─── Niche dropdown ─────────────────────────────────────────────────────────── */
+
+.nicheDropdown {
+  position: relative;
+}
+
+.nicheMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  background: rgba(1, 4, 20, 0.98);
+  border: 1px solid rgba(22, 62, 140, 0.3);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 140px;
+}
+
+.nicheItem {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  font-family: 'Courier New', monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: rgba(55, 115, 195, 0.6);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+}
+
+.nicheItem:hover {
+  background: rgba(18, 55, 135, 0.2);
+  color: rgba(145, 192, 232, 0.9);
+}
+
+/* ─── Account check list ─────────────────────────────────────────────────────── */
+
+.accountCheckList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid rgba(22, 62, 140, 0.12);
+  border-radius: 6px;
+  padding: 4px 0;
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.checkRow:hover {
+  background: rgba(18, 55, 135, 0.1);
+}
+
+.checkbox {
+  accent-color: rgba(80, 160, 255, 0.7);
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.checkUsername {
+  flex: 1;
+  font-size: 9px;
+  color: rgba(145, 192, 232, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkNiche {
+  font-size: 8px;
+  color: rgba(55, 115, 195, 0.4);
+  min-width: 80px;
+}
+
+.checkStatus {
+  font-size: 7.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.empty {
+  padding: 16px 12px;
+  font-size: 9px;
+  color: rgba(55, 115, 195, 0.3);
+  letter-spacing: 0.1em;
+}
+
+/* ─── Launch button ──────────────────────────────────────────────────────────── */
+
+.launchRow {
+  padding-top: 8px;
+  border-top: 1px solid rgba(22, 62, 140, 0.1);
+}
+
+.launchBtn {
+  padding: 9px 22px;
+  border: 1px solid rgba(80, 160, 255, 0.3);
+  border-radius: 5px;
+  background: rgba(18, 55, 135, 0.2);
+  color: rgba(145, 192, 232, 0.9);
+  font-family: 'Courier New', monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.launchBtn:hover:not(:disabled) {
+  background: rgba(18, 55, 135, 0.35);
+  border-color: rgba(80, 160, 255, 0.55);
+}
+
+.launchBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ─── Progress screen ────────────────────────────────────────────────────────── */
+
+.progressCard {
+  background: rgba(5, 14, 40, 0.72);
+  border: 1px solid rgba(22, 62, 140, 0.2);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.progressHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.progressLabel {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(55, 115, 195, 0.5);
+}
+
+.progressPct {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.progressBarWrap {
+  width: 100%;
+  height: 4px;
+  background: rgba(22, 62, 140, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.jobMeta {
+  display: flex;
+  gap: 20px;
+}
+
+.metaItem {
+  font-size: 8px;
+  color: rgba(55, 115, 195, 0.45);
+}
+
+.metaItem strong {
+  color: rgba(145, 192, 232, 0.7);
+}
+
+/* ─── Account progress list ───────────────────────────────────────────────────── */
+
+.accountList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.accountRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border: 1px solid rgba(22, 62, 140, 0.1);
+  border-radius: 5px;
+}
+
+.accountDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.accountName {
+  flex: 1;
+  font-size: 9px;
+  color: rgba(145, 192, 232, 0.8);
+}
+
+.videoLink {
+  font-size: 8px;
+  color: rgba(80, 160, 255, 0.6);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+}
+
+.videoLink:hover {
+  color: rgba(120, 180, 255, 0.9);
+}
+
+/* ─── Shared buttons ─────────────────────────────────────────────────────────── */
+
+.btnSecondary {
+  padding: 7px 14px;
+  border: 1px solid rgba(22, 62, 140, 0.25);
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(55, 115, 195, 0.6);
+  font-family: 'Courier New', monospace;
+  font-size: 7.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.btnSecondary:hover {
+  border-color: rgba(22, 62, 140, 0.5);
+  color: rgba(120, 180, 255, 0.8);
+}
+
+.btnDanger {
+  padding: 7px 14px;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(239, 68, 68, 0.6);
+  font-family: 'Courier New', monospace;
+  font-size: 7.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.btnDanger:hover:not(:disabled) {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: rgba(239, 68, 68, 0.9);
+}
+
+.btnDanger:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

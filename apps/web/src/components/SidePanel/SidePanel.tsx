@@ -1,128 +1,191 @@
-import { useMemo } from 'react'
-import { Platform, PLATFORM_COLORS } from '@atome/shared'
 import { useServicesStore } from '../../stores/services'
-import { Sparkline } from '../Sparkline/Sparkline'
+import { Service } from '@atome/shared'
 import styles from './SidePanel.module.css'
 
-const PLATFORMS: Platform[] = ['Cloudflare', 'PostHog', 'Postman']
+const STATUS_COLOR: Record<string, string> = {
+  online:   '#22c55e',
+  degraded: '#eab308',
+  offline:  '#ef4444',
+  error:    '#ef4444',
+}
 
-const STATUS_DOT_CLASS: Record<string, string> = {
-  online:  styles.dotOnline,
-  offline: styles.dotOffline,
-  idle:    styles.dotIdle,
-  error:   styles.dotOffline,
+const STATUS_DOT: Record<string, string> = {
+  online:   styles.dotOnline,
+  degraded: styles.dotIdle,
+  offline:  styles.dotOffline,
+  error:    styles.dotOffline,
 }
 
 export function SidePanel() {
-  const services     = useServicesStore((s) => s.services)
-  const metrics      = useServicesStore((s) => s.metrics)
-  const highlightedId = useServicesStore((s) => s.highlightedId)
-  const setHighlighted = useServicesStore((s) => s.setHighlighted)
+  const farmStats  = useServicesStore((s) => s.farmStats)
+  const services   = useServicesStore((s) => s.services)
+  const selectedId = useServicesStore((s) => s.selectedId)
+  const loading    = useServicesStore((s) => s.loading)
 
-  const stats = useMemo(() => ({
-    total:    services.length,
-    online:   services.filter((s) => s.status === 'online').length,
-    platforms: PLATFORMS.filter((p) => services.some((s) => s.platform === p)).length,
-    uptime:   99.9,
-  }), [services])
-
-  const byPlatform = useMemo(() =>
-    PLATFORMS.map((p) => ({
-      platform: p,
-      services: services.filter((s) => s.platform === p),
-    })).filter((g) => g.services.length > 0),
-  [services])
+  const selected = services.find((s) => s.id === selectedId) ?? null
 
   return (
     <aside className={styles.panel}>
       {/* Header */}
       <div>
         <div className={styles.title}>Atome Studio</div>
-        <div className={styles.subtitle}>workspace · live</div>
-      </div>
-
-      {/* Stats */}
-      <div>
-        <div className={styles.section}>System</div>
-        <div className={styles.statsGrid}>
-          <StatBox label="Services" value={stats.total}    color="cy" />
-          <StatBox label="Online"   value={stats.online}   color="tl" />
-          <StatBox label="Platforms" value={stats.platforms} color="bl" />
-          <StatBox label="Uptime"   value={`${stats.uptime}%`} color="tl" />
+        <div className={styles.subtitle}>
+          {loading ? 'connecting...' : 'farm · live'}
         </div>
       </div>
 
-      {/* Services by platform */}
+      {/* Service detail card or Farm stats */}
+      {selected ? (
+        <ServiceCard service={selected} onClose={() => useServicesStore.getState().setSelected(null)} />
+      ) : (
+        <FarmStatsPanel
+          phonesOnline={farmStats.phones_online}
+          phonesTotal={farmStats.phones_total}
+          accountsActive={farmStats.accounts_active}
+          accountsTotal={farmStats.accounts_total}
+          postsToday={farmStats.posts_today}
+          activeJobs={farmStats.active_jobs}
+          lastEvent={farmStats.last_event}
+        />
+      )}
+
+      {/* Services status list */}
       <div>
-        <div className={styles.section}>Services by Platform</div>
+        <div className={styles.section}>Сервисы</div>
         <div className={styles.platformList}>
-          {byPlatform.map(({ platform, services: svcs }) => {
-            const col = PLATFORM_COLORS[platform]
-            return (
-              <div key={platform} className={styles.platformBlock}>
-                <div className={styles.platformHeader}>
-                  <span
-                    className={styles.badge}
-                    style={{
-                      color: col.hex,
-                      background: `rgba(${col.rgb},0.12)`,
-                      border: `1px solid rgba(${col.rgb},0.2)`,
-                    }}
-                  >
-                    {platform}
-                  </span>
-                  <span className={styles.count}>{svcs.length} service{svcs.length !== 1 ? 's' : ''}</span>
-                </div>
-                {svcs.map((svc) => (
-                  <div
-                    key={svc.id}
-                    className={`${styles.serviceRow} ${svc.id === highlightedId ? styles.serviceRowActive : ''}`}
-                    onMouseEnter={() => setHighlighted(svc.id)}
-                    onMouseLeave={() => setHighlighted(null)}
-                  >
-                    <span
-                      className={`${styles.dot} ${STATUS_DOT_CLASS[svc.status] ?? ''}`}
-                      style={
-                        svc.status === 'online' || svc.status === 'idle'
-                          ? undefined
-                          : { background: col.hex, boxShadow: `0 0 6px rgba(${col.rgb},0.8)` }
-                      }
-                    />
-                    <span className={styles.serviceName}>{svc.name}</span>
-                    <span className={styles.serviceTag}>{svc.type}</span>
-                  </div>
-                ))}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Activity sparklines */}
-      <div>
-        <div className={styles.section}>Activity</div>
-        <div className={styles.sparklines}>
-          <Sparkline label="Events/min" points={metrics.eventsPerMin} color="#4a9eff" />
-          <Sparkline label="API calls"  points={metrics.apiCalls}     color="#00d8a8" />
-          <Sparkline label="Latency"    points={metrics.latencyMs}    color="#f97316" />
+          {services.map((svc) => (
+            <div
+              key={svc.id}
+              className={`${styles.serviceRow} ${svc.id === selectedId ? styles.serviceRowActive : ''}`}
+              onClick={() => useServicesStore.getState().setSelected(
+                svc.id === selectedId ? null : svc.id
+              )}
+            >
+              <span className={`${styles.dot} ${STATUS_DOT[svc.status] ?? ''}`} />
+              <span className={styles.serviceName}>{svc.name}</span>
+              <span className={styles.serviceTag} style={{ color: STATUS_COLOR[svc.status] }}>
+                {svc.status}
+              </span>
+            </div>
+          ))}
+          {services.length === 0 && !loading && (
+            <div className={styles.serviceTag} style={{ padding: '4px 7px' }}>
+              нет данных — api недоступен
+            </div>
+          )}
         </div>
       </div>
     </aside>
   )
 }
 
+// ─── Farm Stats Panel ─────────────────────────────────────────────────────────
+
+interface FarmStatsPanelProps {
+  phonesOnline:   number
+  phonesTotal:    number
+  accountsActive: number
+  accountsTotal:  number
+  postsToday:     number
+  activeJobs:     number
+  lastEvent?:     string
+}
+
+function FarmStatsPanel({
+  phonesOnline, phonesTotal, accountsActive, accountsTotal,
+  postsToday, activeJobs, lastEvent,
+}: FarmStatsPanelProps) {
+  return (
+    <div>
+      <div className={styles.section}>Статистика фермы</div>
+      <div className={styles.statsGrid}>
+        <StatBox
+          label="Публикаций сегодня"
+          value={postsToday}
+          color="#00d8a8"
+        />
+        <StatBox
+          label="Телефонов онлайн"
+          value={`${phonesOnline}${phonesTotal > 0 ? `/${phonesTotal}` : ''}`}
+          color="#4a9eff"
+        />
+        <StatBox
+          label="Аккаунтов активных"
+          value={`${accountsActive}${accountsTotal > 0 ? `/${accountsTotal}` : ''}`}
+          color="#a78bfa"
+        />
+        <StatBox
+          label="Генерируется"
+          value={activeJobs}
+          color="#fbbf24"
+        />
+      </div>
+      {lastEvent && (
+        <div className={styles.statBox} style={{ marginTop: 7 }}>
+          <div className={styles.statLabel}>Последнее событие</div>
+          <div className={styles.serviceName} style={{ fontSize: 9, marginTop: 3 }}>
+            {lastEvent}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Service Detail Card ──────────────────────────────────────────────────────
+
+function ServiceCard({ service, onClose }: { service: Service; onClose: () => void }) {
+  const [cr, cg, cb] = service.col
+
+  return (
+    <div>
+      <div className={styles.section} style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <span>Детали сервиса</span>
+        <span
+          onClick={onClose}
+          style={{ cursor: 'pointer', color: 'rgba(55,115,195,0.6)', letterSpacing: 0 }}
+        >
+          ✕
+        </span>
+      </div>
+      <div className={styles.statBox}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <span
+            style={{
+              width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+              background: `rgb(${cr},${cg},${cb})`,
+              boxShadow: `0 0 8px rgba(${cr},${cg},${cb},0.8)`,
+            }}
+          />
+          <span style={{ fontSize: 13, color: '#c8d8f0', fontWeight: 700 }}>{service.name}</span>
+        </div>
+
+        <Row label="Статус"  value={service.status}  color={STATUS_COLOR[service.status]} />
+        {service.uptime !== undefined && (
+          <Row label="Uptime" value={`${service.uptime.toFixed(1)}%`} />
+        )}
+        {service.activeJobs !== undefined && (
+          <Row label="Активных jobs" value={String(service.activeJobs)} color="#fbbf24" />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Row({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+      <span className={styles.statLabel} style={{ marginBottom: 0 }}>{label}</span>
+      <span style={{ fontSize: 9, color: color ?? 'rgba(145,192,232,0.65)' }}>{value}</span>
+    </div>
+  )
+}
+
 function StatBox({ label, value, color }: { label: string; value: number | string; color: string }) {
-  const colorMap: Record<string, string> = {
-    cy: '#00d8f0',
-    tl: '#00d8a8',
-    bl: '#4a9eff',
-  }
   return (
     <div className={styles.statBox}>
       <div className={styles.statLabel}>{label}</div>
-      <div className={styles.statValue} style={{ color: colorMap[color] ?? '#fff' }}>
-        {value}
-      </div>
+      <div className={styles.statValue} style={{ color }}>{value}</div>
     </div>
   )
 }

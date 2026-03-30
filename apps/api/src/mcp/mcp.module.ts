@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common'
-import { CloudflareAdapter } from './cloudflare/cloudflare.adapter'
-import { PosthogAdapter } from './posthog/posthog.adapter'
-import { PostmanAdapter } from './postman/postman.adapter'
+import { SportZavodAdapter } from './sportzavod/sportzavod.adapter'
+import { ContentZavodAdapter } from './contentzavod/contentzavod.adapter'
+import { FarmAdapter } from './farm/farm.adapter'
 import { McpService } from './mcp.service'
 
 @Module({
-  providers: [CloudflareAdapter, PosthogAdapter, PostmanAdapter, McpService],
+  providers: [SportZavodAdapter, ContentZavodAdapter, FarmAdapter, McpService],
   exports: [McpService],
 })
 export class McpModule {}

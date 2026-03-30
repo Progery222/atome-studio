@@ -12,7 +12,7 @@ export class ServicesController {
 
   @Get('stats')
   getStats() {
-    return this.svc.getStats()
+    return this.svc.getFarmStats()
   }
 
   @Get(':id')

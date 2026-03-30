@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "dev": "nest start --watch",
+    "dev": "nest build && node dist/main",
+    "dev:watch": "nest start --watch",
     "start": "node dist/main"
   },
   "dependencies": {

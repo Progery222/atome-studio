@@ -10,13 +10,11 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
-    "incremental": true,
+    "rootDir": "src",
+    "incremental": false,
     "skipLibCheck": true,
     "strictNullChecks": true,
-    "noImplicitAny": false,
-    "paths": {
-      "@atome/shared": ["../../packages/shared/src/index.ts"]
-    }
+    "noImplicitAny": false
   },
   "include": ["src/**/*"]
 }

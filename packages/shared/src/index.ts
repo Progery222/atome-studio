@@ -1,106 +1,180 @@
-export type Platform = 'Cloudflare' | 'PostHog' | 'Postman';
+// ─── Service types ────────────────────────────────────────────────────────────
 
-export type ServiceStatus = 'online' | 'offline' | 'idle' | 'error';
-
-export type ServiceType =
-  // Cloudflare
-  | 'CF Worker'
-  | 'CF Pages'
-  | 'R2 Bucket'
-  | 'KV Namespace'
-  | 'D1 Database'
-  // PostHog
-  | 'Dashboard'
-  | 'PH Insight'
-  | 'Feature Flag'
-  | 'Survey'
-  | 'Experiment'
-  // Postman
-  | 'API Collection'
-  | 'Mock Server'
-  | 'Environment'
-  | 'API Spec';
+export type ServiceStatus = 'online' | 'degraded' | 'offline' | 'error'
 
 export interface Service {
-  id: string;
-  name: string;
-  platform: Platform;
-  type: ServiceType | string;
-  status: ServiceStatus;
-  modified: string;
-  /** RGB color of the platform [r, g, b] */
-  col: [number, number, number];
-  /** Orbit index: 0=CF, 1=PostHog, 2=Postman */
-  oi: number;
+  id: string
+  name: string
+  status: ServiceStatus
+  uptime?: number           // 0–100 %
+  activeJobs?: number
+  /** RGB color — computed from status by adapter */
+  col: [number, number, number]
+  /** Orbit index: 0=SportZavod, 1=content-zavod, 2=Orchestrator */
+  oi: number
   /** Initial angle on orbit (radians) */
-  a: number;
+  a: number
   /** Angular speed (rad/frame), sign = direction */
-  spd: number;
-  metadata?: Record<string, unknown>;
+  spd: number
 }
+
+// ─── Status → RGB color ───────────────────────────────────────────────────────
+
+export const STATUS_COLORS: Record<ServiceStatus, [number, number, number]> = {
+  online:   [22,  168, 78],   // deep emerald green
+  degraded: [200, 150, 8],    // deep amber
+  offline:  [210, 52,  52],   // deep crimson
+  error:    [210, 52,  52],
+}
+
+// ─── Orbit configs ────────────────────────────────────────────────────────────
 
 export interface OrbitConfig {
   /** Semi-major axis */
-  a: number;
+  a: number
   /** Semi-minor axis */
-  b: number;
+  b: number
   /** Tilt angle in radians */
-  tilt: number;
-  /** RGB string e.g. '249,115,22' */
-  rgb: string;
-  platform: Platform;
+  tilt: number
+  /** RGB string e.g. '34,197,94' */
+  rgb: string
 }
 
 export const ORBIT_CONFIGS: OrbitConfig[] = [
-  { a: 196, b: 58,  tilt: -0.20, rgb: '249,115,22',   platform: 'Cloudflare' },
-  { a: 162, b: 80,  tilt:  0.44, rgb: '167,139,250',  platform: 'PostHog' },
-  { a: 226, b: 48,  tilt:  0.16, rgb: '251,191,36',   platform: 'Postman' },
-];
+  { a: 380, b: 120, tilt: -0.10, rgb: '210,175,55'  }, // 0 — SportZavod (golden)
+  { a: 320, b: 150, tilt:  0.45, rgb: '180,150,255' }, // 1 — content-zavod (purple)
+  { a: 420, b: 100, tilt:  0.22, rgb: '150,130,230' }, // 2 — Orchestrator (lavender)
+]
 
-export const PLATFORM_COLORS: Record<Platform, { hex: string; rgb: string }> = {
-  Cloudflare: { hex: '#f97316', rgb: '249,115,22' },
-  PostHog:    { hex: '#a78bfa', rgb: '167,139,250' },
-  Postman:    { hex: '#fbbf24', rgb: '251,191,36' },
-};
+// ─── Farm stats (returned by GET /api/services/stats) ─────────────────────────
 
-export interface WorkspaceStats {
-  totalServices: number;
-  onlineServices: number;
-  platforms: number;
-  uptimePercent: number;
+export interface FarmStats {
+  phones_online: number
+  phones_total: number
+  accounts_active: number
+  accounts_total: number
+  posts_today: number
+  active_jobs: number
+  last_event?: string
 }
+
+export const EMPTY_FARM_STATS: FarmStats = {
+  phones_online:   0,
+  phones_total:    0,
+  accounts_active: 0,
+  accounts_total:  0,
+  posts_today:     0,
+  active_jobs:     0,
+}
+
+// ─── Domain models ────────────────────────────────────────────────────────────
+
+export interface Phone {
+  phone_id: string
+  serial: string
+  tenant_id: string
+  model: string
+  status: 'active' | 'warmup' | 'paused' | 'offline' | 'banned' | 'error'
+  warmup_day: number
+  health_score: number
+  adb_connected: boolean
+  group: string
+  last_active: string
+  actions_today: number
+  posts_today: number
+  accounts: Account[]
+}
+
+export interface Account {
+  account_id: string
+  tenant_id: string
+  phone_id: string
+  platform: 'tiktok'
+  username: string
+  niche: string
+  content_sources: string[]
+  heygen_avatar_id?: string
+  post_frequency_hours: number
+  timezone: string
+  health_score: number
+  warmup_day: number
+  status: 'active' | 'warmup' | 'paused' | 'banned'
+  stats: {
+    posts_today: number
+    posts_week: number
+    posts_total: number
+    last_post: string | null
+  }
+}
+
+export interface QueueTask {
+  task_id: string
+  account_id: string
+  phone_id: string
+  file_url: string
+  caption: string
+  hashtags: string[]
+  platform: 'tiktok'
+  source_service: 'sportzavod' | 'contentzavod'
+  status: 'scheduled' | 'in_progress' | 'published' | 'failed'
+  scheduled_at: string
+  executed_at?: string
+  created_at: string
+  thumbnail_url?: string
+}
+
+export interface VideoFile {
+  filename: string
+  account_id: string
+  tenant_id: string
+  source_service: 'sportzavod' | 'contentzavod'
+  url: string
+  thumbnail_url: string
+  size_bytes: number
+  created_at: string
+  status: 'queued' | 'published' | 'rejected'
+}
+
+export interface GenerationJob {
+  job_id: string
+  service: 'sportzavod' | 'contentzavod'
+  account_ids: string[]
+  topic?: string
+  videos_per_account: number
+  status: 'running' | 'done' | 'error'
+  progress: number
+  created_at: string
+  results?: { account_id: string; video_url: string }[]
+}
+
+// ─── WebSocket events (Phase 3) ───────────────────────────────────────────────
+
+export interface FarmEvent {
+  event: 'published' | 'banned' | 'error' | 'heartbeat' | 'job_complete'
+  phone_id: string
+  account_id?: string
+  details: Record<string, unknown>
+  timestamp: string
+}
+
+// ─── Sparkline (generic chart utility) ───────────────────────────────────────
 
 export interface SparklinePoint {
-  value: number;
-  ts: number;
+  value: number
+  ts: number
 }
 
-export interface ActivityMetrics {
-  eventsPerMin: SparklinePoint[];
-  apiCalls: SparklinePoint[];
-  latencyMs: SparklinePoint[];
-}
+// ─── Client (super_admin — Phase 5) ───────────────────────────────────────────
 
-// WebSocket event payloads
-export interface ServiceStatusChangedEvent {
-  type: 'service:status_changed';
-  serviceId: string;
-  status: ServiceStatus;
+export interface Client {
+  client_id: string
+  tenant_id: string
+  name: string
+  email: string
+  plan: 'basic' | 'pro' | 'enterprise'
+  phones_limit: number
+  phones_assigned: number
+  accounts_count: number
+  status: 'active' | 'inactive'
+  created_at: string
 }
-
-export interface ServiceMetricsUpdatedEvent {
-  type: 'service:metrics_updated';
-  metrics: ActivityMetrics;
-}
-
-export interface AlertCreatedEvent {
-  type: 'alert:created';
-  serviceId: string;
-  message: string;
-  severity: 'info' | 'warning' | 'critical';
-}
-
-export type WsEvent =
-  | ServiceStatusChangedEvent
-  | ServiceMetricsUpdatedEvent
-  | AlertCreatedEvent;

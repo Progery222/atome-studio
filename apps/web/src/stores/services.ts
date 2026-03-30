@@ -1,5 +1,7 @@
 import { create } from 'zustand'
-import { Service, ActivityMetrics } from '@atome/shared'
+import { Service, FarmStats, EMPTY_FARM_STATS } from '@atome/shared'
+
+const API = '/api'
 
 export interface TooltipData {
   x: number
@@ -8,51 +10,55 @@ export interface TooltipData {
 }
 
 interface ServicesState {
-  services: Service[]
-  metrics: ActivityMetrics
-  tooltip: TooltipData | null
+  services:      Service[]
+  farmStats:     FarmStats
+  tooltip:       TooltipData | null
   highlightedId: string | null
+  selectedId:    string | null
+  loading:       boolean
 
-  setServices: (services: Service[]) => void
-  updateServiceStatus: (id: string, status: Service['status']) => void
-  setTooltip: (data: TooltipData | null) => void
+  setServices:    (services: Service[]) => void
+  setFarmStats:   (stats: FarmStats) => void
+  setTooltip:     (data: TooltipData | null) => void
   setHighlighted: (id: string | null) => void
-  setMetrics: (metrics: ActivityMetrics) => void
+  setSelected:    (id: string | null) => void
+
+  fetchServices: () => Promise<void>
+  fetchStats:    () => Promise<void>
 }
 
-// Demo data matching the prototype
-const DEMO_SERVICES: Service[] = [
-  { id: '0', name: 'tracker-worker',    platform: 'Cloudflare', type: 'CF Worker',      status: 'online', modified: 'Dec 3, 2025',  col: [249,115,22],  oi: 0, a: 0,    spd:  0.0042 },
-  { id: '1', name: 'My App Dashboard',  platform: 'PostHog',    type: 'Dashboard',      status: 'online', modified: 'Mar 27, 2026', col: [167,139,250], oi: 1, a: 0.62, spd: -0.0028 },
-  { id: '2', name: 'Daily Active Users',platform: 'PostHog',    type: 'PH Insight',     status: 'online', modified: 'Mar 27, 2026', col: [139,92,246],  oi: 2, a: 1.30, spd:  0.0055 },
-  { id: '3', name: 'Weekly Active Users',platform: 'PostHog',   type: 'PH Insight',     status: 'online', modified: 'Mar 27, 2026', col: [99,60,220],   oi: 0, a: 2.10, spd:  0.0038 },
-  { id: '4', name: 'Growth Accounting', platform: 'PostHog',    type: 'PH Insight',     status: 'online', modified: 'Mar 27, 2026', col: [167,139,250], oi: 1, a: 3.50, spd: -0.0030 },
-  { id: '5', name: 'Retention',         platform: 'PostHog',    type: 'PH Insight',     status: 'online', modified: 'Mar 27, 2026', col: [130,110,255], oi: 2, a: 4.20, spd:  0.0048 },
-  { id: '6', name: 'Pageview Funnel',   platform: 'PostHog',    type: 'PH Insight',     status: 'online', modified: 'Mar 27, 2026', col: [110,80,240],  oi: 0, a: 5.00, spd:  0.0035 },
-  { id: '7', name: 'My Collection · A', platform: 'Postman',    type: 'API Collection', status: 'online', modified: 'Mar 27, 2026', col: [251,191,36],  oi: 1, a: 1.80, spd: -0.0024 },
-  { id: '8', name: 'My Collection · B', platform: 'Postman',    type: 'API Collection', status: 'online', modified: 'Mar 27, 2026', col: [234,170,20],  oi: 2, a: 2.90, spd:  0.0052 },
-  { id: '9', name: 'My Collection · C', platform: 'Postman',    type: 'API Collection', status: 'online', modified: 'Mar 27, 2026', col: [251,191,36],  oi: 0, a: 3.70, spd:  0.0040 },
-]
-
-const makeSparkPoints = () =>
-  Array.from({ length: 40 }, (_, i) => ({ value: Math.random() * 100, ts: Date.now() - (40 - i) * 1000 }))
-
 export const useServicesStore = create<ServicesState>((set) => ({
-  services: DEMO_SERVICES,
-  metrics: {
-    eventsPerMin: makeSparkPoints(),
-    apiCalls: makeSparkPoints(),
-    latencyMs: makeSparkPoints(),
-  },
-  tooltip: null,
+  services:      [],
+  farmStats:     { ...EMPTY_FARM_STATS },
+  tooltip:       null,
   highlightedId: null,
+  selectedId:    null,
+  loading:       true,
 
-  setServices: (services) => set({ services }),
-  updateServiceStatus: (id, status) =>
-    set((s) => ({
-      services: s.services.map((svc) => (svc.id === id ? { ...svc, status } : svc)),
-    })),
-  setTooltip: (tooltip) => set({ tooltip }),
+  setServices:    (services)   => set({ services }),
+  setFarmStats:   (farmStats)  => set({ farmStats }),
+  setTooltip:     (tooltip)    => set({ tooltip }),
   setHighlighted: (highlightedId) => set({ highlightedId }),
-  setMetrics: (metrics) => set({ metrics }),
+  setSelected:    (selectedId) => set({ selectedId }),
+
+  fetchServices: async () => {
+    try {
+      const res      = await fetch(`${API}/services`)
+      const services = await res.json() as Service[]
+      set({ services, loading: false })
+    } catch (e) {
+      console.warn('Failed to fetch services', e)
+      set({ loading: false })
+    }
+  },
+
+  fetchStats: async () => {
+    try {
+      const res   = await fetch(`${API}/services/stats`)
+      const stats = await res.json() as FarmStats
+      set({ farmStats: stats })
+    } catch (e) {
+      console.warn('Failed to fetch farm stats', e)
+    }
+  },
 }))

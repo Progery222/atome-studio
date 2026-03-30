@@ -1,0 +1,39 @@
+.root {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* CROSSHAIR NAV STYLES REVERTED TO SIMPLE LIST */
+.nav {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.navLink {
+  font-family: 'Courier New', monospace;
+  font-size: 8px; /* Small text as requested */
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(120, 180, 255, 0.5); /* Readable but subtle */
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.navLink:hover {
+  color: #00D2FF;
+  text-shadow: 0 0 8px rgba(0, 210, 255, 0.6);
+  transform: translateX(4px);
+}

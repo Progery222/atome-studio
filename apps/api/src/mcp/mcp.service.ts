@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Service } from '@atome/shared'
-import { CloudflareAdapter } from './cloudflare/cloudflare.adapter'
-import { PosthogAdapter } from './posthog/posthog.adapter'
-import { PostmanAdapter } from './postman/postman.adapter'
+import { Service, FarmStats, EMPTY_FARM_STATS } from '@atome/shared'
+import { SportZavodAdapter } from './sportzavod/sportzavod.adapter'
+import { ContentZavodAdapter } from './contentzavod/contentzavod.adapter'
+import { FarmAdapter } from './farm/farm.adapter'
 
 /**
- * Aggregates data from all MCP adapters into a unified Service list.
+ * Aggregates data from all service adapters.
  * Called on a schedule by ServicesService.
  */
 @Injectable()
@@ -13,20 +13,20 @@ export class McpService {
   private readonly logger = new Logger(McpService.name)
 
   constructor(
-    private readonly cloudflare: CloudflareAdapter,
-    private readonly posthog: PosthogAdapter,
-    private readonly postman: PostmanAdapter,
+    private readonly sportzavod:   SportZavodAdapter,
+    private readonly contentzavod: ContentZavodAdapter,
+    private readonly farm:         FarmAdapter,
   ) {}
 
   async fetchAllServices(): Promise<Service[]> {
     const results = await Promise.allSettled([
-      this.cloudflare.fetchServices(),
-      this.posthog.fetchServices(),
-      this.postman.fetchServices(),
+      this.sportzavod.fetchServices(),
+      this.contentzavod.fetchServices(),
+      this.farm.fetchServices(),
     ])
 
     const services: Service[] = []
-    const names = ['Cloudflare', 'PostHog', 'Postman']
+    const names = ['SportZavod', 'content-zavod', 'Orchestrator']
 
     results.forEach((result, i) => {
       if (result.status === 'fulfilled') {
@@ -37,5 +37,14 @@ export class McpService {
     })
 
     return services
+  }
+
+  async fetchFarmStats(): Promise<FarmStats> {
+    try {
+      return await this.farm.fetchFarmStats()
+    } catch (e) {
+      this.logger.warn(`FarmStats fetch failed: ${e}`)
+      return { ...EMPTY_FARM_STATS }
+    }
   }
 }
