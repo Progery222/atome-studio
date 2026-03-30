@@ -16,6 +16,8 @@ interface RendererState {
   angles: number[]
   pulseT: number
   offlineBlinkT: number
+  time: number
+  orbitTilts: number[]  // live tilt angles (drift over time)
 }
 
 const state: RendererState = {
@@ -25,7 +27,13 @@ const state: RendererState = {
   angles: [],
   pulseT: 0,
   offlineBlinkT: 0,
+  time: 0,
+  orbitTilts: [],
 }
+
+// ─── Orbit rotation speeds (rad/frame) ──────────────────────────────────────
+
+const ORBIT_ROTATION_SPEEDS = [0.0008, -0.0006, 0.0005]
 
 // ─── Seeded RNG ────────────────────────────────────────────────────────────
 
@@ -55,10 +63,10 @@ function buildNucleus(radius: number, dpr: number): HTMLCanvasElement {
   const rng = seededRng(7)
 
   // ── Atmosphere glow (outside sphere boundary) ──
-  const atmo = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r * 1.35)
-  atmo.addColorStop(0,   'rgba(0, 190, 255, 0.45)')
-  atmo.addColorStop(0.3, 'rgba(0, 140, 255, 0.18)')
-  atmo.addColorStop(0.7, 'rgba(0, 80, 255, 0.05)')
+  const atmo = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r * 1.25)
+  atmo.addColorStop(0,   'rgba(0, 190, 255, 0.22)')
+  atmo.addColorStop(0.3, 'rgba(0, 140, 255, 0.10)')
+  atmo.addColorStop(0.7, 'rgba(0, 80, 255, 0.03)')
   atmo.addColorStop(1,   'rgba(0, 40, 200, 0)')
   ctx.beginPath()
   ctx.arc(cx, cy, r * 1.35, 0, Math.PI * 2)
@@ -71,49 +79,49 @@ function buildNucleus(radius: number, dpr: number): HTMLCanvasElement {
   ctx.arc(cx, cy, r, 0, Math.PI * 2)
   ctx.clip()
 
-  // Base gradient — deep blue planet
-  const base = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.2, 0, cx + r * 0.1, cy + r * 0.1, r * 1.1)
-  base.addColorStop(0,    '#2a6fa0')
-  base.addColorStop(0.25, '#1d5580')
-  base.addColorStop(0.5,  '#123c5c')
-  base.addColorStop(0.8,  '#0a2438')
-  base.addColorStop(1,    '#061620')
+  // Base gradient — deep blue sphere
+  const base = ctx.createRadialGradient(cx - r * 0.1, cy - r * 0.1, 0, cx, cy, r)
+  base.addColorStop(0,    '#c8e8ff')
+  base.addColorStop(0.15, '#6eb8e8')
+  base.addColorStop(0.4,  '#2080c0')
+  base.addColorStop(0.7,  '#0a4a80')
+  base.addColorStop(1,    '#021830')
   ctx.fillStyle = base
   ctx.fillRect(0, 0, size, size)
 
-  // Surface noise — lighter/darker patches for texture
-  for (let i = 0; i < 500; i++) {
+  // Surface texture — subtle cloud-like patches
+  for (let i = 0; i < 600; i++) {
     const px = cx + (rng() - 0.5) * r * 2.2
     const py = cy + (rng() - 0.5) * r * 2.2
-    const pr = rng() * r * 0.18 + r * 0.02
-    const isBright = rng() > 0.4
+    const pr = rng() * r * 0.25 + r * 0.02
+    const isBright = rng() > 0.3
 
     ctx.beginPath()
     ctx.arc(px, py, pr, 0, Math.PI * 2)
     if (isBright) {
       const v = rng()
-      ctx.fillStyle = `rgba(${30 + v * 40 | 0}, ${100 + v * 60 | 0}, ${160 + v * 50 | 0}, ${0.04 + rng() * 0.08})`
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.06 + v * 0.18})`
     } else {
-      ctx.fillStyle = `rgba(0, ${10 + rng() * 20 | 0}, ${25 + rng() * 25 | 0}, ${0.05 + rng() * 0.1})`
+      ctx.fillStyle = `rgba(80, 160, 255, ${0.04 + rng() * 0.12})`
     }
     ctx.fill()
   }
 
-  // Subtle horizontal bands (gas giant feel)
-  for (let i = 0; i < 8; i++) {
-    const bandY = cy - r + (r * 2 * (i + rng() * 0.5)) / 8
-    const bandH = r * 0.04 + rng() * r * 0.04
-    ctx.fillStyle = `rgba(${15 + rng() * 25 | 0}, ${50 + rng() * 40 | 0}, ${100 + rng() * 50 | 0}, ${0.03 + rng() * 0.05})`
+  // Subtle atmospheric bands
+  for (let i = 0; i < 12; i++) {
+    const bandY = cy - r + (r * 2 * (i + rng() * 0.5)) / 12
+    const bandH = r * 0.08 + rng() * r * 0.05
+    ctx.fillStyle = `rgba(160, 220, 255, ${0.03 + rng() * 0.06})`
     ctx.fillRect(cx - r, bandY, r * 2, bandH)
   }
 
-  // Dark spot accent
-  const spotX = cx + r * 0.15
-  const spotY = cy + r * 0.05
-  const spotR = r * 0.08
+  // Specular core flash
+  const spotX = cx + r * 0.1
+  const spotY = cy - r * 0.1
+  const spotR = r * 0.35
   const spotG = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, spotR)
-  spotG.addColorStop(0, 'rgba(80, 30, 20, 0.12)')
-  spotG.addColorStop(1, 'rgba(0, 0, 0, 0)')
+  spotG.addColorStop(0, 'rgba(255, 255, 255, 0.4)')
+  spotG.addColorStop(1, 'rgba(255, 255, 255, 0)')
   ctx.beginPath()
   ctx.arc(spotX, spotY, spotR, 0, Math.PI * 2)
   ctx.fillStyle = spotG
@@ -128,17 +136,17 @@ function buildNucleus(radius: number, dpr: number): HTMLCanvasElement {
   ctx.clip()
   const rim = ctx.createRadialGradient(cx, cy, r * 0.7, cx, cy, r)
   rim.addColorStop(0,    'rgba(0, 0, 0, 0)')
-  rim.addColorStop(0.75, 'rgba(0, 80, 180, 0.06)')
-  rim.addColorStop(0.9,  'rgba(0, 160, 255, 0.18)')
-  rim.addColorStop(1,    'rgba(0, 220, 255, 0.3)')
+  rim.addColorStop(0.75, 'rgba(0, 80, 180, 0.08)')
+  rim.addColorStop(0.9,  'rgba(0, 160, 255, 0.22)')
+  rim.addColorStop(1,    'rgba(0, 220, 255, 0.35)')
   ctx.fillStyle = rim
   ctx.fillRect(0, 0, size, size)
   ctx.restore()
 
   // ── Specular highlight (upper-left) ──
   const spec = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.35, 0, cx - r * 0.2, cy - r * 0.2, r * 0.5)
-  spec.addColorStop(0,   'rgba(210, 240, 255, 0.15)')
-  spec.addColorStop(0.4, 'rgba(120, 200, 255, 0.06)')
+  spec.addColorStop(0,   'rgba(210, 240, 255, 0.18)')
+  spec.addColorStop(0.4, 'rgba(120, 200, 255, 0.08)')
   spec.addColorStop(1,   'rgba(0, 0, 0, 0)')
   ctx.beginPath()
   ctx.arc(cx, cy, r, 0, Math.PI * 2)
@@ -148,17 +156,57 @@ function buildNucleus(radius: number, dpr: number): HTMLCanvasElement {
   return nc
 }
 
-// ─── Draw one half (front / back) of an orbit ellipse ──────────────────────
+// ─── Draw animated nucleus glow (pulsating, breathing) ─────────────────────
 
-const ARC_OVERLAP = 0.03 // small overlap to prevent seam gaps
+function drawNucleusGlow(
+  ctx: CanvasRenderingContext2D,
+  CX: number, CY: number,
+  baseR: number, time: number,
+) {
+  // Gentle breathing pulse
+  const breath1 = Math.sin(time * 1.5) * 0.06
+  const breathScale = 1 + breath1
+  const glowAlpha = 0.18 + 0.10 * Math.sin(time * 2.0)
+
+  // Soft corona — cyan/blue
+  const coronaR = baseR * 4.0 * breathScale
+  const corona = ctx.createRadialGradient(CX, CY, baseR * 0.7, CX, CY, coronaR)
+  corona.addColorStop(0,    `rgba(0, 200, 255, ${glowAlpha * 0.6})`)
+  corona.addColorStop(0.2,  `rgba(0, 150, 255, ${glowAlpha * 0.3})`)
+  corona.addColorStop(0.5,  `rgba(0, 80, 255, ${glowAlpha * 0.1})`)
+  corona.addColorStop(1,    'rgba(0, 0, 0, 0)')
+  ctx.beginPath()
+  ctx.arc(CX, CY, coronaR, 0, Math.PI * 2)
+  ctx.fillStyle = corona
+  ctx.fill()
+
+  // Soft inner halo
+  const innerR = baseR * 2.0 * (1 + breath1 * 0.3)
+  const innerAlpha = 0.30 + 0.12 * Math.sin(time * 2.5 + 0.5)
+  const inner = ctx.createRadialGradient(CX, CY, baseR * 0.5, CX, CY, innerR)
+  inner.addColorStop(0,   `rgba(200, 240, 255, ${innerAlpha * 0.5})`)
+  inner.addColorStop(0.5, `rgba(80, 180, 255, ${innerAlpha * 0.2})`)
+  inner.addColorStop(1,   'rgba(0, 0, 0, 0)')
+  ctx.beginPath()
+  ctx.arc(CX, CY, innerR, 0, Math.PI * 2)
+  ctx.fillStyle = inner
+  ctx.fill()
+}
+
+// ─── Draw one half of an orbit with animated energy pulses ─────────────────
+
+const ARC_OVERLAP = 0.03
+const PULSE_COUNT = 2     // energy pulses per orbit
+const PULSE_SPEED = 0.18  // radians per second — slow, elegant
 
 function drawOrbitHalf(
   ctx: CanvasRenderingContext2D,
   orbit: OrbitConfig,
+  orbitIndex: number,
   CX: number, CY: number, SC: number,
   half: 'front' | 'back',
+  time: number,
 ) {
-  // back = top semicircle (π → 2π), front = bottom semicircle (0 → π)
   const startAngle = half === 'back'
     ? Math.PI - ARC_OVERLAP
     : -ARC_OVERLAP
@@ -167,40 +215,77 @@ function drawOrbitHalf(
     : Math.PI + ARC_OVERLAP
 
   const [r, g, b] = orbit.rgb.split(',').map(Number)
+  const orbitR = orbit.a * SC
+
+  // Use live tilt that rotates over time
+  const liveTilt = state.orbitTilts[orbitIndex] ?? orbit.tilt
 
   ctx.save()
   ctx.translate(CX, CY)
-  ctx.rotate(orbit.tilt)
+  ctx.rotate(liveTilt)
   ctx.scale(1, orbit.b / orbit.a)
+  ctx.lineCap = 'round'
 
-  // Wide soft outer glow
+  // Layer 1: wide soft glow around orbit
   ctx.beginPath()
-  ctx.arc(0, 0, orbit.a * SC, startAngle, endAngle)
-  ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.10)`
-  ctx.lineWidth   = 16 * SC
-  ctx.lineCap     = 'butt'
+  ctx.arc(0, 0, orbitR, startAngle, endAngle)
+  ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.08)`
+  ctx.lineWidth   = 18 * SC
   ctx.stroke()
 
-  // Medium glow
+  // Layer 2: medium glow
   ctx.beginPath()
-  ctx.arc(0, 0, orbit.a * SC, startAngle, endAngle)
-  ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.22)`
-  ctx.lineWidth   = 5 * SC
+  ctx.arc(0, 0, orbitR, startAngle, endAngle)
+  ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.18)`
+  ctx.lineWidth   = 6 * SC
   ctx.stroke()
 
-  // Bright core line
+  // Layer 3: core line — thick, visible
   ctx.beginPath()
-  ctx.arc(0, 0, orbit.a * SC, startAngle, endAngle)
-  ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.55)`
-  ctx.lineWidth   = 1.8 * SC
+  ctx.arc(0, 0, orbitR, startAngle, endAngle)
+  ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.50)`
+  ctx.lineWidth   = 2.5 * SC
   ctx.stroke()
 
-  // Extra bright highlight
-  ctx.beginPath()
-  ctx.arc(0, 0, orbit.a * SC, startAngle, endAngle)
-  ctx.strokeStyle = `rgba(${Math.min(255, r + 50)}, ${Math.min(255, g + 50)}, ${Math.min(255, b + 50)}, 0.25)`
-  ctx.lineWidth   = 0.7 * SC
-  ctx.stroke()
+  // ── Energy pulses — slow, smooth ──
+  for (let p = 0; p < PULSE_COUNT; p++) {
+    const pulseAngle = (time * PULSE_SPEED + (p * Math.PI * 2) / PULSE_COUNT) % (Math.PI * 2)
+
+    const inBack  = pulseAngle >= Math.PI && pulseAngle <= Math.PI * 2
+    const inFront = pulseAngle >= 0 && pulseAngle < Math.PI
+    if ((half === 'back' && !inBack) || (half === 'front' && !inFront)) continue
+
+    const px = Math.cos(pulseAngle) * orbitR
+    const py = Math.sin(pulseAngle) * orbitR
+
+    // Pulse glow
+    const pulseR = 4 * SC
+    const pg = ctx.createRadialGradient(px, py, 0, px, py, pulseR * 5)
+    pg.addColorStop(0,   `rgba(${Math.min(255, r + 100)}, ${Math.min(255, g + 100)}, ${Math.min(255, b + 100)}, 0.85)`)
+    pg.addColorStop(0.12,`rgba(${Math.min(255, r + 50)}, ${Math.min(255, g + 50)}, ${Math.min(255, b + 50)}, 0.4)`)
+    pg.addColorStop(0.35,`rgba(${r}, ${g}, ${b}, 0.10)`)
+    pg.addColorStop(1,   'rgba(0,0,0,0)')
+    ctx.beginPath()
+    ctx.arc(px, py, pulseR * 5, 0, Math.PI * 2)
+    ctx.fillStyle = pg
+    ctx.fill()
+
+    // Comet tail — smooth fade
+    const tailLen = 0.45
+    const steps = 16
+    for (let s = 1; s <= steps; s++) {
+      const frac = s / steps
+      const ta = pulseAngle - tailLen * frac
+      const tx = Math.cos(ta) * orbitR
+      const ty = Math.sin(ta) * orbitR
+      const tAlpha = 0.20 * (1 - frac) * (1 - frac) // quadratic fade
+      const tSize  = pulseR * (1 - frac * 0.7)
+      ctx.beginPath()
+      ctx.arc(tx, ty, tSize, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${tAlpha})`
+      ctx.fill()
+    }
+  }
 
   ctx.restore()
 }
@@ -216,7 +301,7 @@ function drawSphere(
   highlightedId: string | null,
   orbits: OrbitConfig[],
 ) {
-  const r = 13 * SC * depthScale
+  const r = 16 * SC * depthScale  // slightly larger spheres
   const orbit = orbits[svc.oi] ?? orbits[0]
   const [or, og, ob] = orbit.rgb.split(',').map(Number)
 
@@ -231,12 +316,13 @@ function drawSphere(
   const alpha = 0.5 + 0.5 * depthScale
 
   // ── Outer halo glow ──
-  const halo = ctx.createRadialGradient(x, y, 0, x, y, r * 3.5)
-  halo.addColorStop(0,   `rgba(${gr}, ${gg}, ${gb}, ${0.35 * depthScale})`)
-  halo.addColorStop(0.4, `rgba(${gr}, ${gg}, ${gb}, ${0.08 * depthScale})`)
+  const halo = ctx.createRadialGradient(x, y, 0, x, y, r * 4)
+  halo.addColorStop(0,   `rgba(${gr}, ${gg}, ${gb}, ${0.40 * depthScale})`)
+  halo.addColorStop(0.3, `rgba(${gr}, ${gg}, ${gb}, ${0.12 * depthScale})`)
+  halo.addColorStop(0.6, `rgba(${gr}, ${gg}, ${gb}, ${0.03 * depthScale})`)
   halo.addColorStop(1,   'rgba(0,0,0,0)')
   ctx.beginPath()
-  ctx.arc(x, y, r * 3.5, 0, Math.PI * 2)
+  ctx.arc(x, y, r * 4, 0, Math.PI * 2)
   ctx.fillStyle = halo
   ctx.fill()
 
@@ -318,12 +404,13 @@ export function render(
   orbits: OrbitConfig[],
   highlightedId: string | null,
   dpr: number,
+  zoom: number = 1,
 ): AtomHitTarget[] {
   const W  = canvas.clientWidth
   const H  = canvas.clientHeight
   const CX = W * 0.5
   const CY = H * 0.5
-  const SC = Math.min(W, H) / 900
+  const SC = Math.min(W, H) / 900 * zoom
 
   const ctx = canvas.getContext('2d')!
 
@@ -344,12 +431,23 @@ export function render(
 
   state.pulseT        += 0.010
   state.offlineBlinkT += 0.07
+  state.time          += 0.016  // ~60fps time step
+
+  // ── Init orbit tilts from config ──
+  if (state.orbitTilts.length !== orbits.length) {
+    state.orbitTilts = orbits.map((o) => o.tilt)
+  }
+
+  // ── Advance orbit tilt rotation ──
+  for (let i = 0; i < orbits.length; i++) {
+    state.orbitTilts[i] += ORBIT_ROTATION_SPEEDS[i] ?? 0.0005
+  }
 
   // ── Nucleus metrics ──
   const baseNR = 85 * SC
-  const pulse  = 1 + 0.02 * Math.sin(state.pulseT)
+  const pulse  = 1 + 0.06 * Math.sin(state.pulseT * 2.5)
 
-  // Build nucleus texture once per resize
+  // Build nucleus texture once per resize/zoom
   if (!state.nucCanvas || Math.abs(state.nucBaseR - baseNR) > 1) {
     state.nucBaseR = baseNR
     state.nucCanvas = buildNucleus(baseNR, dpr)
@@ -359,11 +457,12 @@ export function render(
   const items = services.map((svc, i) => {
     const orbit = orbits[svc.oi] ?? orbits[0]
     const angle = state.angles[i] ?? svc.a
+    const liveTilt = state.orbitTilts[svc.oi] ?? orbit.tilt
 
     const cosA = Math.cos(angle)
     const sinA = Math.sin(angle)
-    const cosT = Math.cos(orbit.tilt)
-    const sinT = Math.sin(orbit.tilt)
+    const cosT = Math.cos(liveTilt)
+    const sinT = Math.sin(liveTilt)
     const ex   = orbit.a * SC * cosA
     const ey   = orbit.b * SC * sinA
     const x    = CX + ex * cosT - ey * sinT
@@ -379,17 +478,12 @@ export function render(
     return { svc, x, y, depth, depthScale, i }
   })
 
-  // Sort back-to-front (most positive depth → drawn first, painted over later)
+  // Sort back-to-front
   const sorted = [...items].sort((a, b) => b.depth - a.depth)
 
-  // ────────────────────────────────────────────────────────────────────────
-  // RENDERING ORDER: back orbits → back spheres → nucleus → front orbits → front spheres
-  // This gives proper 3D depth with orbits passing behind and in front of the nucleus.
-  // ────────────────────────────────────────────────────────────────────────
-
-  // ── 1. BACK halves of orbits (top semicircle — behind nucleus) ──
-  orbits.forEach((orbit) => {
-    drawOrbitHalf(ctx, orbit, CX, CY, SC, 'back')
+  // ── 1. BACK halves of orbits ──
+  orbits.forEach((orbit, idx) => {
+    drawOrbitHalf(ctx, orbit, idx, CX, CY, SC, 'back', state.time)
   })
 
   // ── 2. Spheres BEHIND nucleus ──
@@ -401,32 +495,28 @@ export function render(
     }
   }
 
-  // ── 3. Nucleus corona (outer volumetric glow) ──
-  const drawNR  = baseNR * pulse
-  const coronaR = drawNR * 5
-  const corona  = ctx.createRadialGradient(CX, CY, drawNR * 0.6, CX, CY, coronaR)
-  corona.addColorStop(0,    'rgba(0, 200, 255, 0.3)')
-  corona.addColorStop(0.15, 'rgba(0, 150, 255, 0.1)')
-  corona.addColorStop(0.4,  'rgba(0, 100, 255, 0.03)')
-  corona.addColorStop(1,    'rgba(0, 0, 0, 0)')
-  ctx.beginPath()
-  ctx.arc(CX, CY, coronaR, 0, Math.PI * 2)
-  ctx.fillStyle = corona
-  ctx.fill()
+  // ── 3. Animated nucleus glow ──
+  drawNucleusGlow(ctx, CX, CY, baseNR, state.time)
 
-  // ── 4. Nucleus sphere ──
+  // ── 4. Nucleus sphere (rotating) ──
+  const drawNR  = baseNR * pulse
   const nucDrawSize = drawNR * 2.8
+
+  ctx.save()
+  ctx.translate(CX, CY)
+  ctx.rotate(state.time * 0.15) // slow majestic rotation of the core
   ctx.drawImage(
     state.nucCanvas!,
-    CX - nucDrawSize / 2,
-    CY - nucDrawSize / 2,
+    -nucDrawSize / 2,
+    -nucDrawSize / 2,
     nucDrawSize,
     nucDrawSize,
   )
+  ctx.restore()
 
-  // ── 5. FRONT halves of orbits (bottom semicircle — in front of nucleus) ──
-  orbits.forEach((orbit) => {
-    drawOrbitHalf(ctx, orbit, CX, CY, SC, 'front')
+  // ── 5. FRONT halves of orbits ──
+  orbits.forEach((orbit, idx) => {
+    drawOrbitHalf(ctx, orbit, idx, CX, CY, SC, 'front', state.time)
   })
 
   // ── 6. Spheres IN FRONT of nucleus ──

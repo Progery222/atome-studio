@@ -6,11 +6,15 @@ import styles from './AtomicCanvas.module.css'
 
 const DPR = window.devicePixelRatio || 1
 const HIT_RADIUS = 14
+const MIN_ZOOM = 0.4
+const MAX_ZOOM = 2.5
+const ZOOM_SPEED = 0.001
 
 export function AtomicCanvas() {
   const canvasRef   = useRef<HTMLCanvasElement>(null)
   const frameRef    = useRef<number>(0)
   const hitsRef     = useRef<AtomHitTarget[]>([])
+  const zoomRef     = useRef<number>(1)
 
   const services      = useServicesStore((s) => s.services)
   const highlightedId = useServicesStore((s) => s.highlightedId)
@@ -25,7 +29,7 @@ export function AtomicCanvas() {
     initAngles(services)
 
     const loop = () => {
-      hitsRef.current = render(canvas, services, ORBIT_CONFIGS, highlightedId, DPR)
+      hitsRef.current = render(canvas, services, ORBIT_CONFIGS, highlightedId, DPR, zoomRef.current)
       frameRef.current = requestAnimationFrame(loop)
     }
     frameRef.current = requestAnimationFrame(loop)
@@ -41,6 +45,23 @@ export function AtomicCanvas() {
     })
     ro.observe(canvas.parentElement!)
     return () => ro.disconnect()
+  }, [])
+
+  // Mouse wheel — zoom
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const delta = -e.deltaY * ZOOM_SPEED
+      zoomRef.current = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomRef.current + delta))
+      // Force nucleus texture rebuild on zoom change
+      resetGalaxy()
+    }
+
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', onWheel)
   }, [])
 
   // Mouse move — tooltip
