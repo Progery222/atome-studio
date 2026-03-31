@@ -42,8 +42,8 @@ export interface OrbitConfig {
 
 export const ORBIT_CONFIGS: OrbitConfig[] = [
   { a: 380, b: 120, tilt: -0.10, rgb: '210,175,55'  }, // 0 — SportZavod (golden)
-  { a: 320, b: 150, tilt:  0.45, rgb: '180,150,255' }, // 1 — content-zavod (purple)
-  { a: 420, b: 100, tilt:  0.22, rgb: '150,130,230' }, // 2 — Orchestrator (lavender)
+  { a: 320, b: 150, tilt:  0.45, rgb: '180,150,255' }, // 1 — content-zavod (lavender)
+  { a: 420, b: 100, tilt:  0.22, rgb: '150,130,230' }, // 2 — Orchestrator (purple)
 ]
 
 // ─── Farm stats (returned by GET /api/services/stats) ─────────────────────────
