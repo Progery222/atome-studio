@@ -1,26 +1,29 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Phone } from '@atome/shared'
 import { useFarmStore } from '../../stores/farm'
+import { useAuthStore } from '../../stores/auth'
 import styles from './PhonesPage.module.css'
 
 const STATUS_COLOR: Record<Phone['status'], string> = {
-  active:    '#22c55e',
-  warmup:    '#fbbf24',
-  paused:    '#60a5fa',
-  offline:   '#6b7280',
-  banned:    '#ef4444',
-  error:     '#ef4444',
+  active:  '#22c55e',
+  warmup:  '#fbbf24',
+  paused:  '#60a5fa',
+  offline: '#6b7280',
+  banned:  '#ef4444',
+  error:   '#ef4444',
 }
 
 const STATUS_LABEL: Record<Phone['status'], string> = {
-  active:    'online',
-  warmup:    'warmup',
-  paused:    'paused',
-  offline:   'offline',
-  banned:    'banned',
-  error:     'error',
+  active:  'online',
+  warmup:  'warmup',
+  paused:  'paused',
+  offline: 'offline',
+  banned:  'banned',
+  error:   'error',
 }
+
+const ALL_STATUSES: Phone['status'][] = ['active', 'warmup', 'paused', 'offline', 'banned', 'error']
 
 function healthColor(score: number) {
   if (score >= 80) return '#22c55e'
@@ -33,11 +36,20 @@ function healthColor(score: number) {
 function PhoneCard({ phone }: { phone: Phone }) {
   const pausePhone  = useFarmStore((s) => s.pausePhone)
   const resumePhone = useFarmStore((s) => s.resumePhone)
+  const role        = useAuthStore((s) => s.role)
   const col         = STATUS_COLOR[phone.status]
   const hc          = healthColor(phone.health_score)
+  const canControl  = role !== 'viewer'
 
   return (
     <div className={styles.card}>
+      {/* ADB disconnected warning — FR-4.9 */}
+      {!phone.adb_connected && (
+        <div className={styles.adbWarning}>
+          ⚠ ADB отключён
+        </div>
+      )}
+
       {/* Header row */}
       <div className={styles.cardHeader}>
         <span className={styles.statusDot} style={{ background: col, boxShadow: `0 0 6px ${col}` }} />
@@ -53,8 +65,11 @@ function PhoneCard({ phone }: { phone: Phone }) {
         </span>
       </div>
 
-      {/* Model */}
-      <div className={styles.model}>{phone.model || '—'}</div>
+      {/* Model + group */}
+      <div className={styles.model}>
+        {phone.model || '—'}
+        {phone.group && <span className={styles.groupBadge}>{phone.group}</span>}
+      </div>
 
       {/* Health bar */}
       <div className={styles.healthRow}>
@@ -86,24 +101,26 @@ function PhoneCard({ phone }: { phone: Phone }) {
         </div>
       </div>
 
-      {/* Actions */}
-      <div className={styles.actions}>
-        {phone.status === 'paused' ? (
-          <button
-            className={styles.btn}
-            onClick={() => resumePhone(phone.phone_id)}
-          >
-            ▶ Возобновить
-          </button>
-        ) : (
-          <button
-            className={`${styles.btn} ${styles.btnPause}`}
-            onClick={() => pausePhone(phone.phone_id)}
-          >
-            ⏸ Пауза
-          </button>
-        )}
-      </div>
+      {/* Actions — hidden for viewer role */}
+      {canControl && (
+        <div className={styles.actions}>
+          {phone.status === 'paused' ? (
+            <button
+              className={styles.btn}
+              onClick={() => resumePhone(phone.phone_id)}
+            >
+              ▶ Возобновить
+            </button>
+          ) : (
+            <button
+              className={`${styles.btn} ${styles.btnPause}`}
+              onClick={() => pausePhone(phone.phone_id)}
+            >
+              ⏸ Пауза
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -115,13 +132,46 @@ export function PhonesPage() {
   const phonesLoading = useFarmStore((s) => s.phonesLoading)
   const fetchPhones   = useFarmStore((s) => s.fetchPhones)
 
+  const [search, setSearch]           = useState('')
+  const [statusFilter, setStatusFilter] = useState<Phone['status'] | 'all'>('all')
+  const [groupFilter, setGroupFilter]   = useState<string | 'all'>('all')
+
   useEffect(() => {
     fetchPhones()
     const id = setInterval(fetchPhones, 30_000)
     return () => clearInterval(id)
   }, [fetchPhones])
 
-  const online  = phones.filter((p) => p.status === 'active').length
+  // Collect unique groups
+  const groups = useMemo(
+    () => [...new Set(phones.map(p => p.group).filter(Boolean))].sort(),
+    [phones]
+  )
+
+  // Status counts
+  const statusCounts = useMemo(() => {
+    const m: Record<string, number> = {}
+    for (const st of ALL_STATUSES) m[st] = phones.filter(p => p.status === st).length
+    return m
+  }, [phones])
+
+  // Filter
+  const filtered = useMemo(() => {
+    let list = phones
+    if (statusFilter !== 'all') list = list.filter(p => p.status === statusFilter)
+    if (groupFilter !== 'all') list = list.filter(p => p.group === groupFilter)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(p =>
+        p.phone_id.toLowerCase().includes(q) ||
+        (p.serial && p.serial.toLowerCase().includes(q)) ||
+        (p.accounts && p.accounts.some(a => a.username.toLowerCase().includes(q)))
+      )
+    }
+    return list
+  }, [phones, statusFilter, groupFilter, search])
+
+  const online  = phones.filter(p => p.status === 'active').length
   const subtitle = phonesLoading
     ? 'загрузка...'
     : phones.length > 0
@@ -140,13 +190,79 @@ export function PhonesPage() {
         </button>
       </header>
 
-      {phones.length === 0 && !phonesLoading ? (
+      {/* ── Status summary bar ── */}
+      <div className={styles.statusBar}>
+        <span className={styles.statusCount} style={{ color: '#22c55e' }}>
+          ● {statusCounts['active'] ?? 0} онлайн
+        </span>
+        <span className={styles.statusCount} style={{ color: '#6b7280' }}>
+          ○ {statusCounts['offline'] ?? 0} оффлайн
+        </span>
+        <span className={styles.statusCount} style={{ color: '#fbbf24' }}>
+          ⚠ {statusCounts['warmup'] ?? 0} warmup
+        </span>
+        <span className={styles.statusCount} style={{ color: '#ef4444' }}>
+          ✕ {statusCounts['banned'] ?? 0} бан
+        </span>
+      </div>
+
+      {/* ── Filters row (FR-4.4, FR-4.5, FR-4.6) ── */}
+      <div className={styles.filtersRow}>
+        {/* Search */}
+        <input
+          type="text"
+          className={styles.searchInput}
+          placeholder="Поиск по ID или username…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+
+        {/* Group filter */}
+        <select
+          className={styles.filterSelect}
+          value={groupFilter}
+          onChange={e => setGroupFilter(e.target.value)}
+        >
+          <option value="all">Все группы</option>
+          {groups.map(g => (
+            <option key={g} value={g}>{g}</option>
+          ))}
+        </select>
+
+        {/* Status filter */}
+        <div className={styles.filterTabs}>
+          <button
+            className={`${styles.filterTab} ${statusFilter === 'all' ? styles.filterTabActive : ''}`}
+            onClick={() => setStatusFilter('all')}
+          >
+            Все
+          </button>
+          {ALL_STATUSES.map(st => (
+            <button
+              key={st}
+              className={`${styles.filterTab} ${statusFilter === st ? styles.filterTabActive : ''}`}
+              onClick={() => setStatusFilter(st)}
+              style={statusFilter === st ? { color: STATUS_COLOR[st] } : undefined}
+            >
+              {STATUS_LABEL[st]}
+              {(statusCounts[st] ?? 0) > 0 && (
+                <span className={styles.filterCount}>{statusCounts[st]}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filtered.length === 0 && !phonesLoading ? (
         <div className={styles.empty}>
-          — нет телефонов · orchestrator недоступен
+          {phones.length === 0
+            ? '— нет телефонов · orchestrator недоступен'
+            : '— ничего не найдено по фильтру'
+          }
         </div>
       ) : (
         <div className={styles.grid}>
-          {phones.map((p) => (
+          {filtered.map((p) => (
             <PhoneCard key={p.phone_id} phone={p} />
           ))}
         </div>

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { GalaxyPage }        from './pages/Galaxy/GalaxyPage'
 import { Layout }            from './components/Layout/Layout'
 import { AuthGuard }         from './components/AuthGuard/AuthGuard'
+import { RoleGuard }         from './components/AuthGuard/RoleGuard'
 import { LoginPage }         from './pages/Login/LoginPage'
 import { PhonesPage }        from './pages/Phones/PhonesPage'
 import { PhoneDetailPage }   from './pages/PhoneDetail/PhoneDetailPage'
@@ -11,6 +12,7 @@ import { GeneratePage }      from './pages/Generate/GeneratePage'
 import { QueuePage }         from './pages/Queue/QueuePage'
 import { VideosPage }        from './pages/Videos/VideosPage'
 import { ClientsPage }       from './pages/Clients/ClientsPage'
+import { SettingsPage }      from './pages/Settings/SettingsPage'
 
 export function App() {
   return (
@@ -32,10 +34,17 @@ export function App() {
             <Route path="/generate"          element={<GeneratePage />} />
             <Route path="/queue"             element={<QueuePage />} />
             <Route path="/videos"            element={<VideosPage />} />
-            <Route path="/clients"           element={<ClientsPage />} />
+
+            <Route path="/settings"          element={<SettingsPage />} />
+
+            {/* Super admin only (FR-15.7) */}
+            <Route element={<RoleGuard roles={['super_admin']} />}>
+              <Route path="/clients"         element={<ClientsPage />} />
+            </Route>
           </Route>
         </Route>
       </Routes>
     </BrowserRouter>
   )
 }
+

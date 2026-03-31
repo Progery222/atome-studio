@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Service, FarmStats, EMPTY_FARM_STATS } from '@atome/shared'
+import { apiFetch } from '../lib/api'
 
 const API = '/api'
 
@@ -43,7 +44,7 @@ export const useServicesStore = create<ServicesState>((set) => ({
 
   fetchServices: async () => {
     try {
-      const res      = await fetch(`${API}/services`)
+      const res      = await apiFetch(`${API}/services`)
       const services = await res.json() as Service[]
       set({ services, loading: false })
     } catch (e) {
@@ -54,7 +55,7 @@ export const useServicesStore = create<ServicesState>((set) => ({
 
   fetchStats: async () => {
     try {
-      const res   = await fetch(`${API}/services/stats`)
+      const res   = await apiFetch(`${API}/services/stats`)
       const stats = await res.json() as FarmStats
       set({ farmStats: stats })
     } catch (e) {

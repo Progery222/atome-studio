@@ -1,0 +1,351 @@
+.page {
+  padding: 32px 40px;
+  min-height: 100%;
+  max-width: 900px;
+}
+
+.back {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.back:hover { color: var(--text-primary); }
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin: 16px 0 8px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.statusBadge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 100px;
+  border: 1px solid;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ─── Actions ─────────────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0 28px;
+}
+
+.btnPrimary {
+  padding: 10px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  background: rgba(0, 210, 255, 0.06);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btnPrimary:hover {
+  background: rgba(0, 210, 255, 0.15);
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.15);
+  color: #fff;
+}
+
+.btnSecondary {
+  padding: 10px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btnSecondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+/* ─── Stats Grid ──────────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.cardLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.cardBig {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ─── Detail Card ─────────────────────────────────────────────────────────── */
+
+.detailCard {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+/* ─── Edit button ─────────────────────────────────────────────────────────── */
+
+.editBtn {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--accent-cyan);
+  background: rgba(0, 210, 255, 0.07);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.editBtn:hover {
+  background: rgba(0, 210, 255, 0.15);
+  border-color: rgba(0, 210, 255, 0.4);
+}
+
+.editActions {
+  display: flex;
+  gap: 8px;
+}
+
+.saveBtn {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fff;
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.saveBtn:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.3);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
+}
+.saveBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.cancelBtn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.cancelBtn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+
+/* ─── Edit row ────────────────────────────────────────────────────────────── */
+
+.editRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  gap: 16px;
+}
+.editRow:last-child { border-bottom: none; }
+
+.editField {
+  flex: 1;
+  max-width: 280px;
+}
+
+.fieldInput {
+  width: 100%;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+.fieldInput:focus {
+  border-color: rgba(0, 210, 255, 0.4);
+  box-shadow: 0 0 0 2px rgba(0, 210, 255, 0.08);
+}
+.fieldInput::placeholder { color: var(--text-muted); opacity: 0.5; }
+
+.fieldSelect {
+  width: 100%;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.fieldSelect option { background: #0a0e1a; }
+
+/* ─── Checkbox group ─────────────────────────────────────────────────────── */
+
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent-cyan);
+  cursor: pointer;
+}
+
+/* ─── Feedback banners ───────────────────────────────────────────────────── */
+
+.successBanner {
+  margin-bottom: 16px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: var(--radius-sm);
+}
+
+.errorMsg {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-red);
+  background: rgba(239, 68, 68, 0.07);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-radius: var(--radius-sm);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+.row:last-child { border-bottom: none; }
+
+.rowLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.rowValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.queueInfo {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+/* ─── Empty ───────────────────────────────────────────────────────────────── */
+
+.empty {
+  padding: 60px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.emptySmall {
+  padding: 16px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Atome Galaxy — Microservice Architecture Visualizer</title>
+    <meta name="description" content="Interactive 3D visualization of microservice architecture as a living cosmic galaxy"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css"/>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <canvas id="galaxy-canvas"></canvas>
+
+    <!-- HUD Overlay -->
+    <div id="hud">
+        <div id="hud-top-left">
+            <div class="hud-logo">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <circle cx="14" cy="14" r="12" stroke="url(#grad-logo)" stroke-width="1.5" fill="none"/>
+                    <circle cx="14" cy="14" r="4" fill="url(#grad-logo)"/>
+                    <ellipse cx="14" cy="14" rx="9" ry="4" stroke="url(#grad-logo)" stroke-width="0.8" fill="none" transform="rotate(-30 14 14)"/>
+                    <ellipse cx="14" cy="14" rx="9" ry="4" stroke="url(#grad-logo)" stroke-width="0.8" fill="none" transform="rotate(30 14 14)"/>
+                    <defs>
+                        <linearGradient id="grad-logo" x1="0" y1="0" x2="28" y2="28">
+                            <stop offset="0%" stop-color="#60a5fa"/>
+                            <stop offset="100%" stop-color="#c084fc"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <span>ATOME GALAXY</span>
+            </div>
+            <div class="hud-status">
+                <span class="status-dot pulse"></span>
+                <span id="status-text">SYSTEM ONLINE</span>
+            </div>
+        </div>
+
+        <div id="hud-top-right">
+            <div class="hud-metric">
+                <span class="metric-label">SERVICES</span>
+                <span class="metric-value" id="metric-services">8</span>
+            </div>
+            <div class="hud-metric">
+                <span class="metric-label">LATENCY</span>
+                <span class="metric-value" id="metric-latency">12ms</span>
+            </div>
+            <div class="hud-metric">
+                <span class="metric-label">LOAD</span>
+                <span class="metric-value" id="metric-load">67%</span>
+            </div>
+        </div>
+
+        <div id="hud-bottom-left">
+            <div class="hud-hint">
+                <kbd>CLICK</kbd> service to inspect &nbsp;·&nbsp; 
+                <kbd>ESC</kbd> to exit &nbsp;·&nbsp; 
+                <kbd>SCROLL</kbd> to zoom
+            </div>
+        </div>
+
+        <div id="hud-bottom-right">
+            <button class="hud-btn" id="btn-alert" title="Toggle Alert Mode">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </button>
+            <button class="hud-btn" id="btn-audio" title="Toggle Audio">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Service Info Panel -->
+    <div id="service-panel" class="hidden">
+        <button id="panel-close" aria-label="Close panel">✕</button>
+        <div class="panel-header">
+            <div class="panel-icon" id="panel-icon"></div>
+            <div>
+                <h2 id="panel-name">Service Name</h2>
+                <span class="panel-type" id="panel-type">microservice</span>
+            </div>
+        </div>
+        <div class="panel-metrics">
+            <div class="panel-metric-card">
+                <span class="pmc-label">Latency</span>
+                <span class="pmc-value" id="pm-latency">—</span>
+            </div>
+            <div class="panel-metric-card">
+                <span class="pmc-label">Load</span>
+                <span class="pmc-value" id="pm-load">—</span>
+            </div>
+            <div class="panel-metric-card">
+                <span class="pmc-label">RPS</span>
+                <span class="pmc-value" id="pm-rps">—</span>
+            </div>
+            <div class="panel-metric-card">
+                <span class="pmc-label">Errors</span>
+                <span class="pmc-value" id="pm-errors">—</span>
+            </div>
+        </div>
+        <div class="panel-subsection">
+            <h3>Sub-Services</h3>
+            <div id="panel-sub-list"></div>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="tooltip" class="hidden">
+        <span id="tooltip-name"></span>
+        <span id="tooltip-status"></span>
+    </div>
+
+    <!-- Loading screen -->
+    <div id="loading-screen">
+        <div class="loader-ring"></div>
+        <div class="loader-text">INITIALIZING GALAXY</div>
+        <div class="loader-sub">Mapping microservice topology...</div>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>

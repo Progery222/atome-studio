@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "dev": "nest build && node dist/main",
+    "dev": "nest start --watch",
     "dev:watch": "nest start --watch",
     "start": "node dist/main"
   },
@@ -15,10 +15,11 @@
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.4.15",
-    "@nestjs/websockets": "^10.4.15",
     "@nestjs/platform-socket.io": "^10.4.15",
     "@nestjs/schedule": "^4.1.2",
+    "@nestjs/websockets": "^10.4.15",
     "bcryptjs": "^2.4.3",
+    "dotenv": "^17.3.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",

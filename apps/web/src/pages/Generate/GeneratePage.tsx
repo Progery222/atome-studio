@@ -124,10 +124,13 @@ function ProgressScreen({ job }: { job: GenerationJob }) {
 // ─── Generate Form ────────────────────────────────────────────────────────────
 
 export function GeneratePage() {
-  const accounts        = useFarmStore((s) => s.accounts)
-  const accountsLoading = useFarmStore((s) => s.accountsLoading)
-  const fetchAccounts   = useFarmStore((s) => s.fetchAccounts)
-  const startGeneration = useFarmStore((s) => s.startGeneration)
+  const accounts                  = useFarmStore((s) => s.accounts)
+  const accountsLoading           = useFarmStore((s) => s.accountsLoading)
+  const fetchAccounts             = useFarmStore((s) => s.fetchAccounts)
+  const sportzavodAccounts        = useFarmStore((s) => s.sportzavodAccounts)
+  const sportzavodAccountsLoading = useFarmStore((s) => s.sportzavodAccountsLoading)
+  const fetchSportzavodAccounts   = useFarmStore((s) => s.fetchSportzavodAccounts)
+  const startGeneration           = useFarmStore((s) => s.startGeneration)
 
   const [service,         setService]         = useState<Service>('sportzavod')
   const [selectedIds,     setSelectedIds]      = useState<Set<string>>(new Set())
@@ -140,8 +143,12 @@ export function GeneratePage() {
   const nicheRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    fetchAccounts()
-  }, [fetchAccounts])
+    if (service === 'sportzavod') {
+      fetchSportzavodAccounts()
+    } else {
+      fetchAccounts()
+    }
+  }, [service, fetchAccounts, fetchSportzavodAccounts])
 
   // Close niche dropdown on outside click
   useEffect(() => {
@@ -154,11 +161,14 @@ export function GeneratePage() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const allNiches = [...new Set(accounts.map((a) => a.niche).filter(Boolean))]
+  const activeAccounts = service === 'sportzavod' ? sportzavodAccounts : accounts
+  const isLoading      = service === 'sportzavod' ? sportzavodAccountsLoading : accountsLoading
+
+  const allNiches = [...new Set(activeAccounts.map((a) => a.niche).filter(Boolean))]
 
   const visibleAccounts = nicheFilter
-    ? accounts.filter((a) => a.niche === nicheFilter)
-    : accounts
+    ? activeAccounts.filter((a) => a.niche === nicheFilter)
+    : activeAccounts
 
   const toggleAll = () => {
     if (selectedIds.size === visibleAccounts.length) {
@@ -256,7 +266,7 @@ export function GeneratePage() {
       <div className={styles.section}>
         <div className={styles.sectionTitle}>
           Аккаунты
-          {accountsLoading && <span className={styles.loading}> загрузка…</span>}
+          {isLoading && <span className={styles.loading}> загрузка…</span>}
         </div>
 
         <div className={styles.accountFilters}>
@@ -296,7 +306,7 @@ export function GeneratePage() {
         </div>
 
         <div className={styles.accountCheckList}>
-          {visibleAccounts.length === 0 && !accountsLoading && (
+          {visibleAccounts.length === 0 && !isLoading && (
             <div className={styles.empty}>— нет аккаунтов</div>
           )}
           {visibleAccounts.map((acc) => (

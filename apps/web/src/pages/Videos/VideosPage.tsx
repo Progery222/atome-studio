@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { VideoFile } from '@atome/shared'
 import { useFarmStore } from '../../stores/farm'
 import styles from './VideosPage.module.css'
@@ -34,9 +34,66 @@ function dateKey(iso: string): string {
   }
 }
 
+// ─── Video Modal ──────────────────────────────────────────────────────────────
+
+function VideoModal({ video, onClose }: { video: VideoFile; onClose: () => void }) {
+  const statusColor = video.status === 'published'
+    ? '#22c55e'
+    : video.status === 'rejected'
+      ? '#ef4444'
+      : '#60a5fa'
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <button className={styles.modalClose} onClick={onClose}>✕</button>
+
+        <div className={styles.modalVideo}>
+          <video
+            src={video.url}
+            controls
+            autoPlay
+            className={styles.videoPlayer}
+            poster={video.thumbnail_url}
+          />
+        </div>
+
+        <div className={styles.modalInfo}>
+          <div className={styles.modalFilename}>{video.filename}</div>
+
+          <div className={styles.modalRow}>
+            <span className={styles.modalLabel}>Аккаунт</span>
+            <span className={styles.modalValue}>{video.account_id}</span>
+          </div>
+          <div className={styles.modalRow}>
+            <span className={styles.modalLabel}>Дата</span>
+            <span className={styles.modalValue}>{formatDate(video.created_at)} · {formatTime(video.created_at)}</span>
+          </div>
+          <div className={styles.modalRow}>
+            <span className={styles.modalLabel}>Сервис</span>
+            <span className={styles.modalValue}>{video.source_service}</span>
+          </div>
+          <div className={styles.modalRow}>
+            <span className={styles.modalLabel}>Статус</span>
+            <span className={styles.modalValue} style={{ color: statusColor }}>{video.status}</span>
+          </div>
+
+          <a
+            href={video.url}
+            download={video.filename}
+            className={styles.modalDownload}
+          >
+            ↓ Скачать
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Video Card ───────────────────────────────────────────────────────────────
 
-function VideoCard({ video }: { video: VideoFile }) {
+function VideoCard({ video, onSelect }: { video: VideoFile; onSelect: () => void }) {
   const statusColor = video.status === 'published'
     ? 'rgba(34,197,94,0.6)'
     : video.status === 'rejected'
@@ -44,7 +101,7 @@ function VideoCard({ video }: { video: VideoFile }) {
       : 'rgba(96,165,250,0.6)'
 
   return (
-    <div className={styles.card}>
+    <div className={styles.card} onClick={onSelect} style={{ cursor: 'pointer' }}>
       {/* Preview */}
       <div className={styles.preview}>
         {video.thumbnail_url ? (
@@ -55,9 +112,10 @@ function VideoCard({ video }: { video: VideoFile }) {
           />
         ) : (
           <div className={styles.thumbPlaceholder}>
-            <span className={styles.thumbIcon}>[vid]</span>
+            <span className={styles.thumbIcon}>▶</span>
           </div>
         )}
+        <div className={styles.playOverlay}>▶</div>
         <span
           className={styles.statusBadge}
           style={{ color: statusColor, borderColor: statusColor.replace('0.6', '0.2') }}
@@ -92,17 +150,16 @@ function VideoCard({ video }: { video: VideoFile }) {
             href={video.url}
             download={video.filename}
             className={styles.actionBtn}
+            onClick={(e) => e.stopPropagation()}
           >
             Скачать
           </a>
-          <a
-            href={video.url}
-            target="_blank"
-            rel="noreferrer"
+          <button
             className={styles.actionBtn}
+            onClick={(e) => { e.stopPropagation(); onSelect() }}
           >
             Просмотр
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -115,6 +172,7 @@ export function VideosPage() {
   const videos        = useFarmStore((s) => s.videos)
   const videosLoading = useFarmStore((s) => s.videosLoading)
   const fetchVideos   = useFarmStore((s) => s.fetchVideos)
+  const [selectedVideo, setSelectedVideo] = useState<VideoFile | null>(null)
 
   useEffect(() => {
     fetchVideos()
@@ -158,11 +216,15 @@ export function VideosPage() {
             <div className={styles.groupDate}>{formatDate(group[0].created_at)}</div>
             <div className={styles.grid}>
               {group.map((v) => (
-                <VideoCard key={v.filename} video={v} />
+                <VideoCard key={v.filename} video={v} onSelect={() => setSelectedVideo(v)} />
               ))}
             </div>
           </div>
         ))
+      )}
+
+      {selectedVideo && (
+        <VideoModal video={selectedVideo} onClose={() => setSelectedVideo(null)} />
       )}
     </div>
   )

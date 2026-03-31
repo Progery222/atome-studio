@@ -1,5 +1,8 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import { useLangStore, Lang } from '../../stores/lang'
+import { useAuthStore } from '../../stores/auth'
+import { useFarmStore } from '../../stores/farm'
 import { useT } from '../../i18n'
 import styles from './Layout.module.css'
 
@@ -14,14 +17,39 @@ export function Layout() {
   const t       = useT()
   const lang    = useLangStore((s) => s.lang)
   const setLang = useLangStore((s) => s.setLang)
+  const role    = useAuthStore((s) => s.role)
+
+  const phones      = useFarmStore((s) => s.phones)
+  const queue       = useFarmStore((s) => s.queue)
+  const activeJobs  = useFarmStore((s) => s.activeJobs)
+  const wsConnected = useFarmStore((s) => s.wsConnected)
+  const connectWs   = useFarmStore((s) => s.connectWs)
+  const fetchPhones = useFarmStore((s) => s.fetchPhones)
+  const fetchQueue  = useFarmStore((s) => s.fetchQueue)
+
+  useEffect(() => {
+    fetchPhones()
+    fetchQueue()
+    connectWs()
+    const id = setInterval(() => {
+      fetchPhones()
+      fetchQueue()
+    }, 30_000)
+    return () => clearInterval(id)
+  }, [fetchPhones, fetchQueue, connectWs])
+
+  const phonesOnline   = phones.filter((p) => p.status === 'active').length
+  const queueActive    = queue.filter((q) => q.status === 'scheduled' || q.status === 'in_progress').length
+  const generatingNow  = activeJobs.filter((j) => j.status === 'running').length
 
   const NAV_ITEMS = [
-    { path: '/phones',   label: t('nav_phones')   },
-    { path: '/accounts', label: t('nav_accounts') },
-    { path: '/generate', label: t('nav_generate') },
-    { path: '/queue',    label: t('nav_queue')    },
-    { path: '/videos',   label: t('nav_videos')   },
-    { path: '/clients',  label: t('nav_clients')  },
+    { path: '/phones',   label: t('nav_phones'),   badge: phones.length > 0 ? phonesOnline : null },
+    { path: '/accounts', label: t('nav_accounts'), badge: null },
+    ...(role !== 'viewer' ? [{ path: '/generate', label: t('nav_generate'), badge: generatingNow > 0 ? generatingNow : null }] : []),
+    { path: '/queue',    label: t('nav_queue'),    badge: queueActive > 0 ? queueActive : null },
+    { path: '/videos',    label: t('nav_videos'),   badge: null },
+    ...(role === 'super_admin' ? [{ path: '/clients', label: t('nav_clients'), badge: null }] : []),
+    { path: '/settings',  label: t('nav_settings'), badge: null },
   ]
 
   return (
@@ -30,7 +58,7 @@ export function Layout() {
         <Link to="/" className={styles.logo}>{t('logo')}</Link>
 
         <div className={styles.nav}>
-          {NAV_ITEMS.map(({ path, label }) => (
+          {NAV_ITEMS.map(({ path, label, badge }) => (
             <NavLink
               key={path}
               to={path}
@@ -38,9 +66,24 @@ export function Layout() {
                 `${styles.link} ${isActive ? styles.linkActive : ''}`
               }
             >
-              {label}
+              <span>{label}</span>
+              {badge !== null && badge !== undefined && (
+                <span className={styles.navBadge}>{badge}</span>
+              )}
             </NavLink>
           ))}
+        </div>
+
+        {/* WS status */}
+        <div className={styles.wsStatus}>
+          <span
+            className={styles.wsDot}
+            style={{
+              background:  wsConnected ? '#22c55e' : '#6b7280',
+              boxShadow:   wsConnected ? '0 0 6px #22c55e' : 'none',
+            }}
+          />
+          <span className={styles.wsLabel}>{wsConnected ? 'live' : 'offline'}</span>
         </div>
 
         <div className={styles.spacer} />

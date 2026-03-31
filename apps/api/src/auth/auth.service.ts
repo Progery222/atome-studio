@@ -10,7 +10,14 @@ interface User {
 }
 
 // In-memory user store for MVP — replace with DB in Phase 2
-const USERS: User[] = []
+const USERS: User[] = [
+  {
+    id: 'admin_1',
+    email: 'admin@atome.studio',
+    passwordHash: bcrypt.hashSync('admin123', 10),
+    name: 'Super Admin',
+  }
+]
 
 @Injectable()
 export class AuthService {
@@ -38,9 +45,9 @@ export class AuthService {
   }
 
   private issueTokens(user: User) {
-    const payload = { sub: user.id, email: user.email }
+    const payload = { sub: user.id, email: user.email, role: 'super_admin' }
     return {
-      accessToken: this.jwt.sign(payload),
+      access_token: this.jwt.sign(payload),
       user: { id: user.id, email: user.email, name: user.name },
     }
   }

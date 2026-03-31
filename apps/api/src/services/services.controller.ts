@@ -1,6 +1,8 @@
 import { Controller, Get, Param, NotFoundException, Post } from '@nestjs/common'
 import { ServicesService } from './services.service'
+import { Public } from '../auth/public.decorator'
 
+@Public()
 @Controller('services')
 export class ServicesController {
   constructor(private readonly svc: ServicesService) {}

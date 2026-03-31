@@ -11,29 +11,117 @@
   overflow: hidden;
 }
 
-/* CROSSHAIR NAV STYLES REVERTED TO SIMPLE LIST */
-.nav {
+.leftNav {
   position: absolute;
-  top: 40px;
-  left: 40px;
+  top: 24px;
+  left: 24px;
   z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 2px;
+  background: rgba(15, 15, 15, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  width: 220px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.logo {
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding-left: 8px;
+  text-decoration: none;
+}
+.logo::before {
+  content: "";
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neon-gradient);
+  box-shadow: var(--shadow-neon-pink);
 }
 
 .navLink {
-  font-family: 'Courier New', monospace;
-  font-size: 8px; /* Small text as requested */
-  letter-spacing: 0.18em;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(120, 180, 255, 0.5); /* Readable but subtle */
+  color: var(--text-muted);
   text-decoration: none;
+  padding: 12px 12px;
+  border-radius: var(--radius-sm);
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
 }
 
 .navLink:hover {
-  color: #00D2FF;
-  text-shadow: 0 0 8px rgba(0, 210, 255, 0.6);
+  color: var(--accent-cyan);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(0, 210, 255, 0.2);
+  text-shadow: 0 0 10px rgba(0, 210, 255, 0.4);
   transform: translateX(4px);
+}
+
+/* ─── Demo / Presentation Button ──────────────────────────────────────────── */
+
+.demoBtn {
+  position: absolute;
+  bottom: 28px;
+  right: 28px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: rgba(10, 10, 20, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 100px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.demoBtn:hover {
+  background: rgba(0, 210, 255, 0.12);
+  border-color: rgba(0, 210, 255, 0.4);
+  color: rgba(0, 210, 255, 0.95);
+  box-shadow: 0 0 20px rgba(0, 210, 255, 0.15), 0 4px 24px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.demoBtnActive {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: rgba(239, 68, 68, 0.85);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.1), 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.demoBtnActive:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #ef4444;
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.2), 0 4px 24px rgba(0, 0, 0, 0.4);
 }

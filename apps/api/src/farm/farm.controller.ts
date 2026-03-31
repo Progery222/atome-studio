@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, NotFoundException } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Param, Body, NotFoundException } from '@nestjs/common'
 import { FarmService } from './farm.service'
 import { Account } from '@atome/shared'
 
@@ -33,8 +33,30 @@ export class FarmController {
     return this.farm.getAccounts()
   }
 
+  @Get('accounts/:id')
+  async getAccount(@Param('id') id: string) {
+    const acc = await this.farm.getAccount(id)
+    if (!acc) throw new NotFoundException(`Account ${id} not found`)
+    return acc
+  }
+
   @Post('accounts')
   createAccount(@Body() body: Partial<Account>) {
     return this.farm.createAccount(body)
+  }
+
+  @Patch('accounts/:id')
+  updateAccount(@Param('id') id: string, @Body() body: Partial<Account>) {
+    return this.farm.updateAccount(id, body)
+  }
+
+  @Get('sportzavod/accounts')
+  getSportzavodAccounts() {
+    return this.farm.getSportzavodAccounts()
+  }
+
+  @Post('sportzavod/accounts/reload')
+  reloadAccounts() {
+    return this.farm.reloadAccounts()
   }
 }

@@ -150,7 +150,7 @@ export interface GenerationJob {
 // ─── WebSocket events (Phase 3) ───────────────────────────────────────────────
 
 export interface FarmEvent {
-  event: 'published' | 'banned' | 'error' | 'heartbeat' | 'job_complete'
+  event: 'published' | 'banned' | 'error' | 'failed' | 'heartbeat' | 'job_complete'
   phone_id: string
   account_id?: string
   details: Record<string, unknown>

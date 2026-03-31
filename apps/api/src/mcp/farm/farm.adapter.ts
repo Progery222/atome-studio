@@ -12,7 +12,31 @@ export class FarmAdapter {
   private readonly baseUrl = process.env.ORCHESTRATOR_URL ?? 'http://localhost:8001'
 
   async fetchServices(): Promise<Service[]> {
-    return []
+    let status: Service['status'] = 'offline'
+
+    try {
+      const res = await fetch(`${this.baseUrl}/api/status`, {
+        signal: AbortSignal.timeout(3000),
+      })
+      if (res.ok) {
+        status = 'online'
+      } else {
+        status = 'degraded'
+      }
+    } catch {
+      this.logger.warn('Orchestrator unavailable')
+    }
+
+    return [{
+      id:         'orchestrator',
+      name:       'Orchestrator',
+      status,
+      col:        STATUS_COLORS[status],
+      oi:         2,
+      a:          Math.PI / 2,
+      spd:        0.002,
+      activeJobs: 0, // Orchestrator handles queues, not 'jobs' in the same sense, or we could map active_jobs to it
+    }]
   }
 
   async fetchFarmStats(): Promise<FarmStats> {

@@ -63,6 +63,17 @@ const T = {
     // Clients
     clients_title:    'Клиенты',
     clients_create:   '+ Создать клиента',
+
+    // Settings
+    nav_settings:         '⚙ Настройки',
+    settings_title:       'Настройки',
+    settings_profile:     'Профиль',
+    settings_display_name:'Имя',
+    settings_email:       'Email',
+    settings_save:        'Сохранить',
+    settings_saved:       'Сохранено',
+    settings_security:    'Безопасность',
+    settings_logout:      'Выйти',
   },
 
   en: {
@@ -119,6 +130,16 @@ const T = {
 
     clients_title:    'Clients',
     clients_create:   '+ Create client',
+
+    nav_settings:         '⚙ Settings',
+    settings_title:       'Settings',
+    settings_profile:     'Profile',
+    settings_display_name:'Name',
+    settings_email:       'Email',
+    settings_save:        'Save',
+    settings_saved:       'Saved',
+    settings_security:    'Security',
+    settings_logout:      'Sign out',
   },
 
   zh: {
@@ -175,6 +196,16 @@ const T = {
 
     clients_title:    '客户',
     clients_create:   '+ 创建客户',
+
+    nav_settings:         '⚙ 设置',
+    settings_title:       '设置',
+    settings_profile:     '个人资料',
+    settings_display_name:'姓名',
+    settings_email:       '邮箱',
+    settings_save:        '保存',
+    settings_saved:       '已保存',
+    settings_security:    '安全',
+    settings_logout:      '退出',
   },
 
   es: {
@@ -231,6 +262,16 @@ const T = {
 
     clients_title:    'Clientes',
     clients_create:   '+ Crear cliente',
+
+    nav_settings:         '⚙ Ajustes',
+    settings_title:       'Ajustes',
+    settings_profile:     'Perfil',
+    settings_display_name:'Nombre',
+    settings_email:       'Email',
+    settings_save:        'Guardar',
+    settings_saved:       'Guardado',
+    settings_security:    'Seguridad',
+    settings_logout:      'Cerrar sesión',
   },
 } satisfies Record<Lang, Record<string, string>>
 

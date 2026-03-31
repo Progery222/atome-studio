@@ -1,4 +1,5 @@
 import { useServicesStore } from '../../stores/services'
+import { useFarmStore }     from '../../stores/farm'
 import { Service } from '@atome/shared'
 import styles from './SidePanel.module.css'
 
@@ -17,10 +18,12 @@ const STATUS_DOT: Record<string, string> = {
 }
 
 export function SidePanel() {
-  const farmStats  = useServicesStore((s) => s.farmStats)
-  const services   = useServicesStore((s) => s.services)
-  const selectedId = useServicesStore((s) => s.selectedId)
-  const loading    = useServicesStore((s) => s.loading)
+  const farmStats    = useServicesStore((s) => s.farmStats)
+  const services     = useServicesStore((s) => s.services)
+  const selectedId   = useServicesStore((s) => s.selectedId)
+  const loading      = useServicesStore((s) => s.loading)
+  const wsConnected  = useFarmStore((s) => s.wsConnected)
+  const lastEvent    = useFarmStore((s) => s.lastEvent)
 
   const selected = services.find((s) => s.id === selectedId) ?? null
 
@@ -30,8 +33,25 @@ export function SidePanel() {
       <div>
         <div className={styles.title}>Atome Studio</div>
         <div className={styles.subtitle}>
-          {loading ? 'connecting...' : 'farm · live'}
+          {loading ? 'connecting...' : (
+            <span className={styles.subtitleRow}>
+              <span
+                className={styles.wsDot}
+                style={{ background: wsConnected ? '#22c55e' : '#6b7280', boxShadow: wsConnected ? '0 0 6px #22c55e' : 'none' }}
+              />
+              {wsConnected ? 'farm · live' : 'farm · offline'}
+            </span>
+          )}
         </div>
+        {lastEvent && (
+          <div className={styles.lastEventRow}>
+            {lastEvent.event === 'published' && '✓ '}
+            {lastEvent.event === 'banned' && '⚠ '}
+            {lastEvent.event === 'error' && '✕ '}
+            {lastEvent.event}
+            {lastEvent.phone_id ? ` · ${lastEvent.phone_id}` : ''}
+          </div>
+        )}
       </div>
 
       {/* Service detail card or Farm stats */}

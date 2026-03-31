@@ -163,16 +163,39 @@ export function QueuePage() {
                 }}
               />
 
+              {/* Thumbnail (FR-12.1) */}
+              <div className={styles.thumb}>
+                {task.thumbnail_url ? (
+                  <img src={task.thumbnail_url} alt="" />
+                ) : (
+                  <span className={styles.thumbPlaceholder}>[vid]</span>
+                )}
+              </div>
+
               {/* Account */}
               <span className={styles.accountId}>{task.account_id}</span>
 
-              {/* Status text / countdown */}
-              <span
-                className={styles.statusText}
-                style={{ color: STATUS_COLOR[task.status] }}
-              >
-                <Countdown task={task} />
-              </span>
+              {/* Caption + hashtags (FR-12.2) */}
+              <div className={styles.captionBlock}>
+                {task.caption && (
+                  <div className={styles.captionText}>
+                    {task.caption.length > 80 ? task.caption.slice(0, 80) + '…' : task.caption}
+                  </div>
+                )}
+                {task.hashtags && task.hashtags.length > 0 && (
+                  <div className={styles.hashtags}>
+                    {task.hashtags.map(h => `#${h}`).join(' ')}
+                  </div>
+                )}
+                {!task.caption && (
+                  <span
+                    className={styles.statusText}
+                    style={{ color: STATUS_COLOR[task.status] }}
+                  >
+                    <Countdown task={task} />
+                  </span>
+                )}
+              </div>
 
               {/* Scheduled time */}
               <span className={styles.time}>{formatTime(task.scheduled_at)}</span>

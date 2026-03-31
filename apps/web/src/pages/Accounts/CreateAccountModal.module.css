@@ -1,115 +1,141 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
-  font-family: 'Courier New', monospace;
 }
 
 .modal {
-  background: rgba(3, 8, 28, 0.98);
-  border: 1px solid rgba(22, 62, 140, 0.35);
-  border-radius: 12px;
-  padding: 24px;
-  width: 380px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  width: 420px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+  box-shadow: var(--shadow-glass);
 }
 
 .title {
-  font-size: 10px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(80, 160, 255, 0.6);
+  font-size: 18px;
   font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 
 .label {
-  font-size: 7.5px;
-  letter-spacing: 0.16em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: rgba(55, 115, 195, 0.5);
+  color: var(--text-muted);
 }
 
 .input,
 .select {
-  background: rgba(5, 14, 40, 0.72);
-  border: 1px solid rgba(22, 62, 140, 0.25);
-  border-radius: 6px;
-  padding: 8px 10px;
-  color: rgba(145, 192, 232, 0.9);
-  font-family: 'Courier New', monospace;
-  font-size: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
   outline: none;
-  transition: border-color 0.12s;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
 }
 
 .input:focus,
 .select:focus {
-  border-color: rgba(22, 62, 140, 0.6);
+  border-color: rgba(0, 210, 255, 0.4);
+  background: rgba(0, 210, 255, 0.04);
+  box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.08);
 }
 
 .select option {
-  background: #010410;
+  background: #0a0e1a;
+  color: var(--text-primary);
 }
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   margin-top: 4px;
 }
 
 .btnCancel {
   flex: 1;
-  padding: 8px;
+  padding: 10px;
   background: transparent;
-  border: 1px solid rgba(22, 62, 140, 0.2);
-  border-radius: 6px;
-  color: rgba(55, 115, 195, 0.5);
-  font-family: 'Courier New', monospace;
-  font-size: 8px;
-  letter-spacing: 0.14em;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: border-color 0.12s;
+  transition: all 0.2s ease;
+  font-family: inherit;
 }
 
 .btnCancel:hover {
-  border-color: rgba(22, 62, 140, 0.45);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
 }
 
 .btnCreate {
   flex: 1;
-  padding: 8px;
+  padding: 10px;
   background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  border-radius: 6px;
-  color: rgba(34, 197, 94, 0.8);
-  font-family: 'Courier New', monospace;
-  font-size: 8px;
-  letter-spacing: 0.14em;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: var(--radius-sm);
+  color: #22c55e;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  transition: all 0.2s ease;
+  font-family: inherit;
 }
 
 .btnCreate:hover {
   background: rgba(34, 197, 94, 0.18);
-  border-color: rgba(34, 197, 94, 0.5);
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.1);
+}
+
+.btnCreate:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .error {
-  font-size: 8px;
-  color: rgba(239, 68, 68, 0.7);
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  font-weight: 500;
+  color: #ef4444;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: var(--radius-sm);
 }
