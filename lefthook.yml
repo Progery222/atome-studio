@@ -1,0 +1,14 @@
+pre-commit:
+  parallel: true
+  commands:
+    biome-check:
+      glob: "*.{ts,tsx,js,jsx,json}"
+      run: npx @biomejs/biome check --no-errors-on-unmatched {staged_files}
+    tsc:
+      root: "apps/web"
+      run: npx tsc --noEmit
+
+commit-msg:
+  commands:
+    conventional-commit:
+      run: cz check --commit-msg-file {1}

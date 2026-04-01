@@ -11,6 +11,12 @@ TikTok content farm dashboard. Управляет фермой телефоно�
 
 ---
 
+## Standalone файлы
+
+- `atomic_monitor.html` — автономный дашборд мониторинга (без сборки, открывается в браузере напрямую). Не часть монорепо, не трогать без нужды.
+
+---
+
 ## Файлы ТЗ и трекинга
 
 | Файл | Что содержит |
@@ -146,6 +152,9 @@ GET  /api/jobs/:id                    → статус
 npm run dev          # web + api одновременно
 npm run dev:web      # только фронтенд
 npm run dev:api      # только бэкенд
+npm run check        # biome lint + format check
+npm run check:fix    # biome автоисправление
+npm run changelog    # сгенерировать CHANGELOG.md
 docker compose up    # вся инфраструктура
 ```
 
@@ -158,3 +167,5 @@ docker compose up    # вся инфраструктура
 - Zustand для всего состояния (не React state для глобальных данных)
 - Компоненты в отдельных папках с `index.ts` реэкспортом
 - Адаптеры в `apps/api/src/mcp/` — следовать паттерну `cloudflare.adapter.ts`
+- Линтер + форматтер: **Biome** (`biome.json`) — заменяет ESLint и Prettier
+- Git-хуки: **Lefthook** (`lefthook.yml`) — pre-commit запускает biome + tsc
