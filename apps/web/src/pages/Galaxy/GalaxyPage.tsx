@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { AtomicCanvas, AtomicCanvasHandle } from '../../components/AtomicCanvas/AtomicCanvas'
 import { SidePanel }    from '../../components/SidePanel/SidePanel'
 import { Tooltip }      from '../../components/Tooltip/Tooltip'
+import { PlanetPanel }  from '../../components/PlanetPanel/PlanetPanel'
+import { GALAXY_SERVICES } from '../../components/AtomicCanvas/engine'
 import { useServicesStore } from '../../stores/services'
 import { useFarmStore }     from '../../stores/farm'
 import styles from './GalaxyPage.module.css'
@@ -24,8 +26,15 @@ export function GalaxyPage() {
   const connectWs     = useFarmStore((s) => s.connectWs)
   const disconnectWs  = useFarmStore((s) => s.disconnectWs)
 
+  const selectedId   = useServicesStore((s) => s.selectedId)
+  const setSelected  = useServicesStore((s) => s.setSelected)
+
   const canvasRef = useRef<AtomicCanvasHandle>(null)
   const [demoActive, setDemoActive] = useState(false)
+
+  const focusedPlanet = selectedId
+    ? GALAXY_SERVICES.find((s) => s.id === selectedId) ?? null
+    : null
 
   useEffect(() => {
     fetchServices()
@@ -63,6 +72,14 @@ export function GalaxyPage() {
         </div>
 
         <AtomicCanvas ref={canvasRef} />
+
+        {/* Planet control panel */}
+        {focusedPlanet && (
+          <PlanetPanel
+            service={focusedPlanet}
+            onClose={() => setSelected(null)}
+          />
+        )}
 
         {/* Demo / Presentation button */}
         <button

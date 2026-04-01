@@ -59,4 +59,9 @@ export class FarmController {
   reloadAccounts() {
     return this.farm.reloadAccounts()
   }
+
+  @Get('sportzavod/themes')
+  getSportzavodThemes() {
+    return this.farm.getSportzavodThemes()
+  }
 }

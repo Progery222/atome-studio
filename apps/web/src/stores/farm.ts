@@ -1,18 +1,20 @@
 import { create } from 'zustand'
 import { io, Socket } from 'socket.io-client'
-import { Phone, Account, QueueTask, GenerationJob, FarmEvent, VideoFile } from '@atome/shared'
+import { Phone, Account, QueueTask, GenerationJob, FarmEvent, VideoFile, SportZavodTheme } from '@atome/shared'
 import { apiFetch } from '../lib/api'
 
 interface FarmState {
   phones:                   Phone[]
   accounts:                 Account[]
   sportzavodAccounts:       Account[]
+  sportzavodThemes:         SportZavodTheme[]
   queue:                    QueueTask[]
   activeJobs:               GenerationJob[]
   videos:                   VideoFile[]
   phonesLoading:            boolean
   accountsLoading:          boolean
   sportzavodAccountsLoading: boolean
+  sportzavodThemesLoading:  boolean
   queueLoading:             boolean
   videosLoading:            boolean
   wsConnected:              boolean
@@ -22,6 +24,7 @@ interface FarmState {
   fetchPhones:              () => Promise<void>
   fetchAccounts:            () => Promise<void>
   fetchSportzavodAccounts:  () => Promise<void>
+  fetchSportzavodThemes:    () => Promise<void>
   fetchQueue:     () => Promise<void>
   fetchJobs:      () => Promise<void>
   fetchVideos:    () => Promise<void>
@@ -36,7 +39,9 @@ interface FarmState {
     videos_per_account: number
     topic?: string
   }) => Promise<GenerationJob | null>
+  startAutoGeneration: (accountIds?: string[]) => Promise<GenerationJob | null>
   stopJob:        (jobId: string) => Promise<void>
+  stopAllJobs:    () => Promise<number>
   connectWs:      () => void
   disconnectWs:   () => void
 }
@@ -45,12 +50,14 @@ export const useFarmStore = create<FarmState>((set, get) => ({
   phones:                    [],
   accounts:                  [],
   sportzavodAccounts:        [],
+  sportzavodThemes:          [],
   queue:                     [],
   activeJobs:                [],
   videos:                    [],
   phonesLoading:             false,
   accountsLoading:           false,
   sportzavodAccountsLoading: false,
+  sportzavodThemesLoading:   false,
   queueLoading:              false,
   videosLoading:             false,
   wsConnected:               false,
@@ -87,6 +94,17 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       set({ sportzavodAccounts, sportzavodAccountsLoading: false })
     } catch {
       set({ sportzavodAccountsLoading: false })
+    }
+  },
+
+  fetchSportzavodThemes: async () => {
+    set({ sportzavodThemesLoading: true })
+    try {
+      const res    = await apiFetch('/api/sportzavod/themes')
+      const themes = await res.json() as SportZavodTheme[]
+      set({ sportzavodThemes: themes, sportzavodThemesLoading: false })
+    } catch {
+      set({ sportzavodThemesLoading: false })
     }
   },
 
@@ -195,12 +213,40 @@ export const useFarmStore = create<FarmState>((set, get) => ({
     }
   },
 
+  startAutoGeneration: async (accountIds) => {
+    try {
+      const body: Record<string, unknown> = { videos_per_account: 1 }
+      if (accountIds?.length) body.account_ids = accountIds
+      const res = await apiFetch('/api/generate/auto', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      })
+      const job = await res.json() as GenerationJob
+      set((s) => ({ activeJobs: [...s.activeJobs, job] }))
+      return job
+    } catch {
+      return null
+    }
+  },
+
   stopJob: async (jobId) => {
     try {
       await apiFetch(`/api/jobs/${jobId}/stop`, { method: 'POST' })
       await get().fetchJobs()
     } catch {
       // silently ignore
+    }
+  },
+
+  stopAllJobs: async () => {
+    try {
+      const res  = await apiFetch('/api/jobs/stop-all', { method: 'POST' })
+      const data = await res.json() as { stopped_count: number }
+      await get().fetchJobs()
+      return data.stopped_count
+    } catch {
+      return 0
     }
   },
 

@@ -47,108 +47,86 @@ interface GalaxyConnection {
     intensity: number
 }
 
-const DEMO_SERVICES: GalaxyService[] = [
+export const GALAXY_SERVICES: GalaxyService[] = [
     {
-        id: 'api-gateway', name: 'API Gateway', type: 'gateway',
-        color: [0.38, 0.65, 0.98], orbitRadius: 9.0,
-        orbitTiltX: 1.2, orbitTiltY: 0.2, orbitSpeed: 0.25, orbitPhase: 0, size: 0.35,
-        metrics: { latency: '8ms', load: '72%', rps: '14.2k', errors: '0.01%' },
+        id: 'sportzavod', name: 'SportZavod', type: 'generator',
+        color: [0.98, 0.75, 0.14], orbitRadius: 10.0,
+        orbitTiltX: 0.6, orbitTiltY: 0.3, orbitSpeed: 0.20, orbitPhase: 0, size: 0.38,
+        metrics: { latency: '35ms', load: '68%', rps: '120', errors: '0.02%' },
         subs: [
-            { name: 'Rate Limiter', status: 'healthy', color: '#34d399' },
-            { name: 'Auth Proxy', status: 'healthy', color: '#34d399' },
-            { name: 'Load Balancer', status: 'healthy', color: '#34d399' },
+            { name: 'Генерация видео', status: 'healthy', color: '#34d399' },
+            { name: 'Google Sheets', status: 'healthy', color: '#34d399' },
+            { name: 'Очередь задач', status: 'healthy', color: '#34d399' },
         ]
     },
     {
-        id: 'auth-service', name: 'Auth Service', type: 'microservice',
-        color: [0.75, 0.55, 0.99], orbitRadius: 12.0,
-        orbitTiltX: -0.8, orbitTiltY: 1.5, orbitSpeed: 0.20, orbitPhase: 1.2, size: 0.30,
-        metrics: { latency: '12ms', load: '45%', rps: '3.8k', errors: '0.00%' },
+        id: 'contentzavod', name: 'Content Zavod', type: 'generator',
+        color: [0.75, 0.55, 0.99], orbitRadius: 14.0,
+        orbitTiltX: -0.8, orbitTiltY: 1.2, orbitSpeed: 0.16, orbitPhase: 2.1, size: 0.34,
+        metrics: { latency: '42ms', load: '55%', rps: '85', errors: '0.01%' },
         subs: [
-            { name: 'JWT Issuer', status: 'healthy', color: '#34d399' },
-            { name: 'OAuth Handler', status: 'healthy', color: '#34d399' },
-            { name: 'Session Store', status: 'warning', color: '#fbbf24' },
+            { name: 'HeyGen Avatar', status: 'healthy', color: '#34d399' },
+            { name: 'Генерация контента', status: 'healthy', color: '#34d399' },
+            { name: 'Рендер очередь', status: 'warning', color: '#fbbf24' },
         ]
     },
     {
-        id: 'user-service', name: 'User Service', type: 'microservice',
-        color: [0.13, 0.83, 0.93], orbitRadius: 15.0,
-        orbitTiltX: 0.3, orbitTiltY: -1.2, orbitSpeed: 0.16, orbitPhase: 2.5, size: 0.28,
-        metrics: { latency: '15ms', load: '38%', rps: '2.1k', errors: '0.02%' },
+        id: 'orchestrator', name: 'Orchestrator', type: 'orchestrator',
+        color: [0.13, 0.83, 0.93], orbitRadius: 18.0,
+        orbitTiltX: 0.4, orbitTiltY: -0.9, orbitSpeed: 0.22, orbitPhase: 4.0, size: 0.36,
+        metrics: { latency: '8ms', load: '42%', rps: '1.2k', errors: '0.00%' },
         subs: [
-            { name: 'Profile Manager', status: 'healthy', color: '#34d399' },
-            { name: 'Avatar CDN', status: 'healthy', color: '#34d399' },
+            { name: 'Публикация', status: 'healthy', color: '#34d399' },
+            { name: 'Планировщик', status: 'healthy', color: '#34d399' },
+            { name: 'WebSocket Events', status: 'healthy', color: '#34d399' },
         ]
     },
     {
-        id: 'payment-engine', name: 'Payment Engine', type: 'microservice',
-        color: [0.98, 0.75, 0.14], orbitRadius: 18.0,
-        orbitTiltX: -1.4, orbitTiltY: -0.5, orbitSpeed: 0.22, orbitPhase: 3.8, size: 0.32,
-        metrics: { latency: '22ms', load: '61%', rps: '1.4k', errors: '0.05%' },
+        id: 'farm', name: 'Ферма телефонов', type: 'farm',
+        color: [0.20, 0.83, 0.60], orbitRadius: 22.0,
+        orbitTiltX: -1.2, orbitTiltY: -0.4, orbitSpeed: 0.12, orbitPhase: 1.3, size: 0.42,
+        metrics: { latency: '15ms', load: '78%', rps: '340', errors: '0.05%' },
         subs: [
-            { name: 'Stripe Adapter', status: 'healthy', color: '#34d399' },
-            { name: 'Invoice Generator', status: 'healthy', color: '#34d399' },
-            { name: 'Fraud Detector', status: 'warning', color: '#fbbf24' },
-            { name: 'Refund Handler', status: 'healthy', color: '#34d399' },
+            { name: 'Телефоны', status: 'healthy', color: '#34d399' },
+            { name: 'Аккаунты TikTok', status: 'healthy', color: '#34d399' },
+            { name: 'ADB Bridge', status: 'warning', color: '#fbbf24' },
+            { name: 'Warmup Engine', status: 'healthy', color: '#34d399' },
         ]
     },
     {
-        id: 'notification-hub', name: 'Notification Hub', type: 'microservice',
-        color: [0.98, 0.44, 0.52], orbitRadius: 21.0,
-        orbitTiltX: 0.8, orbitTiltY: 2.1, orbitSpeed: 0.12, orbitPhase: 5.0, size: 0.25,
-        metrics: { latency: '5ms', load: '28%', rps: '8.9k', errors: '0.00%' },
+        id: 'minio', name: 'MinIO Storage', type: 'storage',
+        color: [0.98, 0.44, 0.52], orbitRadius: 27.0,
+        orbitTiltX: 1.4, orbitTiltY: 0.7, orbitSpeed: 0.08, orbitPhase: 3.2, size: 0.30,
+        metrics: { latency: '5ms', load: '35%', rps: '2.4k', errors: '0.00%' },
         subs: [
-            { name: 'Email Sender', status: 'healthy', color: '#34d399' },
-            { name: 'Push Service', status: 'healthy', color: '#34d399' },
-            { name: 'SMS Gateway', status: 'critical', color: '#fb7185' },
+            { name: 'Видео хранилище', status: 'healthy', color: '#34d399' },
+            { name: 'Превью генератор', status: 'healthy', color: '#34d399' },
         ]
     },
     {
-        id: 'data-pipeline', name: 'Data Pipeline', type: 'microservice',
-        color: [0.20, 0.83, 0.60], orbitRadius: 24.0,
-        orbitTiltX: -0.2, orbitTiltY: -1.8, orbitSpeed: 0.10, orbitPhase: 0.8, size: 0.28,
-        metrics: { latency: '45ms', load: '82%', rps: '950', errors: '0.12%' },
+        id: 'dashboard-api', name: 'Dashboard API', type: 'api',
+        color: [0.38, 0.65, 0.98], orbitRadius: 32.0,
+        orbitTiltX: -0.5, orbitTiltY: 1.8, orbitSpeed: 0.06, orbitPhase: 5.5, size: 0.28,
+        metrics: { latency: '12ms', load: '25%', rps: '450', errors: '0.00%' },
         subs: [
-            { name: 'Kafka Consumer', status: 'healthy', color: '#34d399' },
-            { name: 'ETL Processor', status: 'warning', color: '#fbbf24' },
-            { name: 'Data Lake Writer', status: 'healthy', color: '#34d399' },
-        ]
-    },
-    {
-        id: 'ml-engine', name: 'ML Engine', type: 'ai-service',
-        color: [0.80, 0.60, 0.98], orbitRadius: 27.0,
-        orbitTiltX: 1.6, orbitTiltY: 0.8, orbitSpeed: 0.08, orbitPhase: 4.2, size: 0.40,
-        metrics: { latency: '120ms', load: '91%', rps: '420', errors: '0.08%' },
-        subs: [
-            { name: 'Model Serving', status: 'healthy', color: '#34d399' },
-            { name: 'Feature Store', status: 'healthy', color: '#34d399' },
-            { name: 'Training Pipeline', status: 'healthy', color: '#34d399' },
-            { name: 'GPU Scheduler', status: 'warning', color: '#fbbf24' },
-        ]
-    },
-    {
-        id: 'cdn-edge', name: 'CDN Edge', type: 'infrastructure',
-        color: [0.45, 0.78, 0.98], orbitRadius: 32.0,
-        orbitTiltX: -1.5, orbitTiltY: 0.3, orbitSpeed: 0.05, orbitPhase: 2.0, size: 0.24,
-        metrics: { latency: '2ms', load: '55%', rps: '42k', errors: '0.00%' },
-        subs: [
-            { name: 'Cache Layer', status: 'healthy', color: '#34d399' },
-            { name: 'Edge Functions', status: 'healthy', color: '#34d399' },
+            { name: 'REST API', status: 'healthy', color: '#34d399' },
+            { name: 'Auth JWT', status: 'healthy', color: '#34d399' },
+            { name: 'WS Gateway', status: 'healthy', color: '#34d399' },
         ]
     },
 ]
 
 const CONNECTIONS: GalaxyConnection[] = [
-    { from: 'api-gateway', to: 'auth-service', intensity: 0.9 },
-    { from: 'api-gateway', to: 'user-service', intensity: 0.7 },
-    { from: 'api-gateway', to: 'payment-engine', intensity: 0.8 },
-    { from: 'api-gateway', to: 'notification-hub', intensity: 0.5 },
-    { from: 'auth-service', to: 'user-service', intensity: 0.6 },
-    { from: 'payment-engine', to: 'notification-hub', intensity: 0.7 },
-    { from: 'data-pipeline', to: 'ml-engine', intensity: 0.85 },
-    { from: 'user-service', to: 'cdn-edge', intensity: 0.4 },
-    { from: 'notification-hub', to: 'data-pipeline', intensity: 0.3 },
-    { from: 'ml-engine', to: 'api-gateway', intensity: 0.5 },
+    { from: 'dashboard-api', to: 'orchestrator', intensity: 0.9 },
+    { from: 'dashboard-api', to: 'sportzavod', intensity: 0.8 },
+    { from: 'dashboard-api', to: 'contentzavod', intensity: 0.8 },
+    { from: 'orchestrator', to: 'farm', intensity: 0.95 },
+    { from: 'orchestrator', to: 'minio', intensity: 0.7 },
+    { from: 'sportzavod', to: 'minio', intensity: 0.85 },
+    { from: 'contentzavod', to: 'minio', intensity: 0.85 },
+    { from: 'farm', to: 'minio', intensity: 0.6 },
+    { from: 'sportzavod', to: 'orchestrator', intensity: 0.7 },
+    { from: 'contentzavod', to: 'orchestrator', intensity: 0.7 },
 ]
 
 // ═══════════════════════════════════════════════════════════════════
@@ -347,7 +325,7 @@ export class GalaxyEngine {
 
         // ── Build scene ──
         this.createCore()
-        DEMO_SERVICES.forEach(s => this.createPlanet(s))
+        GALAXY_SERVICES.forEach(s => this.createPlanet(s))
         CONNECTIONS.forEach(c => this.createBeam(c))
         this.createStars()
         this.createDust()
@@ -805,6 +783,12 @@ export class GalaxyEngine {
                     this.onClick(planet.data.id)
                 }
             }
+        }
+
+        // ── Slow idle auto-rotation ──
+        if (!this.state.isFocusing && !this.state.focusedService
+            && !this.state.dragState.isDragging && !this.demo.active) {
+            this.state.dragState.targetTheta += delta * 0.04
         }
 
         // ── Mouse smoothing ──
