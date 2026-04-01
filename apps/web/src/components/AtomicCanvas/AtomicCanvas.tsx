@@ -7,6 +7,8 @@ export interface AtomicCanvasHandle {
   startDemo: () => void
   stopDemo: () => void
   isDemoActive: () => boolean
+  isCameraSettled: () => boolean
+  getFocusedScreenPos: () => { x: number; y: number } | null
 }
 
 export const AtomicCanvas = forwardRef<AtomicCanvasHandle>((_, ref) => {
@@ -20,6 +22,8 @@ export const AtomicCanvas = forwardRef<AtomicCanvasHandle>((_, ref) => {
     startDemo: () => engineRef.current?.startDemo(),
     stopDemo:  () => engineRef.current?.stopDemo(),
     isDemoActive: () => engineRef.current?.isDemoActive ?? false,
+    isCameraSettled: () => engineRef.current?.isCameraSettled ?? false,
+    getFocusedScreenPos: () => engineRef.current?.getFocusedScreenPos() ?? null,
   }))
 
   useEffect(() => {

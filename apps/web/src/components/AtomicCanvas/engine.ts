@@ -689,10 +689,13 @@ export class GalaxyEngine {
     //  FOCUS CAMERA
     // ═══════════════════════════════════════════════════════════════
 
+    private focusSettleTimer = 0
+
     private focusOnService(planetObj: PlanetObj) {
         // Spring-damper approach: just redirect the target, velocity carries over
         this.state.focusedService = planetObj
         this.state.isFocusing = true
+        this.focusSettleTimer = 0
     }
 
     private unfocusService() {
@@ -747,19 +750,27 @@ export class GalaxyEngine {
                     this.demo.timer = 0
                     this.demo.planetsVisited++
 
+                    // Close panel first, then fly after a brief delay
+                    this.onClick('')
+
                     if (this.demo.planetsVisited >= this.demo.planetsPerCycle) {
                         // Pull back to overview
                         this.demo.phase = 'overview'
                         this.demo.planetsVisited = 0
-                        this.unfocusService()
-                        this.onClick('')
-                        this.state.targetZoom = 58
+                        setTimeout(() => {
+                            if (!this.demo.active) return
+                            this.unfocusService()
+                            this.state.targetZoom = 58
+                        }, 350)
                     } else {
-                        // Next planet
-                        this.demo.planetIdx = (this.demo.planetIdx + 1) % this.planets.length
-                        const planet = this.planets[this.demo.planetIdx]
-                        this.focusOnService(planet)
-                        this.onClick(planet.data.id)
+                        // Next planet after panel closes
+                        setTimeout(() => {
+                            if (!this.demo.active) return
+                            this.demo.planetIdx = (this.demo.planetIdx + 1) % this.planets.length
+                            const planet = this.planets[this.demo.planetIdx]
+                            this.focusOnService(planet)
+                            this.onClick(planet.data.id)
+                        }, 350)
                     }
                 }
 
@@ -780,6 +791,7 @@ export class GalaxyEngine {
                     this.demo.planetIdx = (this.demo.planetIdx + 1) % this.planets.length
                     const planet = this.planets[this.demo.planetIdx]
                     this.focusOnService(planet)
+                    // Show panel only after camera arrives (handled by settled check)
                     this.onClick(planet.data.id)
                 }
             }
@@ -863,10 +875,12 @@ export class GalaxyEngine {
             this.state.currentLook.addScaledVector(this.state.lookVelocity, delta)
             this.camera.lookAt(this.state.currentLook)
 
-            // Settle detection — clears isFocusing flag used by demo timer
+            // Settle detection — clears isFocusing flag used by demo timer & panel
             if (this.state.isFocusing) {
+                this.focusSettleTimer += delta
                 const dist = this.camera.position.distanceTo(camTarget)
-                if (dist < 2.0) {
+                const speed = this.state.camVelocity.length()
+                if (dist < 8.0 || speed < 1.5 || this.focusSettleTimer > 2.0) {
                     this.state.isFocusing = false
                 }
             }
@@ -1142,6 +1156,27 @@ export class GalaxyEngine {
 
     public get isDemoActive() {
         return this.demo.active
+    }
+
+    /** True when the camera has arrived at the planet and is no longer in transit */
+    public get isCameraSettled(): boolean {
+        return !!this.state.focusedService && !this.state.isFocusing
+    }
+
+    /** Returns screen-space position {x, y} of the focused planet, or null */
+    public getFocusedScreenPos(): { x: number; y: number } | null {
+        if (!this.state.focusedService) return null
+        const vec = new THREE.Vector3()
+        this.state.focusedService.mesh.getWorldPosition(vec)
+        vec.project(this.camera)
+        if (vec.z > 1) return null
+        const parent = this.canvas.parentElement!
+        const halfW = parent.clientWidth / 2
+        const halfH = parent.clientHeight / 2
+        return {
+            x: vec.x * halfW + halfW,
+            y: -(vec.y * halfH) + halfH,
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
