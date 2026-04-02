@@ -158,6 +158,7 @@ interface PlanetObj {
     mesh: THREE.Mesh
     glow: THREE.Mesh
     orbit: THREE.Mesh
+    hoverRing?: THREE.Mesh
     data: GalaxyService
     angle: number
     hoverAmount: number
@@ -220,12 +221,13 @@ export class GalaxyEngine {
         active: false,
         phase: 'planet' as 'planet' | 'overview',
         timer: 0,
-        focusDuration: 4.0,    // seconds on each planet
-        overviewDuration: 6.0, // seconds on wide shot
+        focusDuration: 6.0,    // seconds on each planet (enough to read panel)
+        overviewDuration: 5.0, // seconds on wide shot
         planetsPerCycle: 3,    // planets before pulling back to overview
         planetsVisited: 0,
         planetIdx: 0,
         overviewSpeed: 0.09,   // slow auto-rotate during overview
+        pendingClickId: '' as string, // deferred onClick — fires only when camera arrives
     }
 
     private planets: PlanetObj[] = []
@@ -238,10 +240,13 @@ export class GalaxyEngine {
     private alertTarget = 0
 
     // Core meshes
-    // coreGlass removed — no outer shell
     private coreRibbons: THREE.Mesh[] = []
-    // coreCenter removed — no center sphere
     private coreRays: THREE.Mesh[] = []
+    private electronCloud!: THREE.Points
+    private electronCloudMat!: THREE.ShaderMaterial
+    private lensFlares: THREE.Mesh[] = []
+    private nebulaPanes: THREE.Mesh[] = []
+    private planetTrails: Map<string, THREE.Line> = new Map()
     private starsMesh!: THREE.Points
     private dustMesh!: THREE.Points
 
@@ -325,6 +330,9 @@ export class GalaxyEngine {
 
         // ── Build scene ──
         this.createCore()
+        this.createElectronCloud()
+        this.createLensFlare()
+        this.createNebula()
         GALAXY_SERVICES.forEach(s => this.createPlanet(s))
         CONNECTIONS.forEach(c => this.createBeam(c))
         this.createStars()
@@ -419,21 +427,347 @@ export class GalaxyEngine {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    //  ELECTRON CLOUD
+    // ═══════════════════════════════════════════════════════════════
+
+    private createElectronCloud() {
+        const count = 600
+        const positions = new Float32Array(count * 3)
+        const sizes = new Float32Array(count)
+        const phases = new Float32Array(count)
+        const shells = new Float32Array(count)
+
+        for (let i = 0; i < count; i++) {
+            // Distribute in spherical shells around the core (quantum orbital feel)
+            const shell = Math.random() < 0.5 ? 0 : Math.random() < 0.7 ? 1 : 2
+            const baseR = CONFIG.core.radius * (1.5 + shell * 1.2)
+            const r = baseR + (Math.random() - 0.5) * baseR * 0.6
+
+            const theta = Math.random() * Math.PI * 2
+            const phi = Math.acos(2 * Math.random() - 1)
+            positions[i * 3] = r * Math.sin(phi) * Math.cos(theta)
+            positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta)
+            positions[i * 3 + 2] = r * Math.cos(phi)
+
+            sizes[i] = 0.3 + Math.random() * 0.8
+            phases[i] = Math.random() * Math.PI * 2
+            shells[i] = shell
+        }
+
+        const geo = new THREE.BufferGeometry()
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+        geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1))
+        geo.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1))
+        geo.setAttribute('aShell', new THREE.BufferAttribute(shells, 1))
+
+        this.electronCloudMat = new THREE.ShaderMaterial({
+            vertexShader: /* glsl */ `
+                attribute float aSize;
+                attribute float aPhase;
+                attribute float aShell;
+                varying float vAlpha;
+                varying float vShell;
+                uniform float uTime;
+
+                void main() {
+                    vShell = aShell;
+
+                    // Orbital rotation — different speed per shell
+                    float speed = 0.15 + aShell * 0.08;
+                    float angle = uTime * speed + aPhase;
+
+                    // Rotate around Y axis
+                    float cosA = cos(angle);
+                    float sinA = sin(angle);
+                    vec3 pos = position;
+                    vec3 rotated = vec3(
+                        pos.x * cosA - pos.z * sinA,
+                        pos.y,
+                        pos.x * sinA + pos.z * cosA
+                    );
+
+                    // Gentle breathing
+                    float breath = 1.0 + sin(uTime * 0.8 + aPhase) * 0.08;
+                    rotated *= breath;
+
+                    vec4 mvPos = modelViewMatrix * vec4(rotated, 1.0);
+                    gl_Position = projectionMatrix * mvPos;
+
+                    // Size attenuation
+                    gl_PointSize = aSize * (250.0 / -mvPos.z);
+
+                    // Pulsing alpha
+                    vAlpha = 0.15 + 0.2 * sin(uTime * 1.5 + aPhase * 3.0);
+                }
+            `,
+            fragmentShader: /* glsl */ `
+                varying float vAlpha;
+                varying float vShell;
+
+                void main() {
+                    float d = length(gl_PointCoord - vec2(0.5));
+                    if (d > 0.5) discard;
+
+                    float glow = smoothstep(0.5, 0.0, d);
+                    glow = pow(glow, 2.0);
+
+                    // Color shifts per shell
+                    vec3 col0 = vec3(0.2, 0.6, 1.0);  // inner — blue
+                    vec3 col1 = vec3(0.5, 0.2, 0.9);  // mid — purple
+                    vec3 col2 = vec3(0.1, 0.8, 0.7);  // outer — teal
+
+                    vec3 color = vShell < 0.5 ? col0 : vShell < 1.5 ? col1 : col2;
+
+                    gl_FragColor = vec4(color, glow * vAlpha);
+                }
+            `,
+            uniforms: { uTime: { value: 0 } },
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+        })
+
+        this.electronCloud = new THREE.Points(geo, this.electronCloudMat)
+        this.scene.add(this.electronCloud)
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  LENS FLARE
+    // ═══════════════════════════════════════════════════════════════
+
+    private createLensFlare() {
+        const flareShader = {
+            vertexShader: /* glsl */ `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: /* glsl */ `
+                varying vec2 vUv;
+                uniform float uTime;
+                uniform vec3 uColor;
+                uniform float uIntensity;
+
+                void main() {
+                    vec2 center = vUv - 0.5;
+                    float d = length(center);
+
+                    // Soft radial glow
+                    float glow = smoothstep(0.5, 0.0, d);
+                    glow = pow(glow, 3.0);
+
+                    // Anamorphic horizontal streak
+                    float streak = exp(-abs(center.y) * 15.0) * exp(-abs(center.x) * 3.0);
+
+                    // Chromatic ring
+                    float ring = smoothstep(0.28, 0.30, d) * smoothstep(0.35, 0.30, d);
+
+                    float pulse = 0.8 + 0.2 * sin(uTime * 1.5);
+                    float alpha = (glow * 0.6 + streak * 0.3 + ring * 0.15) * uIntensity * pulse;
+
+                    vec3 color = uColor + vec3(streak * 0.3, streak * 0.1, 0.0);
+
+                    gl_FragColor = vec4(color, alpha);
+                }
+            `,
+        }
+
+        // Main central flare
+        const flareGeo = new THREE.PlaneGeometry(12, 12)
+        const flareMat = new THREE.ShaderMaterial({
+            ...flareShader,
+            uniforms: {
+                uTime: { value: 0 },
+                uColor: { value: new THREE.Color(0.3, 0.5, 1.0) },
+                uIntensity: { value: 0.35 },
+            },
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+        })
+        const flare1 = new THREE.Mesh(flareGeo, flareMat)
+        flare1.renderOrder = 100
+        this.scene.add(flare1)
+        this.lensFlares.push(flare1)
+
+        // Smaller secondary flare (rotated)
+        const flareGeo2 = new THREE.PlaneGeometry(8, 8)
+        const flareMat2 = flareMat.clone()
+        flareMat2.uniforms = {
+            uTime: { value: 0 },
+            uColor: { value: new THREE.Color(0.6, 0.2, 0.8) },
+            uIntensity: { value: 0.2 },
+        }
+        const flare2 = new THREE.Mesh(flareGeo2, flareMat2)
+        flare2.rotation.z = Math.PI / 4
+        flare2.renderOrder = 100
+        this.scene.add(flare2)
+        this.lensFlares.push(flare2)
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  NEBULA (volumetric cloud panes around core)
+    // ═══════════════════════════════════════════════════════════════
+
+    private createNebula() {
+        const paneCount = 5
+        for (let i = 0; i < paneCount; i++) {
+            const size = 8 + Math.random() * 10
+            const geo = new THREE.PlaneGeometry(size, size)
+            const mat = new THREE.ShaderMaterial({
+                vertexShader: /* glsl */ `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: /* glsl */ `
+                    varying vec2 vUv;
+                    uniform float uTime;
+                    uniform vec3 uColor;
+                    uniform float uSeed;
+
+                    // Simple noise
+                    float hash(vec2 p) {
+                        return fract(sin(dot(p, vec2(127.1 + uSeed, 311.7 + uSeed))) * 43758.5453);
+                    }
+                    float noise2d(vec2 p) {
+                        vec2 i = floor(p);
+                        vec2 f = fract(p);
+                        f = f * f * (3.0 - 2.0 * f);
+                        float a = hash(i);
+                        float b = hash(i + vec2(1.0, 0.0));
+                        float c = hash(i + vec2(0.0, 1.0));
+                        float d = hash(i + vec2(1.0, 1.0));
+                        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+                    }
+                    float fbm2(vec2 p) {
+                        float v = 0.0;
+                        float a = 0.5;
+                        for (int i = 0; i < 4; i++) {
+                            v += a * noise2d(p);
+                            p *= 2.0;
+                            a *= 0.5;
+                        }
+                        return v;
+                    }
+
+                    void main() {
+                        vec2 center = vUv - 0.5;
+                        float dist = length(center);
+
+                        // Radial fade
+                        float mask = smoothstep(0.5, 0.15, dist);
+
+                        // Animated cloud noise
+                        vec2 noiseCoord = center * 3.0 + uTime * 0.05;
+                        float n = fbm2(noiseCoord);
+                        float n2 = fbm2(noiseCoord * 1.5 + vec2(5.0, 3.0) - uTime * 0.03);
+
+                        float cloud = n * 0.6 + n2 * 0.4;
+                        cloud = smoothstep(0.25, 0.7, cloud);
+
+                        float alpha = mask * cloud * 0.12;
+
+                        gl_FragColor = vec4(uColor * (1.0 + cloud * 0.3), alpha);
+                    }
+                `,
+                uniforms: {
+                    uTime: { value: 0 },
+                    uColor: { value: new THREE.Color(
+                        0.15 + Math.random() * 0.2,
+                        0.1 + Math.random() * 0.15,
+                        0.4 + Math.random() * 0.3,
+                    )},
+                    uSeed: { value: i * 17.3 },
+                },
+                transparent: true, depthWrite: false,
+                blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+            })
+
+            const pane = new THREE.Mesh(geo, mat)
+            // Random orientation around core
+            pane.rotation.set(
+                (Math.random() - 0.5) * Math.PI * 0.8,
+                (Math.random() - 0.5) * Math.PI * 0.8,
+                Math.random() * Math.PI,
+            )
+            pane.position.set(
+                (Math.random() - 0.5) * 3,
+                (Math.random() - 0.5) * 3,
+                (Math.random() - 0.5) * 3,
+            )
+            this.scene.add(pane)
+            this.nebulaPanes.push(pane)
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  PLANET TRAILS (glowing tail along orbit)
+    // ═══════════════════════════════════════════════════════════════
+
+    private createPlanetTrails() {
+        this.planets.forEach(planet => {
+            const segments = 60
+            const positions = new Float32Array(segments * 3)
+            const alphas = new Float32Array(segments)
+            for (let i = 0; i < segments; i++) {
+                alphas[i] = (i / segments) // fade from 0 (tail) to 1 (head)
+            }
+            const geo = new THREE.BufferGeometry()
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+            geo.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1))
+
+            const col = planet.data.color
+            const mat = new THREE.ShaderMaterial({
+                vertexShader: /* glsl */ `
+                    attribute float aAlpha;
+                    varying float vAlpha;
+                    void main() {
+                        vAlpha = aAlpha;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: /* glsl */ `
+                    varying float vAlpha;
+                    uniform vec3 uColor;
+                    void main() {
+                        float a = pow(vAlpha, 1.5) * 0.8;
+                        gl_FragColor = vec4(uColor, a);
+                    }
+                `,
+                uniforms: { uColor: { value: new THREE.Color(col[0], col[1], col[2]) } },
+                transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+            })
+            const line = new THREE.Line(geo, mat)
+            this.scene.add(line)
+            this.planetTrails.set(planet.data.id, line)
+        })
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     //  ORBITS
     // ═══════════════════════════════════════════════════════════════
 
-    private createOrbit(radius: number, color: [number, number, number]) {
+    private createOrbit(radius: number, color: [number, number, number], planetSize: number) {
         const geo = new THREE.TorusGeometry(radius, 0.018, 16, 256)
         const mat = new THREE.ShaderMaterial({
             vertexShader: orbitVertexShader, fragmentShader: orbitFragmentShader,
             uniforms: {
                 uColor: { value: new THREE.Color(color[0], color[1], color[2]) },
                 uTime: { value: 0 }, uAlertMode: { value: 0 },
+                uPlanetPos: { value: new THREE.Vector3() },
+                uPlanetRadius: { value: planetSize },
             },
             transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
         })
         const orbitMesh = new THREE.Mesh(geo, mat)
         orbitMesh.rotation.x = Math.PI / 2
+        orbitMesh.renderOrder = 0
         return orbitMesh
     }
 
@@ -462,9 +796,11 @@ export class GalaxyEngine {
                 uColor: { value: colorVec }, uTime: { value: 0 },
                 uHover: { value: 0 }, uAlertMode: { value: 0 },
             },
+            transparent: true, depthWrite: true,
         })
         const mesh = new THREE.Mesh(geo, mat)
         mesh.userData = { serviceId: serviceData.id }
+        mesh.renderOrder = 2
         planetWrapper.add(mesh)
 
         // Glow
@@ -478,7 +814,7 @@ export class GalaxyEngine {
         planetWrapper.add(glow)
 
         // Orbit ring
-        const orbit = this.createOrbit(orbitRadius, color)
+        const orbit = this.createOrbit(orbitRadius, color, size)
         pivotGroup.add(orbit)
 
         const planetObj: PlanetObj = {
@@ -681,6 +1017,7 @@ export class GalaxyEngine {
 
             el.style.left = x + 'px'
             el.style.top = (y + 12) + 'px'
+
             el.style.opacity = this.state.focusedService && this.state.focusedService !== planet ? '0.15' : '0.8'
         })
     }
@@ -754,23 +1091,24 @@ export class GalaxyEngine {
                     this.onClick('')
 
                     if (this.demo.planetsVisited >= this.demo.planetsPerCycle) {
-                        // Pull back to overview
+                        // Pull back to overview — wait for panel exit animation
                         this.demo.phase = 'overview'
                         this.demo.planetsVisited = 0
                         setTimeout(() => {
                             if (!this.demo.active) return
                             this.unfocusService()
                             this.state.targetZoom = 58
-                        }, 350)
+                        }, 600)
                     } else {
-                        // Next planet after panel closes
+                        // Next planet — wait for panel exit, then fly
                         setTimeout(() => {
                             if (!this.demo.active) return
                             this.demo.planetIdx = (this.demo.planetIdx + 1) % this.planets.length
                             const planet = this.planets[this.demo.planetIdx]
                             this.focusOnService(planet)
-                            this.onClick(planet.data.id)
-                        }, 350)
+                            // Don't open panel yet — pendingClickId fires when camera arrives
+                            this.demo.pendingClickId = planet.data.id
+                        }, 600)
                     }
                 }
 
@@ -791,8 +1129,8 @@ export class GalaxyEngine {
                     this.demo.planetIdx = (this.demo.planetIdx + 1) % this.planets.length
                     const planet = this.planets[this.demo.planetIdx]
                     this.focusOnService(planet)
-                    // Show panel only after camera arrives (handled by settled check)
-                    this.onClick(planet.data.id)
+                    // Panel opens only when camera arrives
+                    this.demo.pendingClickId = planet.data.id
                 }
             }
         }
@@ -880,8 +1218,13 @@ export class GalaxyEngine {
                 this.focusSettleTimer += delta
                 const dist = this.camera.position.distanceTo(camTarget)
                 const speed = this.state.camVelocity.length()
-                if (dist < 8.0 || speed < 1.5 || this.focusSettleTimer > 2.0) {
+                if ((dist < 2.0 && speed < 0.8) || this.focusSettleTimer > 4.5) {
                     this.state.isFocusing = false
+                    // Fire deferred panel open — camera has arrived
+                    if (this.demo.pendingClickId) {
+                        this.onClick(this.demo.pendingClickId)
+                        this.demo.pendingClickId = ''
+                    }
                 }
             }
         }
@@ -906,8 +1249,26 @@ export class GalaxyEngine {
             ray.rotation.y += delta * 0.15
         })
 
-        // Core light pulse
-        this.pointLight1.intensity = 3 + Math.sin(t * 2.0) * 0.8
+        // Electron cloud
+        this.electronCloudMat.uniforms.uTime.value = t
+
+        // Nebula panes — slow rotation + face camera blend
+        this.nebulaPanes.forEach((pane, i) => {
+            ;(pane.material as THREE.ShaderMaterial).uniforms.uTime.value = t
+            pane.rotation.z += delta * 0.02 * (i % 2 === 0 ? 1 : -1)
+            pane.rotation.y += delta * 0.01
+        })
+
+        // Lens flares — always face camera
+        this.lensFlares.forEach(f => {
+            f.lookAt(this.camera.position)
+            ;(f.material as THREE.ShaderMaterial).uniforms.uTime.value = t
+        })
+
+        // Core light pulse — stronger breathing
+        const coreBreathe = Math.sin(t * 1.5) * 0.4 + Math.sin(t * 3.7) * 0.15
+        this.pointLight1.intensity = 3.5 + coreBreathe * 2
+
 
         // ── Planet animation ──
         this.planets.forEach(p => {
@@ -937,9 +1298,15 @@ export class GalaxyEngine {
             p.mesh.scale.setScalar(hoverScale)
             p.glow.scale.setScalar(hoverScale)
 
+
             // Orbit shader
-            ;(p.orbit.material as THREE.ShaderMaterial).uniforms.uTime.value = t
-            ;(p.orbit.material as THREE.ShaderMaterial).uniforms.uAlertMode.value = this.alertModeValue
+            const orbitUniforms = (p.orbit.material as THREE.ShaderMaterial).uniforms
+            orbitUniforms.uTime.value = t
+            orbitUniforms.uAlertMode.value = this.alertModeValue
+            const pWorldPos = new THREE.Vector3()
+            p.mesh.getWorldPosition(pWorldPos)
+            orbitUniforms.uPlanetPos.value.copy(pWorldPos)
+
         })
 
         // ── Energy beams ──
@@ -1156,6 +1523,27 @@ export class GalaxyEngine {
 
     public get isDemoActive() {
         return this.demo.active
+    }
+
+    /** Update planet appearance based on live service status */
+    public updateServiceStatus(serviceId: string, status: 'online' | 'degraded' | 'offline' | 'error') {
+        const planet = this.planets.find(p => p.data.id === serviceId)
+        if (!planet) return
+
+        const statusColors: Record<string, [number, number, number]> = {
+            online:   [0.1, 0.75, 0.4],
+            degraded: [0.9, 0.7, 0.1],
+            offline:  [0.4, 0.4, 0.5],
+            error:    [0.9, 0.15, 0.15],
+        }
+        const col = statusColors[status] ?? planet.data.color
+        const colorVec = new THREE.Vector3(col[0], col[1], col[2])
+
+        ;(planet.mesh.material as THREE.ShaderMaterial).uniforms.uColor.value.copy(colorVec)
+        ;(planet.glow.material as THREE.ShaderMaterial).uniforms.uColor.value.copy(colorVec)
+        // Error mode — pulsing alert
+        const alertTarget = status === 'error' ? 1 : 0
+        ;(planet.mesh.material as THREE.ShaderMaterial).uniforms.uAlertMode.value = alertTarget
     }
 
     /** True when the camera has arrived at the planet and is no longer in transit */

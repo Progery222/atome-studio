@@ -107,6 +107,9 @@ export function GalaxyPage() {
     }
   }, [fetchServices, fetchStats, connectWs, disconnectWs])
 
+  // TODO: При подключении ботов — включить live-статусы планет:
+  // canvasRef.current.updateServiceStatus(svc.id, svc.status)
+
   const handleDemo = () => {
     if (!canvasRef.current) return
     if (demoActive) {

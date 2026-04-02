@@ -9,6 +9,7 @@ export interface AtomicCanvasHandle {
   isDemoActive: () => boolean
   isCameraSettled: () => boolean
   getFocusedScreenPos: () => { x: number; y: number } | null
+  updateServiceStatus: (id: string, status: 'online' | 'degraded' | 'offline' | 'error') => void
 }
 
 export const AtomicCanvas = forwardRef<AtomicCanvasHandle>((_, ref) => {
@@ -24,6 +25,7 @@ export const AtomicCanvas = forwardRef<AtomicCanvasHandle>((_, ref) => {
     isDemoActive: () => engineRef.current?.isDemoActive ?? false,
     isCameraSettled: () => engineRef.current?.isCameraSettled ?? false,
     getFocusedScreenPos: () => engineRef.current?.getFocusedScreenPos() ?? null,
+    updateServiceStatus: (id, status) => engineRef.current?.updateServiceStatus(id, status),
   }))
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export const AtomicCanvas = forwardRef<AtomicCanvasHandle>((_, ref) => {
       (_id) => {
         // hover callback — tooltip is handled via labels
       },
-      (id) => { if (id) setSelected(id) }
+      (id) => { setSelected(id || null) }
     )
 
     return () => {

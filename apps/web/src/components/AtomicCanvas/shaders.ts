@@ -233,27 +233,28 @@ export const planetFragmentShader = /* glsl */ `
     void main() {
         vec3 viewDir = normalize(-vPosition);
         float ndotv = max(dot(viewDir, vNormal), 0.0);
-        float fresnel = pow(1.0 - ndotv, 3.0);
+        float fresnel = pow(1.0 - ndotv, 2.5);
 
-        // Base diffuse
-        float diffuse = ndotv * 0.6 + 0.4;
+        // Clean glass — solid center, bright rim
+        float glassBase = 0.5 + fresnel * 0.6;
 
-        // Emissive energy
-        float energy = sin(vUv.y * 12.0 + uTime * 2.0) * 0.5 + 0.5;
-        energy *= 0.3;
+        // Smooth color — no lines, no patterns
+        vec3 baseColor = uColor * glassBase + uColor * fresnel * 0.6;
 
-        // Reduce base color multiplier to avoid supernova bloom effect on zoom
-        vec3 baseColor = uColor * diffuse + uColor * fresnel * 0.5 + vec3(energy * 0.05);
+        // Soft specular highlight
+        float specular = pow(ndotv, 16.0) * 0.25;
+        baseColor += vec3(specular);
 
-        // Hover boost (toned down)
-        baseColor += uColor * uHover * 0.15;
-        baseColor += vec3(fresnel * uHover * 0.25);
+        // Hover boost
+        baseColor += uColor * uHover * 0.2;
+        baseColor += vec3(fresnel * uHover * 0.3);
 
         // Alert tint
         vec3 alertTint = vec3(1.0, 0.15, 0.15);
         baseColor = mix(baseColor, alertTint, uAlertMode * 0.4);
 
-        float alpha = 0.92 + fresnel * 0.08;
+        // Clean glass alpha
+        float alpha = 0.6 + fresnel * 0.35 + uHover * 0.1;
         gl_FragColor = vec4(baseColor, alpha);
     }
 `;
@@ -278,13 +279,12 @@ export const planetGlowFragmentShader = /* glsl */ `
 
     void main() {
         vec3 viewDir = normalize(-vPosition);
-        // Volumetric radial glow to guarantee zero sharp edges
         float intensity = max(dot(viewDir, vNormal), 0.0);
-        intensity = pow(intensity, 1.5);
+        intensity = pow(intensity, 1.2);
 
-        float alpha = intensity * (0.2 + uHover * 0.3);
-        // Reduced glow color intensity
-        vec3 color = uColor * 1.0;
+        // Strong visible glow shell
+        float alpha = intensity * (0.7 + uHover * 0.3);
+        vec3 color = uColor * 1.6 + vec3(0.1);
 
         gl_FragColor = vec4(color, alpha);
     }
@@ -295,12 +295,14 @@ export const orbitVertexShader = /* glsl */ `
     varying vec2 vUv;
     varying vec3 vNormal;
     varying vec3 vViewPosition;
+    varying vec3 vWorldPos;
 
     void main() {
         vUv = uv;
         vNormal = normalize(normalMatrix * normal);
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         vViewPosition = -mvPosition.xyz;
+        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
         gl_Position = projectionMatrix * mvPosition;
     }
 `;
@@ -309,29 +311,35 @@ export const orbitFragmentShader = /* glsl */ `
     varying vec2 vUv;
     varying vec3 vNormal;
     varying vec3 vViewPosition;
+    varying vec3 vWorldPos;
     uniform vec3 uColor;
     uniform float uTime;
     uniform float uAlertMode;
+    uniform vec3 uPlanetPos;
+    uniform float uPlanetRadius;
 
     void main() {
-        // Fresnel for the torus tube to make it look ethereal and hollow
+        // Fade out near planet to avoid line-through-glass artifact
+        float distToPlanet = length(vWorldPos - uPlanetPos);
+        float planetMask = smoothstep(uPlanetRadius * 0.8, uPlanetRadius * 2.5, distToPlanet);
+
+        // Fresnel for the torus tube
         vec3 viewDir = normalize(vViewPosition);
         float fresnel = 1.0 - max(dot(viewDir, vNormal), 0.0);
         fresnel = pow(fresnel, 1.5);
 
-        // Multiple strands using uv.y (around the tube)
+        // Strands
         float strands = sin(vUv.y * 30.0 + uTime * 2.0) * 0.5 + 0.5;
         strands = smoothstep(0.4, 0.6, strands);
 
-        // Energy pulses flowing along the ring
+        // Energy pulses
         float energy = sin(vUv.x * 20.0 - uTime * 4.0) * 0.5 + 0.5;
         energy = pow(energy, 3.0);
 
-        // Combine
-        float alpha = fresnel * (0.15 + strands * 0.2 + energy * 0.5);
+        float alpha = fresnel * (0.15 + strands * 0.2 + energy * 0.5) * planetMask;
 
         vec3 color = uColor + vec3(energy * 0.2) + vec3(strands * 0.1);
-        
+
         vec3 alertColor = vec3(1.0, 0.2, 0.15);
         color = mix(color, alertColor, uAlertMode * 0.6);
 

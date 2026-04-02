@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { GalaxyService } from '../AtomicCanvas/engine'
+import { NeuralBg } from './NeuralBg'
 import styles from './PlanetPanel.module.css'
 
 interface Props {
@@ -47,38 +48,10 @@ const SERVICE_ACTIONS: Record<string, { label: string; style: string; route?: st
   ],
 }
 
-function useNeuralNetwork(subsCount: number, serviceId: string) {
-  return useMemo(() => {
-    const seed = serviceId.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-    const rng = (i: number) => ((seed * 9301 + i * 49297) % 233280) / 233280
-
-    const nodeCount = Math.max(subsCount + 3, 8)
-    const nodes: { x: number; y: number; r: number }[] = []
-    for (let i = 0; i < nodeCount; i++) {
-      nodes.push({
-        x: 20 + rng(i * 3) * 400,
-        y: 12 + rng(i * 3 + 1) * 110,
-        r: 3 + rng(i * 3 + 2) * 4,
-      })
-    }
-
-    const edges: { from: number; to: number; delay: number }[] = []
-    for (let i = 0; i < nodeCount; i++) {
-      const target = (i + 1 + Math.floor(rng(i * 7) * (nodeCount - 2))) % nodeCount
-      if (target !== i) edges.push({ from: i, to: target, delay: rng(i * 11) * 2 })
-      if (rng(i * 13) > 0.5) {
-        const t2 = (i + 2 + Math.floor(rng(i * 17) * (nodeCount - 3))) % nodeCount
-        if (t2 !== i) edges.push({ from: i, to: t2, delay: rng(i * 19) * 2 })
-      }
-    }
-    return { nodes, edges }
-  }, [subsCount, serviceId])
-}
 
 export function PlanetPanel({ service, exiting: exitingProp = false, onClose }: Props) {
   const navigate = useNavigate()
   const [exitingLocal, setExitingLocal] = useState(false)
-  const neural = useNeuralNetwork(service.subs.length, service.id)
 
   const isExiting = exitingProp || exitingLocal
 
@@ -104,6 +77,12 @@ export function PlanetPanel({ service, exiting: exitingProp = false, onClose }: 
 
   return (
     <div className={styles.overlay} onClick={handleClose}>
+      {/* Blurred backdrop */}
+      <div className={`${styles.backdrop} ${isExiting ? styles.backdropExit : ''}`} />
+
+      {/* Fullscreen neural network — canvas with beam-shader-like packets */}
+      <NeuralBg serviceId={service.id} color={service.color} exiting={isExiting} />
+
       <div
         className={`${styles.panel} ${isExiting ? styles.panelExit : ''}`}
         style={{
@@ -136,33 +115,6 @@ export function PlanetPanel({ service, exiting: exitingProp = false, onClose }: 
               <div className={styles.typeTag}>{TYPE_LABELS[service.type] ?? service.type}</div>
             </div>
             <button className={styles.closeBtn} onClick={handleClose}>&#x2715;</button>
-          </div>
-
-          {/* Neural map */}
-          <div className={styles.neuralSection}>
-            <svg className={styles.neuralSvg} viewBox="0 0 440 130" preserveAspectRatio="none">
-              {neural.edges.map((e, i) => {
-                const a = neural.nodes[e.from]
-                const nd = neural.nodes[e.to]
-                return (
-                  <line key={`e${i}`}
-                    x1={a.x} y1={a.y} x2={nd.x} y2={nd.y}
-                    stroke={colorAlpha(0.2)} strokeWidth="0.8" strokeDasharray="4 4"
-                    className={styles.neuralPulse}
-                    style={{ animationDelay: `${e.delay}s` }}
-                  />
-                )
-              })}
-              {neural.nodes.map((n, i) => (
-                <circle key={`n${i}`}
-                  cx={n.x} cy={n.y} r={n.r}
-                  fill={colorAlpha(0.5)}
-                  className={styles.neuralNode}
-                  style={{ animationDelay: `${i * 0.3}s` }}
-                />
-              ))}
-            </svg>
-            <div className={styles.neuralLabel}>neural map</div>
           </div>
 
           {/* Metrics */}

@@ -13,6 +13,107 @@
   justify-content: center;
 }
 
+/* Blurred darkened backdrop */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 4, 12, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: all;
+  animation: backdropIn 0.8s ease both;
+}
+
+.backdropExit {
+  animation: backdropOut 0.5s ease both;
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes backdropOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ─── Fullscreen neural background ────────────────────────────────────────── */
+
+.bgNeural {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  filter: blur(1px);
+  animation: bgNeuralIn 1.2s ease both;
+}
+
+@keyframes bgNeuralIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.bgNeuralExit {
+  animation: bgNeuralOut 0.5s ease both;
+}
+
+@keyframes bgNeuralOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Nodes pop in one by one */
+.bgNeuralNode {
+  opacity: 0;
+  animation: bgNodeAppear 0.5s ease both, bgNodeBreath 3s ease-in-out 0.5s infinite;
+}
+
+@keyframes bgNodeAppear {
+  0%   { opacity: 0; }
+  60%  { opacity: 0.8; }
+  100% { opacity: 0.6; }
+}
+
+@keyframes bgNodeBreath {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+/* Edges fade in after their nodes */
+.bgEdge {
+  opacity: 0;
+  animation: bgEdgeGrow 0.6s ease both;
+}
+
+@keyframes bgEdgeGrow {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Traveling streak — dashoffset drives it along the line */
+.bgStreakLine {
+  animation: streakTravel linear infinite both;
+  stroke-dashoffset: 0;
+}
+
+@keyframes streakTravel {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: calc(-1 * var(--streak-len, 500) * 1px); }
+}
+
+/* Mid glow — slight blur */
+.bgGlowMid {
+  filter: blur(3px);
+}
+
+/* Wide soft glow — heavy blur for diffuse light */
+.bgGlowWide {
+  filter: blur(8px);
+}
+
 /* ─── Panel ──────────────────────────────────────────────────────────────── */
 
 .panel {
@@ -23,15 +124,18 @@
   width: 480px;
   max-height: 80vh;
 
-  background: rgba(8, 10, 18, 0.82);
+  background: rgba(6, 8, 16, 0.92);
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 24px;
   padding: 0;
   overflow: hidden;
 
-  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 20px 80px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.02);
 
   animation: slashReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
