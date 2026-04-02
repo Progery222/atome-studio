@@ -141,11 +141,24 @@ export interface GenerationJob {
   account_ids: string[]
   topic?: string
   videos_per_account: number
-  status: 'running' | 'done' | 'error'
+  status: 'running' | 'done' | 'error' | 'stopped' | 'stopping'
+  is_auto: boolean
   progress: number
+  total: number
+  errors_count: number
   created_at: string
   results?: { account_id: string; video_url: string }[]
 }
+
+// ─── SportZavod types ────────────────────────────────────────────────────────
+
+export interface SportZavodTheme {
+  theme_key: string
+  theme_name: string
+  count: number
+}
+
+export type GenerationScope = 'all' | 'theme' | 'account' | 'query'
 
 // ─── WebSocket events (Phase 3) ───────────────────────────────────────────────
 

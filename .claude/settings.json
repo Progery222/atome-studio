@@ -21,11 +21,21 @@
       "Skill(update-config)",
       "Skill(update-config:*)",
       "Bash(npm install:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Read(//q/Боты/SportZavod-1/**)",
+      "Bash(npx tsc:*)",
+      "Read(//c/Users/Atom_tech/**)"
     ],
     "deny": [
       "Read(./.env)",
-      "Read(./.env.*)"
+      "Read(./.env.*)",
+      "Read(**/credentials*)",
+      "Read(**/*secret*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git commit*--no-verify*)",
+      "Bash(git reset --hard*)",
+      "Bash(rm -rf*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Atom_tech\\.claude",

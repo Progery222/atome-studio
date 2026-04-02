@@ -12,6 +12,13 @@ interface GenerateDto {
 export class GenerationController {
   constructor(private readonly generation: GenerationService) {}
 
+  @Post('generate/auto')
+  async generateAuto(@Body() body: { account_ids?: string[]; videos_per_account?: number }) {
+    const job = await this.generation.generateAuto(body)
+    if (!job) throw new NotFoundException('SportZavod unavailable')
+    return job
+  }
+
   @Post('generate')
   async generate(@Body() body: GenerateDto) {
     const job = await this.generation.generate(body)
@@ -22,6 +29,11 @@ export class GenerationController {
   @Get('jobs')
   getJobs() {
     return this.generation.getAllJobs()
+  }
+
+  @Post('jobs/stop-all')
+  stopAllJobs() {
+    return this.generation.stopAllJobs()
   }
 
   @Get('jobs/:id')

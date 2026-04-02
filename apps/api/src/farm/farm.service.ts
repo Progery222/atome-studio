@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Phone, Account } from '@atome/shared'
+import { Phone, Account, SportZavodTheme } from '@atome/shared'
 
 @Injectable()
 export class FarmService {
@@ -107,6 +107,20 @@ export class FarmService {
       }))
     } catch {
       this.logger.warn('SportZavod unavailable: GET /api/accounts')
+      return []
+    }
+  }
+
+  async getSportzavodThemes(): Promise<SportZavodTheme[]> {
+    const sportzavodUrl = process.env.SPORTZAVOD_URL ?? 'http://localhost:8000'
+    try {
+      const res = await fetch(`${sportzavodUrl}/api/themes`, {
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!res.ok) return []
+      return await res.json() as SportZavodTheme[]
+    } catch {
+      this.logger.warn('SportZavod unavailable: GET /api/themes')
       return []
     }
   }

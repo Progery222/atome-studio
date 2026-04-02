@@ -117,6 +117,23 @@ export class GenerationService {
     return { ok: result !== null }
   }
 
+  async generateAuto(dto: { account_ids?: string[]; videos_per_account?: number }): Promise<GenerationJob | null> {
+    const payload = {
+      account_ids: dto.account_ids ?? [],
+      videos_per_account: dto.videos_per_account ?? 1,
+    }
+    const raw = await this.post<Record<string, unknown>>(`${this.sportzavodUrl}/api/generate/auto`, payload)
+    if (!raw) return null
+    const job = this.normalizeJob(raw, 'sportzavod')
+    this.jobServiceMap.set(job.job_id, 'sportzavod')
+    return job
+  }
+
+  async stopAllJobs(): Promise<{ stopped_count: number }> {
+    const result = await this.post<{ stopped_count?: number }>(`${this.sportzavodUrl}/api/jobs/stop-all`, {})
+    return { stopped_count: result?.stopped_count ?? 0 }
+  }
+
   private normalizeJob(
     raw: Record<string, unknown>,
     service: 'sportzavod' | 'contentzavod',
@@ -128,7 +145,10 @@ export class GenerationService {
       topic:              raw.topic != null ? String(raw.topic) : undefined,
       videos_per_account: typeof raw.videos_per_account === 'number' ? raw.videos_per_account : 1,
       status:             this.normalizeStatus(raw.status),
+      is_auto:            raw.is_auto === true,
       progress:           typeof raw.progress === 'number' ? raw.progress : 0,
+      total:              typeof raw.total === 'number' ? raw.total : 0,
+      errors_count:       typeof raw.errors_count === 'number' ? raw.errors_count : (Array.isArray(raw.errors) ? raw.errors.length : 0),
       created_at:         raw.created_at != null ? String(raw.created_at) : new Date().toISOString(),
       results:            Array.isArray(raw.results)
         ? (raw.results as Array<{ account_id: string; video_url: string }>)
@@ -138,6 +158,8 @@ export class GenerationService {
 
   private normalizeStatus(s: unknown): GenerationJob['status'] {
     if (s === 'running') return 'running'
+    if (s === 'stopping') return 'stopping'
+    if (s === 'stopped') return 'stopped'
     if (s === 'done' || s === 'completed' || s === 'success') return 'done'
     return 'error'
   }

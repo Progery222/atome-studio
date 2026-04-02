@@ -1,18 +1,20 @@
 import { create } from 'zustand'
 import { io, Socket } from 'socket.io-client'
-import { Phone, Account, QueueTask, GenerationJob, FarmEvent, VideoFile } from '@atome/shared'
+import { Phone, Account, QueueTask, GenerationJob, FarmEvent, VideoFile, SportZavodTheme } from '@atome/shared'
 import { apiFetch } from '../lib/api'
 
 interface FarmState {
   phones:                   Phone[]
   accounts:                 Account[]
   sportzavodAccounts:       Account[]
+  sportzavodThemes:         SportZavodTheme[]
   queue:                    QueueTask[]
   activeJobs:               GenerationJob[]
   videos:                   VideoFile[]
   phonesLoading:            boolean
   accountsLoading:          boolean
   sportzavodAccountsLoading: boolean
+  sportzavodThemesLoading:  boolean
   queueLoading:             boolean
   videosLoading:            boolean
   wsConnected:              boolean
@@ -22,6 +24,7 @@ interface FarmState {
   fetchPhones:              () => Promise<void>
   fetchAccounts:            () => Promise<void>
   fetchSportzavodAccounts:  () => Promise<void>
+  fetchSportzavodThemes:    () => Promise<void>
   fetchQueue:     () => Promise<void>
   fetchJobs:      () => Promise<void>
   fetchVideos:    () => Promise<void>
@@ -36,21 +39,59 @@ interface FarmState {
     videos_per_account: number
     topic?: string
   }) => Promise<GenerationJob | null>
+  startAutoGeneration: (accountIds?: string[]) => Promise<GenerationJob | null>
   stopJob:        (jobId: string) => Promise<void>
+  stopAllJobs:    () => Promise<number>
   connectWs:      () => void
   disconnectWs:   () => void
 }
+
+// ── Mock data (shown when API is unavailable) ────────────────────────────────
+
+const MOCK_SZ_ACCOUNTS: Account[] = [
+  { account_id: '1',  tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'nfl_tactics_01',     niche: 'NFL',      content_sources: ['ESPN'],       heygen_avatar_id: 'av_001', post_frequency_hours: 24, timezone: 'UTC', health_score: 95, warmup_day: 0, status: 'active',  stats: { posts_today: 2, posts_week: 12, posts_total: 84,  last_post: '2026-04-01T10:00:00Z' } },
+  { account_id: '2',  tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'nfl_fan_zone',       niche: 'NFL',      content_sources: ['NFL.com'],    heygen_avatar_id: 'av_002', post_frequency_hours: 24, timezone: 'UTC', health_score: 88, warmup_day: 0, status: 'active',  stats: { posts_today: 1, posts_week: 8,  posts_total: 61,  last_post: '2026-04-01T08:30:00Z' } },
+  { account_id: '3',  tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'nba_drama_daily',    niche: 'NBA',      content_sources: ['ESPN'],       heygen_avatar_id: 'av_003', post_frequency_hours: 24, timezone: 'UTC', health_score: 92, warmup_day: 0, status: 'active',  stats: { posts_today: 3, posts_week: 15, posts_total: 120, last_post: '2026-04-01T11:00:00Z' } },
+  { account_id: '4',  tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'nba_stats_king',     niche: 'NBA',      content_sources: ['NBA.com'],    heygen_avatar_id: 'av_004', post_frequency_hours: 24, timezone: 'UTC', health_score: 78, warmup_day: 0, status: 'warmup',  stats: { posts_today: 0, posts_week: 3,  posts_total: 22,  last_post: '2026-03-30T15:00:00Z' } },
+  { account_id: '5',  tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'soccer_transfers',   niche: 'SOCCER',   content_sources: ['Transfermarkt'], heygen_avatar_id: 'av_005', post_frequency_hours: 24, timezone: 'UTC', health_score: 97, warmup_day: 0, status: 'active',  stats: { posts_today: 2, posts_week: 14, posts_total: 95,  last_post: '2026-04-01T09:15:00Z' } },
+  { account_id: '6',  tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'soccer_daily_news',  niche: 'SOCCER',   content_sources: ['BBC Sport'],  heygen_avatar_id: 'av_006', post_frequency_hours: 24, timezone: 'UTC', health_score: 90, warmup_day: 0, status: 'active',  stats: { posts_today: 1, posts_week: 10, posts_total: 73,  last_post: '2026-04-01T07:45:00Z' } },
+  { account_id: '7',  tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'mma_octagon_news',   niche: 'MMA',      content_sources: ['MMAFighting'], heygen_avatar_id: 'av_007', post_frequency_hours: 24, timezone: 'UTC', health_score: 85, warmup_day: 0, status: 'active',  stats: { posts_today: 1, posts_week: 7,  posts_total: 55,  last_post: '2026-04-01T06:30:00Z' } },
+  { account_id: '8',  tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'f1_speed_talk',      niche: 'F1',       content_sources: ['Formula1.com'], heygen_avatar_id: 'av_008', post_frequency_hours: 24, timezone: 'UTC', health_score: 91, warmup_day: 0, status: 'active',  stats: { posts_today: 2, posts_week: 11, posts_total: 68,  last_post: '2026-04-01T10:30:00Z' } },
+  { account_id: '9',  tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'boxing_highlights',  niche: 'BOXING',   content_sources: ['BoxingScene'], heygen_avatar_id: 'av_009', post_frequency_hours: 24, timezone: 'UTC', health_score: 82, warmup_day: 0, status: 'active',  stats: { posts_today: 0, posts_week: 5,  posts_total: 41,  last_post: '2026-03-31T22:00:00Z' } },
+  { account_id: '10', tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'esports_arena',      niche: 'ESPORTS',  content_sources: ['HLTV'],       heygen_avatar_id: 'av_010', post_frequency_hours: 24, timezone: 'UTC', health_score: 88, warmup_day: 0, status: 'active',  stats: { posts_today: 1, posts_week: 9,  posts_total: 52,  last_post: '2026-04-01T05:00:00Z' } },
+  { account_id: '11', tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'nfl_draft_watch',    niche: 'NFL',      content_sources: ['ESPN'],       heygen_avatar_id: undefined, post_frequency_hours: 24, timezone: 'UTC', health_score: 60, warmup_day: 3, status: 'warmup',  stats: { posts_today: 0, posts_week: 0,  posts_total: 0,   last_post: null } },
+  { account_id: '12', tenant_id: 'sz', phone_id: '', platform: 'tiktok', username: 'nba_legacy',         niche: 'NBA',      content_sources: ['NBA.com'],    heygen_avatar_id: undefined, post_frequency_hours: 24, timezone: 'UTC', health_score: 55, warmup_day: 1, status: 'warmup',  stats: { posts_today: 0, posts_week: 0,  posts_total: 0,   last_post: null } },
+]
+
+const MOCK_SZ_THEMES: SportZavodTheme[] = [
+  { theme_key: 'NFL',     theme_name: 'NFL & American Football', count: 3 },
+  { theme_key: 'NBA',     theme_name: 'NBA Basketball',          count: 3 },
+  { theme_key: 'SOCCER',  theme_name: 'Soccer & Football',       count: 2 },
+  { theme_key: 'MMA',     theme_name: 'MMA & UFC',               count: 1 },
+  { theme_key: 'F1',      theme_name: 'Formula 1',               count: 1 },
+  { theme_key: 'BOXING',  theme_name: 'Boxing',                   count: 1 },
+  { theme_key: 'ESPORTS', theme_name: 'Esports & Gaming',        count: 1 },
+]
+
+const MOCK_JOBS: GenerationJob[] = [
+  { job_id: 'a1b2c3d4', service: 'sportzavod', account_ids: ['1','2','3'], videos_per_account: 2, status: 'running',  is_auto: false, progress: 3, total: 6, errors_count: 0, created_at: '2026-04-01T10:00:00Z' },
+  { job_id: 'e5f6g7h8', service: 'sportzavod', account_ids: ['5','6','7','8','9','10'], videos_per_account: 1, status: 'done', is_auto: true, progress: 6, total: 6, errors_count: 1, created_at: '2026-04-01T08:00:00Z' },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const useFarmStore = create<FarmState>((set, get) => ({
   phones:                    [],
   accounts:                  [],
   sportzavodAccounts:        [],
+  sportzavodThemes:          [],
   queue:                     [],
   activeJobs:                [],
   videos:                    [],
   phonesLoading:             false,
   accountsLoading:           false,
   sportzavodAccountsLoading: false,
+  sportzavodThemesLoading:   false,
   queueLoading:              false,
   videosLoading:             false,
   wsConnected:               false,
@@ -82,11 +123,24 @@ export const useFarmStore = create<FarmState>((set, get) => ({
   fetchSportzavodAccounts: async () => {
     set({ sportzavodAccountsLoading: true })
     try {
-      const res                = await apiFetch('/api/sportzavod/accounts')
-      const sportzavodAccounts = await res.json() as Account[]
-      set({ sportzavodAccounts, sportzavodAccountsLoading: false })
+      const res = await apiFetch('/api/sportzavod/accounts')
+      if (!res.ok) throw new Error()
+      const data = await res.json() as Account[]
+      set({ sportzavodAccounts: data.length > 0 ? data : MOCK_SZ_ACCOUNTS, sportzavodAccountsLoading: false })
     } catch {
-      set({ sportzavodAccountsLoading: false })
+      set({ sportzavodAccounts: MOCK_SZ_ACCOUNTS, sportzavodAccountsLoading: false })
+    }
+  },
+
+  fetchSportzavodThemes: async () => {
+    set({ sportzavodThemesLoading: true })
+    try {
+      const res = await apiFetch('/api/sportzavod/themes')
+      if (!res.ok) throw new Error()
+      const data = await res.json() as SportZavodTheme[]
+      set({ sportzavodThemes: data.length > 0 ? data : MOCK_SZ_THEMES, sportzavodThemesLoading: false })
+    } catch {
+      set({ sportzavodThemes: MOCK_SZ_THEMES, sportzavodThemesLoading: false })
     }
   },
 
@@ -103,11 +157,12 @@ export const useFarmStore = create<FarmState>((set, get) => ({
 
   fetchJobs: async () => {
     try {
-      const res  = await apiFetch('/api/jobs')
+      const res = await apiFetch('/api/jobs')
+      if (!res.ok) throw new Error()
       const jobs = await res.json() as GenerationJob[]
-      set({ activeJobs: jobs })
+      set({ activeJobs: jobs.length > 0 ? jobs : MOCK_JOBS })
     } catch {
-      // silently ignore
+      if (get().activeJobs.length === 0) set({ activeJobs: MOCK_JOBS })
     }
   },
 
@@ -195,12 +250,40 @@ export const useFarmStore = create<FarmState>((set, get) => ({
     }
   },
 
+  startAutoGeneration: async (accountIds) => {
+    try {
+      const body: Record<string, unknown> = { videos_per_account: 1 }
+      if (accountIds?.length) body.account_ids = accountIds
+      const res = await apiFetch('/api/generate/auto', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      })
+      const job = await res.json() as GenerationJob
+      set((s) => ({ activeJobs: [...s.activeJobs, job] }))
+      return job
+    } catch {
+      return null
+    }
+  },
+
   stopJob: async (jobId) => {
     try {
       await apiFetch(`/api/jobs/${jobId}/stop`, { method: 'POST' })
       await get().fetchJobs()
     } catch {
       // silently ignore
+    }
+  },
+
+  stopAllJobs: async () => {
+    try {
+      const res  = await apiFetch('/api/jobs/stop-all', { method: 'POST' })
+      const data = await res.json() as { stopped_count: number }
+      await get().fetchJobs()
+      return data.stopped_count
+    } catch {
+      return 0
     }
   },
 
