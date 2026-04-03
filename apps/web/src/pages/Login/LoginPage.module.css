@@ -33,7 +33,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 0 0 1px rgba(0, 210, 255, 0.04), 0 24px 64px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 0 0 1px rgba(0, 210, 255, 0.04),
+    0 24px 64px rgba(0, 0, 0, 0.5);
   position: relative;
 }
 
@@ -41,7 +43,9 @@
 .card::before {
   content: "";
   position: absolute;
-  top: 0; left: 10%; right: 10%;
+  top: 0;
+  left: 10%;
+  right: 10%;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(0, 210, 255, 0.4), transparent);
 }
@@ -114,7 +118,10 @@
   font-weight: 500;
   color: var(--text-primary);
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
   box-sizing: border-box;
 }
 
@@ -166,7 +173,9 @@
 .submitBtn:hover:not(:disabled) {
   background: linear-gradient(135deg, rgba(0, 210, 255, 0.28) 0%, rgba(255, 0, 128, 0.22) 100%);
   border-color: rgba(0, 210, 255, 0.45);
-  box-shadow: 0 0 32px rgba(0, 210, 255, 0.18), 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 0 32px rgba(0, 210, 255, 0.18),
+    0 4px 12px rgba(0, 0, 0, 0.3);
   transform: translateY(-1px);
 }
 

@@ -80,11 +80,15 @@
 }
 
 @media (max-width: 1100px) {
-  .grid { grid-template-columns: repeat(3, 1fr); }
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 @media (max-width: 780px) {
-  .grid { grid-template-columns: repeat(2, 1fr); }
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* ─── Card ────────────────────────────────────────────────────────────────── */
@@ -336,7 +340,9 @@
   padding: 8px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
-.modalRow:last-of-type { border-bottom: none; }
+.modalRow:last-of-type {
+  border-bottom: none;
+}
 
 .modalLabel {
   font-size: 11px;

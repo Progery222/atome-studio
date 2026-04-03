@@ -22,7 +22,7 @@
   background: rgba(15, 15, 15, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.05);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-lg);
   padding: 16px;
   width: 220px;
@@ -77,6 +77,25 @@
   transform: translateX(4px);
 }
 
+/* ─── Overlay zones ───────────────────────────────────────────────────────── */
+
+.heroKPIs {
+  position: absolute;
+  top: 16px;
+  left: 260px;
+  right: 270px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.activityFeed {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  pointer-events: none;
+}
+
 /* ─── Demo / Presentation Button ──────────────────────────────────────────── */
 
 .demoBtn {
@@ -108,7 +127,9 @@
   background: rgba(0, 210, 255, 0.12);
   border-color: rgba(0, 210, 255, 0.4);
   color: rgba(0, 210, 255, 0.95);
-  box-shadow: 0 0 20px rgba(0, 210, 255, 0.15), 0 4px 24px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 0 20px rgba(0, 210, 255, 0.15),
+    0 4px 24px rgba(0, 0, 0, 0.4);
   transform: translateY(-1px);
 }
 
@@ -116,12 +137,16 @@
   background: rgba(239, 68, 68, 0.1);
   border-color: rgba(239, 68, 68, 0.35);
   color: rgba(239, 68, 68, 0.85);
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.1), 0 4px 24px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 0 20px rgba(239, 68, 68, 0.1),
+    0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 .demoBtnActive:hover {
   background: rgba(239, 68, 68, 0.18);
   border-color: rgba(239, 68, 68, 0.6);
   color: #ef4444;
-  box-shadow: 0 0 24px rgba(239, 68, 68, 0.2), 0 4px 24px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 0 24px rgba(239, 68, 68, 0.2),
+    0 4px 24px rgba(0, 0, 0, 0.4);
 }

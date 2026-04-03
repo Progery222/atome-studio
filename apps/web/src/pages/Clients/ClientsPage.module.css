@@ -76,7 +76,9 @@
 }
 
 @media (max-width: 900px) {
-  .formGrid { grid-template-columns: 1fr 1fr; }
+  .formGrid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .field {

@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common'
-import { FarmService }    from './farm.service'
-import { FarmController } from './farm.controller'
+import { Module } from "@nestjs/common";
+import { FarmController } from "./farm.controller";
+import { FarmService } from "./farm.service";
 
 @Module({
-  providers:   [FarmService],
+  providers: [FarmService],
   controllers: [FarmController],
 })
 export class FarmModule {}

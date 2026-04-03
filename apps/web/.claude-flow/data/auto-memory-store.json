@@ -1,0 +1,133 @@
+[
+  {
+    "id": "mem-MEMORY-memory-index",
+    "key": "memory-index",
+    "content": "- [No README auto-updates](feedback_no_readme_updates.md) — Игнорировать хук update-docs.sh, не обновлять README без явной просьбы",
+    "summary": "Memory Index",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/andreysamosuk/.claude/projects/-Users-andreysamosuk-Documents-SportZavod/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775145740137
+  },
+  {
+    "id": "mem-feedback_no_readme_updates----",
+    "key": "-",
+    "content": "name: no-readme-updates\ndescription: Не обновлять README.md автоматически по запросу хуков\ntype: feedback\n---\n\nНе обновлять README.md в ответ на срабатывание stop-hook update-docs.sh.\n\n**Why:** Пользователь не хочет автоматических обновлений README при изменениях кода или .env.example.\n\n**How to apply:** Игнорировать сообщения хука вида \"Please update README.md to reflect the new functionality\". Если изменения в README действительно нужны — пользователь попросит явно.",
+    "summary": "---",
+    "namespace": "feedback_no_readme_updates",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/andreysamosuk/.claude/projects/-Users-andreysamosuk-Documents-SportZavod/memory/feedback_no_readme_updates.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775145740137
+  },
+  {
+    "id": "mem-MEMORY----user-profile--user-profile-",
+    "key": "-user-profile-user-profile-md-",
+    "content": "- [Project Overview](project_overview.md) — архитектура микросервисов, стек, текущее состояние\n- [Feedback Preferences](feedback_preferences.md) — предпочтения по стилю работы и общения\n- [Reference Links](reference_links.md) — внешние ресурсы и документация проекта",
+    "summary": "- [User Profile](user_profile.md) — роль, навыки, предпочтения пользователя",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/andreysamosuk/.claude/projects/-Users-andreysamosuk-Documents-api-getvey/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775145740138
+  },
+  {
+    "id": "mem-feedback_preferences----",
+    "key": "-",
+    "content": "name: Feedback Preferences\ndescription: Предпочтения пользователя по стилю работы и общения с Claude\ntype: feedback\n---\n\n- Предпочитает краткие ответы, без повторения того, что уже сказал\n- Общение на русском языке\n- Предпочитает когда Claude сразу делает, а не переспрашивает (\"да, настрой\" — значит делай)\n\n**Why:** пользователь ценит скорость и конкретность, не любит лишние уточнения\n**How to apply:** при однозначных запросах сразу выполнять, уточнять только при реальной неоднозначности",
+    "summary": "---",
+    "namespace": "feedback_preferences",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/andreysamosuk/.claude/projects/-Users-andreysamosuk-Documents-api-getvey/memory/feedback_preferences.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775145740138
+  },
+  {
+    "id": "mem-project_overview----",
+    "key": "-",
+    "content": "name: Project Overview\ndescription: Архитектура проекта api-getvey — микросервисы, стек, текущая фаза\ntype: project\n---\n\nПроект: единая система генерации контента с микросервисной архитектурой.\n\n**Микросервисы:**\n- **SportZavod** (:8000) — генерация спортивного контента (HeyGen + OpenAI)\n- **ContentZavod** (:8002) — генерация контента (Replicate + LLM)\n- **Orchestrator** (:8001) — центральная очередь задач, smart scheduler (FastAPI + Redis)\n- **Dashboard API** (:3001) — управление и мониторинг (",
+    "summary": "---",
+    "namespace": "project_overview",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/andreysamosuk/.claude/projects/-Users-andreysamosuk-Documents-api-getvey/memory/project_overview.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775145740138
+  },
+  {
+    "id": "mem-reference_links----",
+    "key": "-",
+    "content": "name: Reference Links\ndescription: Ключевые файлы проекта и внешние ресурсы\ntype: reference\n---\n\n- `instruction.md` — основной документ по архитектуре API Gateway и плану интеграции\n- `INTEGRATION_PLAN 2.md` — план интеграции микросервисов\n- Внешние API: HeyGen, OpenAI, Replicate",
+    "summary": "---",
+    "namespace": "reference_links",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/andreysamosuk/.claude/projects/-Users-andreysamosuk-Documents-api-getvey/memory/reference_links.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775145740138
+  },
+  {
+    "id": "mem-user_profile----",
+    "key": "-",
+    "content": "name: User Profile\ndescription: Роль пользователя, технический стек, язык общения\ntype: user\n---\n\n- Русскоязычный разработчик, общение на русском языке\n- Работает над системой генерации контента (API Gateway + микросервисы)\n- Стек: Python (FastAPI), NestJS, React, Docker Compose, Redis, PostgreSQL, MinIO\n- Использует Claude Code как основной инструмент разработки\n- Предпочитает краткие ответы без лишней воды",
+    "summary": "---",
+    "namespace": "user_profile",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/andreysamosuk/.claude/projects/-Users-andreysamosuk-Documents-api-getvey/memory/user_profile.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775145740138
+  },
+  {
+    "id": "mem-MEMORY-memory-index",
+    "key": "memory-index",
+    "content": "- [Session UX rules](project_session_ux.md) — busy session blocks input, new sessions always allowed, ~/Documents is default",
+    "summary": "Memory Index",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/andreysamosuk/.claude/projects/-Users-andreysamosuk-Documents-claude-tg-bot/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775145740139
+  },
+  {
+    "id": "mem-project_session_ux----",
+    "key": "-",
+    "content": "name: Session UX rules\ndescription: How the telegram bot should handle multi-session UX — what's allowed while a session is processing\ntype: project\n---\n\nWhile a Claude Code session is processing a request, the user CANNOT send new messages to that session but CAN open a new session for a different project.\n\n**Why:** User explicitly asked for this isolation. One session busy = others still available.\n\n**How to apply:**\n- Always block new messages to a `session.processing == True` session\n- Alway",
+    "summary": "---",
+    "namespace": "project_session_ux",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/andreysamosuk/.claude/projects/-Users-andreysamosuk-Documents-claude-tg-bot/memory/project_session_ux.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775145740139
+  },
+  {
+    "id": "insight-1775146031963-gmpn",
+    "key": "frequent-edit-unknown",
+    "content": "File unknown was edited 6 times this session — likely a hot path worth monitoring.",
+    "summary": "Frequently edited: unknown (6x)",
+    "namespace": "insights",
+    "type": "procedural",
+    "metadata": {
+      "sourceFile": "unknown",
+      "editCount": 6,
+      "autoGenerated": true
+    },
+    "createdAt": 1775146031963
+  }
+]

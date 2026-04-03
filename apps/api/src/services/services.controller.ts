@@ -1,32 +1,37 @@
-import { Controller, Get, Param, NotFoundException, Post } from '@nestjs/common'
-import { ServicesService } from './services.service'
-import { Public } from '../auth/public.decorator'
+import { Controller, Get, NotFoundException, Param, Post } from "@nestjs/common";
+import { Public } from "../auth/public.decorator";
+import type { ServicesService } from "./services.service";
 
 @Public()
-@Controller('services')
+@Controller("services")
 export class ServicesController {
   constructor(private readonly svc: ServicesService) {}
 
   @Get()
   getAll() {
-    return this.svc.getAll()
+    return this.svc.getAll();
   }
 
-  @Get('stats')
+  @Get("stats")
   getStats() {
-    return this.svc.getFarmStats()
+    return this.svc.getFarmStats();
   }
 
-  @Get(':id')
-  getOne(@Param('id') id: string) {
-    const service = this.svc.getById(id)
-    if (!service) throw new NotFoundException(`Service ${id} not found`)
-    return service
+  @Get("kpis")
+  getKPIs() {
+    return this.svc.getHeroKPIs();
   }
 
-  @Post('sync')
+  @Get(":id")
+  getOne(@Param("id") id: string) {
+    const service = this.svc.getById(id);
+    if (!service) throw new NotFoundException(`Service ${id} not found`);
+    return service;
+  }
+
+  @Post("sync")
   async sync() {
-    await this.svc.sync()
-    return { ok: true, count: this.svc.getAll().length }
+    await this.svc.sync();
+    return { ok: true, count: this.svc.getAll().length };
   }
 }

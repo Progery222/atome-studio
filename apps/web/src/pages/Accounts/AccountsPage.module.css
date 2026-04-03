@@ -47,7 +47,7 @@
   background: rgba(0, 210, 255, 0.15);
   border-color: rgba(0, 210, 255, 0.4);
   box-shadow: 0 0 12px rgba(0, 210, 255, 0.2);
-  color: #FFF;
+  color: #fff;
 }
 
 .table {
@@ -274,4 +274,3 @@
   border-radius: 100px;
   color: inherit;
 }
-

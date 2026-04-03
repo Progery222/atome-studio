@@ -13,7 +13,9 @@
   text-decoration: none;
   transition: color 0.2s ease;
 }
-.back:hover { color: var(--text-primary); }
+.back:hover {
+  color: var(--text-primary);
+}
 
 .titleRow {
   display: flex;
@@ -190,7 +192,10 @@
   background: rgba(34, 197, 94, 0.3);
   box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
 }
-.saveBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.saveBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .cancelBtn {
   font-size: 11px;
@@ -203,7 +208,10 @@
   cursor: pointer;
   transition: all 0.18s ease;
 }
-.cancelBtn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+.cancelBtn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
 
 /* ─── Edit row ────────────────────────────────────────────────────────────── */
 
@@ -215,7 +223,9 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   gap: 16px;
 }
-.editRow:last-child { border-bottom: none; }
+.editRow:last-child {
+  border-bottom: none;
+}
 
 .editField {
   flex: 1;
@@ -233,14 +243,19 @@
   font-weight: 500;
   color: var(--text-primary);
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
   box-sizing: border-box;
 }
 .fieldInput:focus {
   border-color: rgba(0, 210, 255, 0.4);
   box-shadow: 0 0 0 2px rgba(0, 210, 255, 0.08);
 }
-.fieldInput::placeholder { color: var(--text-muted); opacity: 0.5; }
+.fieldInput::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
 
 .fieldSelect {
   width: 100%;
@@ -257,7 +272,9 @@
   appearance: none;
   -webkit-appearance: none;
 }
-.fieldSelect option { background: #0a0e1a; }
+.fieldSelect option {
+  background: #0a0e1a;
+}
 
 /* ─── Checkbox group ─────────────────────────────────────────────────────── */
 
@@ -314,7 +331,9 @@
   padding: 8px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
-.row:last-child { border-bottom: none; }
+.row:last-child {
+  border-bottom: none;
+}
 
 .rowLabel {
   font-size: 12px;

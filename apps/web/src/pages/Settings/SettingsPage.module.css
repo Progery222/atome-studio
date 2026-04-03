@@ -75,7 +75,9 @@
   font-weight: 500;
   color: var(--text-primary);
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .input:focus {
@@ -147,7 +149,7 @@
 }
 
 .tokenValue {
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   font-size: 11px;
   color: rgba(0, 210, 255, 0.5);
   overflow: hidden;

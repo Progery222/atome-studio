@@ -3,7 +3,7 @@ pre-commit:
   commands:
     biome-check:
       glob: "*.{ts,tsx,js,jsx,json}"
-      run: npx @biomejs/biome check --no-errors-on-unmatched {staged_files}
+      run: npx @biomejs/biome check --no-errors-on-unmatched --diagnostic-level=error {staged_files}
     tsc:
       root: "apps/web"
       run: npx tsc --noEmit

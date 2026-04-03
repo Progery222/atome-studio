@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "updatedAt": 1775145286991,
+  "nodeCount": 9,
+  "nodes": {
+    "mem-MEMORY-memory-index": {
+      "id": "mem-MEMORY-memory-index",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775142029642
+    },
+    "mem-feedback_no_readme_updates----": {
+      "id": "mem-feedback_no_readme_updates----",
+      "category": "feedback_no_readme_updates",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775142029640
+    },
+    "mem-MEMORY----user-profile--user-profile-": {
+      "id": "mem-MEMORY----user-profile--user-profile-",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775142029641
+    },
+    "mem-feedback_preferences----": {
+      "id": "mem-feedback_preferences----",
+      "category": "feedback_preferences",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775142029641
+    },
+    "mem-project_overview----": {
+      "id": "mem-project_overview----",
+      "category": "project_overview",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775142029641
+    },
+    "mem-reference_links----": {
+      "id": "mem-reference_links----",
+      "category": "reference_links",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775142029641
+    },
+    "mem-user_profile----": {
+      "id": "mem-user_profile----",
+      "category": "user_profile",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775142029642
+    },
+    "mem-project_session_ux----": {
+      "id": "mem-project_session_ux----",
+      "category": "project_session_ux",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775142029642
+    },
+    "insight-1775144665619-mm6z": {
+      "id": "insight-1775144665619-mm6z",
+      "category": "insights",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775144665619
+    }
+  },
+  "edges": [],
+  "pageRanks": {
+    "mem-MEMORY-memory-index": 0.11111111111111113,
+    "mem-feedback_no_readme_updates----": 0.11111111111111113,
+    "mem-MEMORY----user-profile--user-profile-": 0.11111111111111113,
+    "mem-feedback_preferences----": 0.11111111111111113,
+    "mem-project_overview----": 0.11111111111111113,
+    "mem-reference_links----": 0.11111111111111113,
+    "mem-user_profile----": 0.11111111111111113,
+    "mem-project_session_ux----": 0.11111111111111113,
+    "insight-1775144665619-mm6z": 0.11111111111111113
+  }
+}

@@ -42,45 +42,37 @@ TikTok content farm dashboard. Управляет фермой телефоно�
 
 ### Backend (`apps/api/src/`)
 ```
-mcp/                    ← адаптеры к внешним сервисам
-  cloudflare/           ← паттерн адаптера (пример для новых)
-  postman/
-  posthog/
-  sportzavod/           ← создать: GET :8000/health, /api/jobs
-  farm/                 ← создать: GET :8001/status, /api/devices
-  contentzavod/         ← создать: GET :8002/health
-services/               ← ServicesService (polling каждые 30с), ServicesController
-auth/                   ← JWT авторизация (уже есть)
-generation/             ← создать: POST /api/generate, GET /api/jobs/:id
-events/                 ← создать: EventsGateway (WS мост к orchestrator)
-videos/                 ← создать: MinioService, GET /api/videos
-clients/                ← создать: CRUD клиентов
+mcp/                    ← адаптеры к внешним сервисам (cloudflare, postman, posthog, sportzavod, farm, contentzavod)
+services/               ← ServicesService (polling каждые 30с), ServicesController, GET /api/services/kpis
+auth/                   ← JWT авторизация, in-memory users (admin@atome.studio / admin123)
+generation/             ← POST /api/generate, GET /api/jobs/:id
+events/                 ← EventsGateway (Socket.io WS мост к orchestrator)
+videos/                 ← VideosService (S3 XML API к MinIO), GET /api/videos
+clients/                ← CRUD клиентов (super_admin only)
+metrics/                ← MetricsService (in-memory time-series), GET /api/metrics/history
 ```
 
 ### Frontend (`apps/web/src/`)
 ```
 stores/
   services.ts           ← главный store (Service[], metrics, tooltip)
-  farm.ts               ← создать: Phone[], Account[], QueueTask[], WS events
+  farm.ts               ← Phone[], Account[], QueueTask[], WS events
+  metrics.ts            ← kpis: HeroKPI, fetchKPIs()
+  activity.ts           ← кольцевой буфер ActivityEvent (max 50)
+  auth.ts               ← useAuthStore — JWT token, user, login/logout
+  lang.ts               ← useLangStore — текущий язык (ru/en/zh/es)
+i18n/
+  index.ts              ← ~280 ключей, 4 локали; useT() хук; getT() для не-React кода; LOCALE_MAP
 components/
-  AtomicCanvas/         ← Three.js галактика (не трогать без нужды)
-  SidePanel/            ← боковая панель деталей сервиса
-  Tooltip/              ← переиспользовать в phone cards
-  Sparkline/            ← переиспользовать для health_score графиков
-  GalaxyWidgets/        ← создать: 4 виджета поверх Galaxy
-  Layout/               ← создать: sidebar навигация
-  AuthGuard/            ← создать: защита маршрутов
-  CreateAccountModal/   ← создать: модалка создания аккаунта
+  AtomicCanvas/         ← Three.js галактика; getGalaxyServices() возвращает переведённые данные
+  HeroKPIs/             ← 5 KPI-карточек с count-up, фиксированная высота 90px
+  ActivityFeed/         ← скролл-лог событий
+  PlanetPanel/          ← панель при клике на планету
+  Layout/               ← sidebar навигация
+  MetricChart/          ← Canvas 2D: line/area/bar/donut/gauge/sparkline
 pages/
-  Phones/               ← создать: /phones
-  PhoneDetail/          ← создать: /phones/:id
-  Accounts/             ← создать: /accounts
-  AccountDetail/        ← создать: /accounts/:id
-  Generate/             ← создать: /generate
-  Queue/                ← создать: /queue
-  Videos/               ← создать: /videos
-  Clients/              ← создать: /clients (super_admin)
-  Login/                ← создать: /login
+  Galaxy/               ← / (без AuthGuard) — 3D галактика + HeroKPIs + ActivityFeed
+  Phones, PhoneDetail, Accounts, AccountDetail, Generate, Queue, Videos, Analytics, Clients, Login
 ```
 
 ---
@@ -137,7 +129,7 @@ GET  /api/jobs/:id                    → статус
 
 ## Модели данных (в `packages/shared/src/index.ts`)
 
-Основные интерфейсы из ТЗ для добавления в shared:
+Реализованные интерфейсы в `packages/shared/src/index.ts`:
 - `Phone` — телефон фермы (phone_id, serial, status, warmup_day, health_score, accounts[])
 - `Account` — TikTok аккаунт (account_id, username, niche, content_sources[], stats)
 - `QueueTask` — задача публикации (task_id, account_id, file_url, status, scheduled_at)
@@ -169,4 +161,22 @@ docker compose up    # вся инфраструктура
 - Компоненты в отдельных папках с `index.ts` реэкспортом
 - Адаптеры в `apps/api/src/mcp/` — следовать паттерну `cloudflare.adapter.ts`
 - Линтер + форматтер: **Biome** (`biome.json`) — заменяет ESLint и Prettier
+  - `unsafeParameterDecoratorsEnabled: true` — для NestJS `@Query`/`@Body`/`@Param`
+  - `.claude-flow`, `.claude`, `galaxy` исключены из проверки (`files.includes` excludes)
 - Git-хуки: **Lefthook** (`lefthook.yml`) — pre-commit запускает biome + tsc
+  - `--diagnostic-level=error` — хук падает только на errors, warnings не блокируют коммит
+
+## i18n
+
+- 4 языка: `ru` (default), `en`, `zh`, `es`
+- Хук `useT()` — в React-компонентах
+- Функция `getT()` — в не-React коде (engine.ts и др.)
+- `LOCALE_MAP` — для форматирования дат по локали
+- Все ключи должны присутствовать в **всех 4 локалях** (TypeScript constraint `satisfies`)
+- Galaxy `farm` планета: название всегда "Device Fleet" (захардкожено, не через i18n)
+
+## MinIO / Videos
+
+- `VideosService` использует S3 XML API (`GET /{bucket}/?list-type=2`) без SDK
+- Переменные: `MINIO_URL` (default: `http://localhost:9000`), `MINIO_BUCKET` (default: `atome-videos`)
+- Работает только с **публичными** бакетами — для приватных нужна AWS Signature v4

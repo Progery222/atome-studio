@@ -1,16 +1,17 @@
-import { Module }  from '@nestjs/common'
-import { APP_GUARD } from '@nestjs/core'
-import { ScheduleModule } from '@nestjs/schedule'
-import { ServicesModule }    from './services/services.module'
-import { McpModule }         from './mcp/mcp.module'
-import { AuthModule }        from './auth/auth.module'
-import { FarmModule }        from './farm/farm.module'
-import { GenerationModule }  from './generation/generation.module'
-import { QueueModule }       from './queue/queue.module'
-import { EventsModule }      from './events/events.module'
-import { VideosModule }      from './videos/videos.module'
-import { ClientsModule }     from './clients/clients.module'
-import { JwtAuthGuard }      from './auth/jwt-auth.guard'
+import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
+import { ScheduleModule } from "@nestjs/schedule";
+import { AuthModule } from "./auth/auth.module";
+import { JwtAuthGuard } from "./auth/jwt-auth.guard";
+import { ClientsModule } from "./clients/clients.module";
+import { EventsModule } from "./events/events.module";
+import { FarmModule } from "./farm/farm.module";
+import { GenerationModule } from "./generation/generation.module";
+import { McpModule } from "./mcp/mcp.module";
+import { MetricsModule } from "./metrics/metrics.module";
+import { QueueModule } from "./queue/queue.module";
+import { ServicesModule } from "./services/services.module";
+import { VideosModule } from "./videos/videos.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { JwtAuthGuard }      from './auth/jwt-auth.guard'
     EventsModule,
     VideosModule,
     ClientsModule,
+    MetricsModule,
   ],
   providers: [
     // Apply JWT guard to every route globally; use @Public() to opt out

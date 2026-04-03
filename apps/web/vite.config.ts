@@ -1,19 +1,19 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
+import { resolve } from "node:path";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@atome/shared': resolve(__dirname, '../../packages/shared/src/index.ts'),
+      "@atome/shared": resolve(__dirname, "../../packages/shared/src/index.ts"),
     },
   },
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:3001',
-      '/ws':  { target: 'ws://localhost:3001', ws: true },
+      "/api": "http://localhost:3001",
+      "/ws": { target: "ws://localhost:3001", ws: true },
     },
   },
-})
+});

@@ -1,129 +1,134 @@
-import { useEffect, useState } from 'react'
-import styles from './ClientsPage.module.css'
+import { useEffect, useState } from "react";
+import { useT } from "../../i18n";
+import styles from "./ClientsPage.module.css";
 
-type Plan = 'basic' | 'pro' | 'enterprise'
+type Plan = "basic" | "pro" | "enterprise";
 
 interface Client {
-  id:            string
-  name:          string
-  email:         string
-  plan:          Plan
-  phones_limit:  number
-  phones_used:   number
-  accounts_used: number
-  status:        'active' | 'suspended'
+  id: string;
+  name: string;
+  email: string;
+  plan: Plan;
+  phones_limit: number;
+  phones_used: number;
+  accounts_used: number;
+  status: "active" | "suspended";
 }
 
 const PLAN_COLOR: Record<Plan, string> = {
-  basic:      'rgba(96, 165, 250, 0.55)',
-  pro:        'rgba(167, 139, 250, 0.55)',
-  enterprise: 'rgba(251, 191, 36, 0.55)',
-}
+  basic: "rgba(96, 165, 250, 0.55)",
+  pro: "rgba(167, 139, 250, 0.55)",
+  enterprise: "rgba(251, 191, 36, 0.55)",
+};
 
 interface CreateForm {
-  name:         string
-  email:        string
-  plan:         Plan
-  phones_limit: string
+  name: string;
+  email: string;
+  plan: Plan;
+  phones_limit: string;
 }
 
 const EMPTY_FORM: CreateForm = {
-  name:         '',
-  email:        '',
-  plan:         'basic',
-  phones_limit: '5',
-}
+  name: "",
+  email: "",
+  plan: "basic",
+  phones_limit: "5",
+};
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function ClientsPage() {
-  const [clients,   setClients]   = useState<Client[]>([])
-  const [loading,   setLoading]   = useState(false)
-  const [showForm,  setShowForm]  = useState(false)
-  const [form,      setForm]      = useState<CreateForm>(EMPTY_FORM)
-  const [saving,    setSaving]    = useState(false)
-  const [formError, setFormError] = useState('')
+  const t = useT();
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<CreateForm>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const fetchClients = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const res  = await fetch('/api/clients')
-      const data = await res.json() as Client[]
-      setClients(data)
+      const res = await fetch("/api/clients");
+      const data = (await res.json()) as Client[];
+      setClients(data);
     } catch {
       // ignore
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchClients()
-  }, [])
+    fetchClients();
+  }, [fetchClients]);
 
   const handleCreate = async () => {
     if (!form.name.trim() || !form.email.trim()) {
-      setFormError('Заполните имя и email')
-      return
+      setFormError(t("clients_form_err"));
+      return;
     }
-    setSaving(true)
-    setFormError('')
+    setSaving(true);
+    setFormError("");
     try {
-      const res = await fetch('/api/clients', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name:         form.name,
-          email:        form.email,
-          plan:         form.plan,
+          name: form.name,
+          email: form.email,
+          plan: form.plan,
           phones_limit: Number(form.phones_limit) || 5,
         }),
-      })
-      if (!res.ok) throw new Error('error')
-      const created = await res.json() as Client
-      setClients((prev) => [...prev, created])
-      setShowForm(false)
-      setForm(EMPTY_FORM)
+      });
+      if (!res.ok) throw new Error("error");
+      const created = (await res.json()) as Client;
+      setClients((prev) => [...prev, created]);
+      setShowForm(false);
+      setForm(EMPTY_FORM);
     } catch {
-      setFormError('Ошибка создания клиента')
+      setFormError(t("clients_create_err"));
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const subtitle = loading
-    ? 'загрузка…'
+    ? t("clients_loading")
     : clients.length > 0
-      ? `${clients.length} клиентов`
-      : 'нет данных'
+      ? `${clients.length} ${t("clients_unit")}`
+      : t("clients_no_data");
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div>
-          <div className={styles.title}>Клиенты</div>
+          <div className={styles.title}>{t("clients_title")}</div>
           <div className={styles.subtitle}>{subtitle}</div>
         </div>
         <button
           className={styles.createBtn}
-          onClick={() => { setShowForm((s) => !s); setFormError('') }}
+          onClick={() => {
+            setShowForm((s) => !s);
+            setFormError("");
+          }}
         >
-          {showForm ? '✕ Отмена' : '+ Создать клиента'}
+          {showForm ? t("clients_cancel_btn") : t("clients_create")}
         </button>
       </header>
 
       {/* Inline create form */}
       {showForm && (
         <div className={styles.formCard}>
-          <div className={styles.formTitle}>Новый клиент</div>
+          <div className={styles.formTitle}>{t("clients_form_title")}</div>
           <div className={styles.formGrid}>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>Имя</span>
+              <span className={styles.fieldLabel}>{t("clients_name_label")}</span>
               <input
                 className={styles.input}
                 type="text"
                 value={form.name}
-                placeholder="Название компании"
+                placeholder={t("clients_name_ph")}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
             </label>
@@ -138,7 +143,7 @@ export function ClientsPage() {
               />
             </label>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>Тариф</span>
+              <span className={styles.fieldLabel}>{t("clients_plan_label")}</span>
               <select
                 className={styles.input}
                 value={form.plan}
@@ -150,7 +155,7 @@ export function ClientsPage() {
               </select>
             </label>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>Лимит телефонов</span>
+              <span className={styles.fieldLabel}>{t("clients_phones_limit_label")}</span>
               <input
                 className={styles.input}
                 type="number"
@@ -163,12 +168,8 @@ export function ClientsPage() {
           </div>
           {formError && <div className={styles.formError}>{formError}</div>}
           <div className={styles.formActions}>
-            <button
-              className={styles.saveBtn}
-              onClick={handleCreate}
-              disabled={saving}
-            >
-              {saving ? 'Создание…' : 'Создать →'}
+            <button className={styles.saveBtn} onClick={handleCreate} disabled={saving}>
+              {saving ? t("clients_save_creating") : t("clients_save_btn")}
             </button>
           </div>
         </div>
@@ -176,13 +177,22 @@ export function ClientsPage() {
 
       {/* Table */}
       {clients.length === 0 && !loading ? (
-        <div className={styles.empty}>— клиентов нет</div>
+        <div className={styles.empty}>{t("clients_empty")}</div>
       ) : (
         <table className={styles.table}>
           <thead>
             <tr>
-              {['Клиент', 'Email', 'Тариф', 'Телефонов', 'Аккаунтов', 'Статус'].map((h) => (
-                <th key={h} className={styles.th}>{h}</th>
+              {[
+                t("clients_col_client"),
+                "Email",
+                t("clients_col_plan"),
+                t("clients_col_phones"),
+                t("clients_col_accounts"),
+                t("clients_col_status"),
+              ].map((h) => (
+                <th key={h} className={styles.th}>
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
@@ -198,7 +208,10 @@ export function ClientsPage() {
                 <td className={styles.td}>
                   <span
                     className={styles.planBadge}
-                    style={{ color: PLAN_COLOR[client.plan], borderColor: PLAN_COLOR[client.plan].replace('0.55', '0.15') }}
+                    style={{
+                      color: PLAN_COLOR[client.plan],
+                      borderColor: PLAN_COLOR[client.plan].replace("0.55", "0.15"),
+                    }}
                   >
                     {client.plan}
                   </span>
@@ -213,9 +226,14 @@ export function ClientsPage() {
                 <td className={styles.td}>
                   <span
                     className={styles.statusDot}
-                    style={{ background: client.status === 'active' ? '#22c55e' : '#ef4444' }}
+                    style={{ background: client.status === "active" ? "#22c55e" : "#ef4444" }}
                   />
-                  <span style={{ color: client.status === 'active' ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.7)' }}>
+                  <span
+                    style={{
+                      color:
+                        client.status === "active" ? "rgba(34,197,94,0.7)" : "rgba(239,68,68,0.7)",
+                    }}
+                  >
                     {client.status}
                   </span>
                 </td>
@@ -225,5 +243,5 @@ export function ClientsPage() {
         </table>
       )}
     </div>
-  )
+  );
 }

@@ -1,0 +1,502 @@
+[
+  {
+    "timestamp": 1775146031965,
+    "nodes": 9,
+    "edges": 0,
+    "pageRankSum": 1.0000000000000002,
+    "confidences": [
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5
+    ],
+    "accessCounts": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "topPatterns": [
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-feedback_no_readme_updates----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY----user-profile--user-profile-",
+        "summary": "- [User Profile](user_profile.md) — роль, навыки, предпочтен",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-feedback_preferences----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_overview----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-reference_links----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-user_profile----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_session_ux----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "insight-1775146031963-gmpn",
+        "summary": "Frequently edited: unknown (6x)",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      }
+    ]
+  },
+  {
+    "timestamp": 1775146090727,
+    "nodes": 9,
+    "edges": 0,
+    "pageRankSum": 1.0000000000000002,
+    "confidences": [
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5
+    ],
+    "accessCounts": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "topPatterns": [
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-feedback_no_readme_updates----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY----user-profile--user-profile-",
+        "summary": "- [User Profile](user_profile.md) — роль, навыки, предпочтен",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-feedback_preferences----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_overview----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-reference_links----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-user_profile----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_session_ux----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "insight-1775146031963-gmpn",
+        "summary": "Frequently edited: unknown (6x)",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      }
+    ]
+  },
+  {
+    "timestamp": 1775146289227,
+    "nodes": 9,
+    "edges": 0,
+    "pageRankSum": 1.0000000000000002,
+    "confidences": [
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5
+    ],
+    "accessCounts": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "topPatterns": [
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-feedback_no_readme_updates----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY----user-profile--user-profile-",
+        "summary": "- [User Profile](user_profile.md) — роль, навыки, предпочтен",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-feedback_preferences----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_overview----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-reference_links----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-user_profile----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_session_ux----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "insight-1775146031963-gmpn",
+        "summary": "Frequently edited: unknown (6x)",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      }
+    ]
+  },
+  {
+    "timestamp": 1775146316208,
+    "nodes": 9,
+    "edges": 0,
+    "pageRankSum": 1.0000000000000002,
+    "confidences": [
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5
+    ],
+    "accessCounts": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "topPatterns": [
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-feedback_no_readme_updates----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY----user-profile--user-profile-",
+        "summary": "- [User Profile](user_profile.md) — роль, навыки, предпочтен",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-feedback_preferences----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_overview----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-reference_links----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-user_profile----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_session_ux----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "insight-1775146031963-gmpn",
+        "summary": "Frequently edited: unknown (6x)",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      }
+    ]
+  },
+  {
+    "timestamp": 1775147277333,
+    "nodes": 9,
+    "edges": 0,
+    "pageRankSum": 1.0000000000000002,
+    "confidences": [
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5
+    ],
+    "accessCounts": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "topPatterns": [
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-feedback_no_readme_updates----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY----user-profile--user-profile-",
+        "summary": "- [User Profile](user_profile.md) — роль, навыки, предпочтен",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-feedback_preferences----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_overview----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-reference_links----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-user_profile----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_session_ux----",
+        "summary": "---",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      },
+      {
+        "id": "insight-1775146031963-gmpn",
+        "summary": "Frequently edited: unknown (6x)",
+        "confidence": 0.5,
+        "pageRank": 0.11111111111111113,
+        "accessCount": 0
+      }
+    ]
+  }
+]

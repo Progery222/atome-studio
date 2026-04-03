@@ -1,29 +1,29 @@
-import { useState, FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../../stores/auth'
-import styles from './LoginPage.module.css'
+import { type FormEvent, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../stores/auth";
+import styles from "./LoginPage.module.css";
 
 export function LoginPage() {
-  const login    = useAuthStore((s) => s.login)
-  const navigate = useNavigate()
+  const login = useAuthStore((s) => s.login);
+  const navigate = useNavigate();
 
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const [error,    setError]    = useState('')
-  const [loading,  setLoading]  = useState(false)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    const ok = await login(email, password)
-    setLoading(false)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const ok = await login(email, password);
+    setLoading(false);
     if (ok) {
-      navigate('/')
+      navigate("/");
     } else {
-      setError('Неверные учётные данные')
+      setError("Неверные учётные данные");
     }
-  }
+  };
 
   return (
     <div className={styles.root}>
@@ -60,15 +60,11 @@ export function LoginPage() {
 
           {error && <div className={styles.error}>{error}</div>}
 
-          <button
-            type="submit"
-            className={styles.submitBtn}
-            disabled={loading}
-          >
-            {loading ? 'Вход…' : 'Войти →'}
+          <button type="submit" className={styles.submitBtn} disabled={loading}>
+            {loading ? "Вход…" : "Войти →"}
           </button>
         </form>
       </div>
     </div>
-  )
+  );
 }

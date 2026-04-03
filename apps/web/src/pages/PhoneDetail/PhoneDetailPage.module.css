@@ -13,7 +13,9 @@
   text-decoration: none;
   transition: color 0.2s ease;
 }
-.back:hover { color: var(--text-primary); }
+.back:hover {
+  color: var(--text-primary);
+}
 
 .titleRow {
   display: flex;
@@ -199,7 +201,9 @@
   padding: 8px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
-.row:last-child { border-bottom: none; }
+.row:last-child {
+  border-bottom: none;
+}
 
 .rowLabel {
   font-size: 12px;
@@ -224,8 +228,12 @@
   cursor: pointer;
   transition: background 0.15s ease;
 }
-.accRow:hover { background: rgba(255, 255, 255, 0.02); }
-.accRow:last-child { border-bottom: none; }
+.accRow:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+.accRow:last-child {
+  border-bottom: none;
+}
 
 .accName {
   font-size: 14px;

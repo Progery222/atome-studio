@@ -29,13 +29,21 @@
 }
 
 @keyframes backdropIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes backdropOut {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 /* ─── Fullscreen neural background ────────────────────────────────────────── */
@@ -52,8 +60,12 @@
 }
 
 @keyframes bgNeuralIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .bgNeuralExit {
@@ -61,25 +73,42 @@
 }
 
 @keyframes bgNeuralOut {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 /* Nodes pop in one by one */
 .bgNeuralNode {
   opacity: 0;
-  animation: bgNodeAppear 0.5s ease both, bgNodeBreath 3s ease-in-out 0.5s infinite;
+  animation:
+    bgNodeAppear 0.5s ease both,
+    bgNodeBreath 3s ease-in-out 0.5s infinite;
 }
 
 @keyframes bgNodeAppear {
-  0%   { opacity: 0; }
-  60%  { opacity: 0.8; }
-  100% { opacity: 0.6; }
+  0% {
+    opacity: 0;
+  }
+  60% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes bgNodeBreath {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* Edges fade in after their nodes */
@@ -89,8 +118,12 @@
 }
 
 @keyframes bgEdgeGrow {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Traveling streak — dashoffset drives it along the line */
@@ -100,8 +133,12 @@
 }
 
 @keyframes streakTravel {
-  from { stroke-dashoffset: 0; }
-  to   { stroke-dashoffset: calc(-1 * var(--streak-len, 500) * 1px); }
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: calc(-1 * var(--streak-len, 500) * 1px);
+  }
 }
 
 /* Mid glow — slight blur */
@@ -142,7 +179,7 @@
 
 /* Soft radial glow behind panel — no sharp corners */
 .panel::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -80px;
   border-radius: 50%;
@@ -206,7 +243,7 @@
 }
 
 .slashLine::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -20%;
   left: -5%;
@@ -229,10 +266,20 @@
 }
 
 @keyframes slashSweep {
-  0%   { left: -10%; opacity: 0; }
-  10%  { opacity: 1; }
-  70%  { opacity: 0.7; }
-  100% { left: 110%; opacity: 0; }
+  0% {
+    left: -10%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.7;
+  }
+  100% {
+    left: 110%;
+    opacity: 0;
+  }
 }
 
 /* Exit slash */
@@ -246,7 +293,7 @@
 }
 
 .slashLineExit::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -20%;
   width: 3px;
@@ -268,10 +315,22 @@
 }
 
 @keyframes slashSweepReverse {
-  0%   { right: -10%; left: auto; opacity: 0; }
-  10%  { opacity: 1; }
-  70%  { opacity: 0.7; }
-  100% { right: 110%; left: auto; opacity: 0; }
+  0% {
+    right: -10%;
+    left: auto;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.7;
+  }
+  100% {
+    right: 110%;
+    left: auto;
+    opacity: 0;
+  }
 }
 
 /* ─── Glitch lines ───────────────────────────────────────────────────────── */
@@ -286,13 +345,17 @@
 }
 
 @keyframes glitchFade {
-  0%   { opacity: 1; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .glitchLines::before,
 .glitchLines::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   right: 0;
@@ -300,20 +363,61 @@
   background: var(--panel-color, rgba(100, 180, 255, 0.25));
 }
 
-.glitchLines::before { animation: glitchBar1 0.8s steps(8) both; }
-.glitchLines::after  { animation: glitchBar2 0.8s steps(6) both; }
+.glitchLines::before {
+  animation: glitchBar1 0.8s steps(8) both;
+}
+.glitchLines::after {
+  animation: glitchBar2 0.8s steps(6) both;
+}
 
 @keyframes glitchBar1 {
-  0%   { top: 10%; }  15%  { top: 60%; }
-  30%  { top: 25%; }  45%  { top: 80%; }
-  60%  { top: 40%; }  75%  { top: 90%; }
-  90%  { top: 15%; }  100% { top: 50%; opacity: 0; }
+  0% {
+    top: 10%;
+  }
+  15% {
+    top: 60%;
+  }
+  30% {
+    top: 25%;
+  }
+  45% {
+    top: 80%;
+  }
+  60% {
+    top: 40%;
+  }
+  75% {
+    top: 90%;
+  }
+  90% {
+    top: 15%;
+  }
+  100% {
+    top: 50%;
+    opacity: 0;
+  }
 }
 
 @keyframes glitchBar2 {
-  0%   { top: 70%; }  20%  { top: 30%; }
-  40%  { top: 85%; }  60%  { top: 20%; }
-  80%  { top: 55%; }  100% { top: 45%; opacity: 0; }
+  0% {
+    top: 70%;
+  }
+  20% {
+    top: 30%;
+  }
+  40% {
+    top: 85%;
+  }
+  60% {
+    top: 20%;
+  }
+  80% {
+    top: 55%;
+  }
+  100% {
+    top: 45%;
+    opacity: 0;
+  }
 }
 
 /* ─── Holographic overlays ───────────────────────────────────────────────── */
@@ -344,10 +448,20 @@
 }
 
 @keyframes scanTravel {
-  0%   { top: -2px; opacity: 0; }
-  5%   { opacity: 0.4; }
-  95%  { opacity: 0.4; }
-  100% { top: 100%; opacity: 0; }
+  0% {
+    top: -2px;
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.4;
+  }
+  95% {
+    opacity: 0.4;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
 }
 
 .holoGrid {
@@ -361,9 +475,17 @@
 }
 
 @keyframes gridMaterialize {
-  0%   { opacity: 0; background-size: 48px 48px; }
-  50%  { opacity: 0.6; }
-  100% { opacity: 0.3; background-size: 24px 24px; }
+  0% {
+    opacity: 0;
+    background-size: 48px 48px;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0.3;
+    background-size: 24px 24px;
+  }
 }
 
 /* ─── Content ────────────────────────────────────────────────────────────── */
@@ -389,8 +511,16 @@
 }
 
 @keyframes contentReveal {
-  from { opacity: 0; transform: translateY(6px); filter: blur(2px); }
-  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
 }
 
 .planetDot {
@@ -402,7 +532,7 @@
 }
 
 .planetDot::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: -5px;
   border-radius: 50%;
@@ -412,8 +542,15 @@
 }
 
 @keyframes ringPulse {
-  0%, 100% { transform: scale(1); opacity: 0.3; }
-  50% { transform: scale(1.5); opacity: 0; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
 }
 
 .titleBlock {
@@ -482,9 +619,18 @@
 }
 
 @keyframes neuralFlow {
-  0%   { stroke-dashoffset: 60; opacity: 0.3; }
-  50%  { stroke-dashoffset: 0; opacity: 1; }
-  100% { stroke-dashoffset: -60; opacity: 0.3; }
+  0% {
+    stroke-dashoffset: 60;
+    opacity: 0.3;
+  }
+  50% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -60;
+    opacity: 0.3;
+  }
 }
 
 .neuralNode {
@@ -492,8 +638,15 @@
 }
 
 @keyframes nodeGlow {
-  0%, 100% { r: 3; opacity: 0.6; }
-  50% { r: 5; opacity: 1; }
+  0%,
+  100% {
+    r: 3;
+    opacity: 0.6;
+  }
+  50% {
+    r: 5;
+    opacity: 1;
+  }
 }
 
 .neuralLabel {
@@ -528,18 +681,34 @@
   animation: metricReveal 0.4s ease both;
 }
 
-.metricBox:nth-child(1) { animation-delay: 0.45s; }
-.metricBox:nth-child(2) { animation-delay: 0.5s; }
-.metricBox:nth-child(3) { animation-delay: 0.55s; }
-.metricBox:nth-child(4) { animation-delay: 0.6s; }
+.metricBox:nth-child(1) {
+  animation-delay: 0.45s;
+}
+.metricBox:nth-child(2) {
+  animation-delay: 0.5s;
+}
+.metricBox:nth-child(3) {
+  animation-delay: 0.55s;
+}
+.metricBox:nth-child(4) {
+  animation-delay: 0.6s;
+}
 
 @keyframes metricReveal {
-  from { opacity: 0; transform: translateY(8px); filter: blur(2px); }
-  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
 }
 
 .metricBox::before {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 0;
@@ -611,8 +780,16 @@
 }
 
 @keyframes subSlideIn {
-  from { opacity: 0; transform: scale(0.9); filter: blur(1px); }
-  to   { opacity: 1; transform: scale(1); filter: blur(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+    filter: blur(1px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
 }
 
 .subDot {
@@ -659,7 +836,7 @@
 }
 
 .actionBtn::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
@@ -669,7 +846,9 @@
   transition: left 0.5s ease;
 }
 
-.actionBtn:hover::before { left: 100%; }
+.actionBtn:hover::before {
+  left: 100%;
+}
 
 .actionBtn:hover {
   background: rgba(255, 255, 255, 0.06);

@@ -1,41 +1,60 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
-import { Cron, CronExpression } from '@nestjs/schedule'
-import { Service, FarmStats, EMPTY_FARM_STATS } from '@atome/shared'
-import { McpService } from '../mcp/mcp.service'
+import { EMPTY_FARM_STATS, type FarmStats, type HeroKPI, type Service } from "@atome/shared";
+import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import type { McpService } from "../mcp/mcp.service";
 
 @Injectable()
 export class ServicesService implements OnModuleInit {
-  private readonly logger = new Logger(ServicesService.name)
-  private services: Service[]   = []
-  private farmStats: FarmStats  = { ...EMPTY_FARM_STATS }
+  private readonly logger = new Logger(ServicesService.name);
+  private services: Service[] = [];
+  private farmStats: FarmStats = { ...EMPTY_FARM_STATS };
 
   constructor(private readonly mcp: McpService) {}
 
   async onModuleInit() {
-    await this.sync()
+    await this.sync();
   }
 
   @Cron(CronExpression.EVERY_30_SECONDS)
   async sync() {
-    this.logger.log('Syncing services and farm stats...')
+    this.logger.log("Syncing services and farm stats...");
     const [services, farmStats] = await Promise.all([
       this.mcp.fetchAllServices(),
       this.mcp.fetchFarmStats(),
-    ])
-    this.services  = services
-    this.farmStats = farmStats
-    this.logger.log(`Loaded ${this.services.length} services`)
+    ]);
+    this.services = services;
+    this.farmStats = farmStats;
+    this.logger.log(`Loaded ${this.services.length} services`);
   }
 
   getAll(): Service[] {
-    return this.services
+    return this.services;
   }
 
   getById(id: string): Service | undefined {
-    return this.services.find((s) => s.id === id)
+    return this.services.find((s) => s.id === id);
   }
 
   getFarmStats(): FarmStats {
-    return this.farmStats
+    return this.farmStats;
+  }
+
+  getHeroKPIs(): HeroKPI {
+    const s = this.farmStats;
+    const uptime = s.phones_total > 0 ? Math.round((s.phones_online / s.phones_total) * 100) : 0;
+    return {
+      videos_today: s.posts_today,
+      cost_per_video: 0,
+      publish_rate: s.phones_total > 0 ? s.phones_online / s.phones_total : 0,
+      active_accounts: s.accounts_active,
+      uptime_percent: uptime,
+      trends: {
+        videos_today: 0,
+        cost_per_video: 0,
+        publish_rate: 0,
+        active_accounts: 0,
+        uptime_percent: 0,
+      },
+    };
   }
 }

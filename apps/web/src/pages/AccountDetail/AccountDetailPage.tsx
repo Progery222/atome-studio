@@ -1,118 +1,137 @@
-import { useEffect, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
-import { Account } from '@atome/shared'
-import { useFarmStore }  from '../../stores/farm'
-import { useAuthStore }  from '../../stores/auth'
-import styles from './AccountDetailPage.module.css'
+import type { Account } from "@atome/shared";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { LOCALE_MAP, useT } from "../../i18n";
+import { useAuthStore } from "../../stores/auth";
+import { useFarmStore } from "../../stores/farm";
+import { useLangStore } from "../../stores/lang";
+import styles from "./AccountDetailPage.module.css";
 
 const STATUS_COLOR: Record<string, string> = {
-  active:  '#22c55e',
-  warmup:  '#fbbf24',
-  paused:  '#60a5fa',
-  banned:  '#ef4444',
-}
+  active: "#22c55e",
+  warmup: "#fbbf24",
+  paused: "#60a5fa",
+  banned: "#ef4444",
+};
 
-const CONTENT_SOURCES = ['sportzavod', 'contentzavod']
+const CONTENT_SOURCES = ["sportzavod", "contentzavod"];
 
-type EditDraft = Pick<Account,
-  'niche' | 'timezone' | 'post_frequency_hours' | 'heygen_avatar_id' | 'content_sources' | 'status'
->
+type EditDraft = Pick<
+  Account,
+  "niche" | "timezone" | "post_frequency_hours" | "heygen_avatar_id" | "content_sources" | "status"
+>;
 
 function toDraft(acc: Account): EditDraft {
   return {
-    niche:                acc.niche                ?? '',
-    timezone:             acc.timezone             ?? 'UTC',
+    niche: acc.niche ?? "",
+    timezone: acc.timezone ?? "UTC",
     post_frequency_hours: acc.post_frequency_hours ?? 12,
-    heygen_avatar_id:     acc.heygen_avatar_id     ?? '',
-    content_sources:      acc.content_sources      ?? [],
-    status:               acc.status,
-  }
+    heygen_avatar_id: acc.heygen_avatar_id ?? "",
+    content_sources: acc.content_sources ?? [],
+    status: acc.status,
+  };
 }
 
 export function AccountDetailPage() {
-  const { id }          = useParams<{ id: string }>()
-  const accounts        = useFarmStore((s) => s.accounts)
-  const queue           = useFarmStore((s) => s.queue)
-  const fetchAccounts   = useFarmStore((s) => s.fetchAccounts)
-  const fetchQueue      = useFarmStore((s) => s.fetchQueue)
-  const updateAccount   = useFarmStore((s) => s.updateAccount)
-  const accountsLoading = useFarmStore((s) => s.accountsLoading)
-  const canEdit         = useAuthStore((s) => s.role) !== 'viewer'
-  const navigate        = useNavigate()
+  const { id } = useParams<{ id: string }>();
+  const accounts = useFarmStore((s) => s.accounts);
+  const queue = useFarmStore((s) => s.queue);
+  const fetchAccounts = useFarmStore((s) => s.fetchAccounts);
+  const fetchQueue = useFarmStore((s) => s.fetchQueue);
+  const updateAccount = useFarmStore((s) => s.updateAccount);
+  const accountsLoading = useFarmStore((s) => s.accountsLoading);
+  const canEdit = useAuthStore((s) => s.role) !== "viewer";
+  const navigate = useNavigate();
+  const t = useT();
+  const lang = useLangStore((s) => s.lang);
 
-  const [isEditing, setIsEditing] = useState(false)
-  const [draft,     setDraft]     = useState<EditDraft | null>(null)
-  const [saving,    setSaving]    = useState(false)
-  const [saveError, setSaveError] = useState('')
-  const [saved,     setSaved]     = useState(false)
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState<EditDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (accounts.length === 0) fetchAccounts()
-    fetchQueue()
-  }, [accounts.length, fetchAccounts, fetchQueue])
+    if (accounts.length === 0) fetchAccounts();
+    fetchQueue();
+  }, [accounts.length, fetchAccounts, fetchQueue]);
 
-  const acc = accounts.find((a) => a.account_id === id)
+  const acc = accounts.find((a) => a.account_id === id);
 
-  const accQueue   = queue.filter((t) => t.account_id === id)
-  const scheduled  = accQueue.filter((t) => t.status === 'scheduled')
-  const inProgress = accQueue.filter((t) => t.status === 'in_progress')
+  const accQueue = queue.filter((item) => item.account_id === id);
+  const scheduled = accQueue.filter((item) => item.status === "scheduled");
+  const inProgress = accQueue.filter((item) => item.status === "in_progress");
 
-  if (accountsLoading) return <div className={styles.page}><div className={styles.empty}>загрузка...</div></div>
-  if (!acc) return (
-    <div className={styles.page}>
-      <Link to="/accounts" className={styles.back}>← Аккаунты</Link>
-      <div className={styles.empty}>— аккаунт {id} не найден</div>
-    </div>
-  )
+  if (accountsLoading)
+    return (
+      <div className={styles.page}>
+        <div className={styles.empty}>{t("acc_loading")}</div>
+      </div>
+    );
+  if (!acc)
+    return (
+      <div className={styles.page}>
+        <Link to="/accounts" className={styles.back}>
+          {t("acc_back")}
+        </Link>
+        <div className={styles.empty}>
+          — {t("acc_not_found")}: {id}
+        </div>
+      </div>
+    );
 
-  const col = STATUS_COLOR[acc.status] ?? '#6b7280'
+  const col = STATUS_COLOR[acc.status] ?? "#6b7280";
 
   const startEdit = () => {
-    setDraft(toDraft(acc))
-    setSaveError('')
-    setSaved(false)
-    setIsEditing(true)
-  }
+    setDraft(toDraft(acc));
+    setSaveError("");
+    setSaved(false);
+    setIsEditing(true);
+  };
 
   const cancelEdit = () => {
-    setIsEditing(false)
-    setDraft(null)
-    setSaveError('')
-  }
+    setIsEditing(false);
+    setDraft(null);
+    setSaveError("");
+  };
 
   const handleSave = async () => {
-    if (!draft || !id) return
-    setSaving(true)
-    setSaveError('')
-    const result = await updateAccount(id, draft)
-    setSaving(false)
+    if (!draft || !id) return;
+    setSaving(true);
+    setSaveError("");
+    const result = await updateAccount(id, draft);
+    setSaving(false);
     if (result) {
-      setSaved(true)
-      setIsEditing(false)
-      setDraft(null)
-      setTimeout(() => setSaved(false), 3000)
+      setSaved(true);
+      setIsEditing(false);
+      setDraft(null);
+      setTimeout(() => setSaved(false), 3000);
     } else {
-      setSaveError('Не удалось сохранить — orchestrator недоступен')
+      setSaveError(t("acc_save_err"));
     }
-  }
+  };
 
   const toggleSource = (src: string) => {
-    if (!draft) return
+    if (!draft) return;
     const next = draft.content_sources.includes(src)
       ? draft.content_sources.filter((s) => s !== src)
-      : [...draft.content_sources, src]
-    setDraft({ ...draft, content_sources: next })
-  }
+      : [...draft.content_sources, src];
+    setDraft({ ...draft, content_sources: next });
+  };
 
   return (
     <div className={styles.page}>
-      <Link to="/accounts" className={styles.back}>← Аккаунты</Link>
+      <Link to="/accounts" className={styles.back}>
+        {t("acc_back")}
+      </Link>
 
       {/* Header */}
       <div className={styles.titleRow}>
         <div>
           <div className={styles.title}>@{acc.username}</div>
-          <div className={styles.sub}>{acc.niche} · {acc.platform}</div>
+          <div className={styles.sub}>
+            {acc.niche} · {acc.platform}
+          </div>
         </div>
         <span className={styles.statusBadge} style={{ color: col, borderColor: col }}>
           {acc.status}
@@ -125,16 +144,14 @@ export function AccountDetailPage() {
           className={styles.btnPrimary}
           onClick={() => navigate(`/generate?account=${acc.account_id}`)}
         >
-          ▶ Запустить генерацию
+          {t("acc_start_gen")}
         </button>
-        <button className={styles.btnSecondary} onClick={() => navigate('/queue')}>
-          Очередь →
+        <button className={styles.btnSecondary} onClick={() => navigate("/queue")}>
+          {t("acc_to_queue")}
         </button>
       </div>
 
-      {saved && (
-        <div className={styles.successBanner}>✓ Изменения сохранены</div>
-      )}
+      {saved && <div className={styles.successBanner}>{t("acc_saved")}</div>}
 
       {/* Stats grid */}
       <div className={styles.grid}>
@@ -142,21 +159,24 @@ export function AccountDetailPage() {
           <div className={styles.cardLabel}>Health Score</div>
           <div
             className={styles.cardBig}
-            style={{ color: acc.health_score >= 80 ? '#22c55e' : acc.health_score >= 50 ? '#fbbf24' : '#ef4444' }}
+            style={{
+              color:
+                acc.health_score >= 80 ? "#22c55e" : acc.health_score >= 50 ? "#fbbf24" : "#ef4444",
+            }}
           >
             {acc.health_score}%
           </div>
         </div>
         <div className={styles.card}>
-          <div className={styles.cardLabel}>Посты сегодня</div>
+          <div className={styles.cardLabel}>{t("acc_posts_today")}</div>
           <div className={styles.cardBig}>{acc.stats?.posts_today ?? 0}</div>
         </div>
         <div className={styles.card}>
-          <div className={styles.cardLabel}>Посты за неделю</div>
+          <div className={styles.cardLabel}>{t("acc_posts_week")}</div>
           <div className={styles.cardBig}>{acc.stats?.posts_week ?? 0}</div>
         </div>
         <div className={styles.card}>
-          <div className={styles.cardLabel}>Посты всего</div>
+          <div className={styles.cardLabel}>{t("acc_posts_total")}</div>
           <div className={styles.cardBig}>{acc.stats?.posts_total ?? 0}</div>
         </div>
       </div>
@@ -164,20 +184,20 @@ export function AccountDetailPage() {
       {/* Editable info card (FR-8.1) */}
       <div className={styles.detailCard}>
         <div className={styles.cardTitleRow}>
-          <div className={styles.cardTitle}>Информация</div>
+          <div className={styles.cardTitle}>{t("acc_info_title")}</div>
           {canEdit && !isEditing && (
-            <button className={styles.editBtn} onClick={startEdit}>✎ Редактировать</button>
+            <button className={styles.editBtn} onClick={startEdit}>
+              {t("acc_edit_btn")}
+            </button>
           )}
           {isEditing && (
             <div className={styles.editActions}>
-              <button
-                className={styles.saveBtn}
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? 'Сохранение…' : '✓ Сохранить'}
+              <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
+                {saving ? t("acc_saving") : t("acc_save_btn")}
               </button>
-              <button className={styles.cancelBtn} onClick={cancelEdit}>Отмена</button>
+              <button className={styles.cancelBtn} onClick={cancelEdit}>
+                {t("acc_cancel")}
+              </button>
             </div>
           )}
         </div>
@@ -185,14 +205,14 @@ export function AccountDetailPage() {
         {saveError && <div className={styles.errorMsg}>{saveError}</div>}
 
         {/* Read-only fields */}
-        <ReadRow label="Телефон"    value={acc.phone_id || '—'} />
-        <ReadRow label="Warmup день" value={String(acc.warmup_day)} />
-        <ReadRow label="Последний пост" value={acc.stats?.last_post || '—'} />
+        <ReadRow label={t("acc_phone_label")} value={acc.phone_id || "—"} />
+        <ReadRow label={t("acc_warmup_day")} value={String(acc.warmup_day)} />
+        <ReadRow label={t("acc_last_post")} value={acc.stats?.last_post || "—"} />
 
         {/* Editable fields */}
         {isEditing && draft ? (
           <>
-            <EditRow label="Ниша">
+            <EditRow label={t("acc_niche")}>
               <input
                 className={styles.fieldInput}
                 value={draft.niche}
@@ -200,11 +220,13 @@ export function AccountDetailPage() {
               />
             </EditRow>
 
-            <EditRow label="Статус">
+            <EditRow label={t("acc_status_label")}>
               <select
                 className={styles.fieldSelect}
                 value={draft.status}
-                onChange={(e) => setDraft({ ...draft, status: e.target.value as Account['status'] })}
+                onChange={(e) =>
+                  setDraft({ ...draft, status: e.target.value as Account["status"] })
+                }
               >
                 <option value="active">active</option>
                 <option value="warmup">warmup</option>
@@ -213,7 +235,7 @@ export function AccountDetailPage() {
               </select>
             </EditRow>
 
-            <EditRow label="Часовой пояс">
+            <EditRow label={t("acc_timezone")}>
               <input
                 className={styles.fieldInput}
                 value={draft.timezone}
@@ -221,27 +243,29 @@ export function AccountDetailPage() {
               />
             </EditRow>
 
-            <EditRow label="Частота (ч)">
+            <EditRow label={t("acc_frequency")}>
               <input
                 className={styles.fieldInput}
                 type="number"
                 min={4}
                 max={24}
                 value={draft.post_frequency_hours}
-                onChange={(e) => setDraft({ ...draft, post_frequency_hours: Number(e.target.value) })}
+                onChange={(e) =>
+                  setDraft({ ...draft, post_frequency_hours: Number(e.target.value) })
+                }
               />
             </EditRow>
 
             <EditRow label="HeyGen avatar ID">
               <input
                 className={styles.fieldInput}
-                value={draft.heygen_avatar_id ?? ''}
+                value={draft.heygen_avatar_id ?? ""}
                 onChange={(e) => setDraft({ ...draft, heygen_avatar_id: e.target.value })}
-                placeholder="необязательно"
+                placeholder="optional"
               />
             </EditRow>
 
-            <EditRow label="Источники контента">
+            <EditRow label={t("acc_sources_edit")}>
               <div className={styles.checkboxGroup}>
                 {CONTENT_SOURCES.map((src) => (
                   <label key={src} className={styles.checkboxLabel}>
@@ -259,38 +283,41 @@ export function AccountDetailPage() {
           </>
         ) : (
           <>
-            <ReadRow label="Ниша"              value={acc.niche || '—'} />
-            <ReadRow label="Статус"            value={acc.status} />
-            <ReadRow label="Часовой пояс"      value={acc.timezone || '—'} />
-            <ReadRow label="Частота (ч)"       value={String(acc.post_frequency_hours)} />
-            <ReadRow label="HeyGen avatar"     value={acc.heygen_avatar_id || '—'} />
-            <ReadRow label="Источники"         value={acc.content_sources?.join(', ') || '—'} />
+            <ReadRow label={t("acc_niche")} value={acc.niche || "—"} />
+            <ReadRow label={t("acc_status_label")} value={acc.status} />
+            <ReadRow label={t("acc_timezone")} value={acc.timezone || "—"} />
+            <ReadRow label={t("acc_frequency")} value={String(acc.post_frequency_hours)} />
+            <ReadRow label="HeyGen avatar" value={acc.heygen_avatar_id || "—"} />
+            <ReadRow label={t("acc_sources")} value={acc.content_sources?.join(", ") || "—"} />
           </>
         )}
       </div>
 
       {/* Queue position (FR-8.6) */}
       <div className={styles.detailCard}>
-        <div className={styles.cardTitle}>Позиция в очереди</div>
+        <div className={styles.cardTitle}>{t("acc_queue_pos")}</div>
         {accQueue.length === 0 ? (
-          <div className={styles.emptySmall}>нет задач в очереди</div>
+          <div className={styles.emptySmall}>{t("acc_no_queue")}</div>
         ) : (
           <>
             {inProgress.length > 0 && (
-              <div className={styles.queueInfo} style={{ color: '#22c55e' }}>
-                ● Публикуется сейчас ({inProgress.length})
+              <div className={styles.queueInfo} style={{ color: "#22c55e" }}>
+                {t("acc_publishing_now")} ({inProgress.length})
               </div>
             )}
             {scheduled.length > 0 && (
-              <div className={styles.queueInfo} style={{ color: '#60a5fa' }}>
-                ⏰ Запланировано: {scheduled.length}
+              <div className={styles.queueInfo} style={{ color: "#60a5fa" }}>
+                {t("acc_scheduled_count")} {scheduled.length}
               </div>
             )}
             {accQueue.map((task) => (
               <div key={task.task_id} className={styles.row}>
                 <span className={styles.rowLabel}>{task.status}</span>
                 <span className={styles.rowValue}>
-                  {new Date(task.scheduled_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(task.scheduled_at).toLocaleTimeString(LOCALE_MAP[lang], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </span>
               </div>
             ))}
@@ -298,7 +325,7 @@ export function AccountDetailPage() {
         )}
       </div>
     </div>
-  )
+  );
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -309,7 +336,7 @@ function ReadRow({ label, value }: { label: string; value: string }) {
       <span className={styles.rowLabel}>{label}</span>
       <span className={styles.rowValue}>{value}</span>
     </div>
-  )
+  );
 }
 
 function EditRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -318,5 +345,5 @@ function EditRow({ label, children }: { label: string; children: React.ReactNode
       <span className={styles.rowLabel}>{label}</span>
       <div className={styles.editField}>{children}</div>
     </div>
-  )
+  );
 }

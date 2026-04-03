@@ -72,6 +72,57 @@
 
 ---
 
+---
+
+## Фаза 6 — Foundation (CSS + shared types + MetricChart)
+
+- [x] **6.1** CSS-переменные: `--color-success`, `--color-warning`, `--color-error`, `--chart-grid`, `--chart-tooltip-bg`
+- [x] **6.2** Shared types: `ServiceMetricsPoint`, `ActivityEvent`, `HeroKPI`, `BotStatus`, `MetricsHistoryPoint`, `MetricsHistoryResponse`
+- [x] **6.3** `MetricChart` компонент — pure Canvas 2D, типы line/area/bar/donut/gauge/sparkline
+
+> 🧪 **Тест:** `npm run dev` стартует без ошибок, `tsc --noEmit` проходит
+
+---
+
+## Фаза 7 — Investor Visual (Galaxy overlay)
+
+- [x] **7.1** `MetricsStore` (Zustand) — `kpis: HeroKPI`, `fetchKPIs()` → `GET /api/services/kpis`
+- [x] **7.2** `ActivityStore` (Zustand) — кольцевой буфер `max 50`, `push()`
+- [x] **7.3** `HeroKPIs` компонент — 5 карточек с count-up, delta, sparkline
+- [x] **7.4** `ActivityFeed` компонент — скролл-лог событий с `slideIn` анимацией
+- [x] **7.5** `GalaxyPage` обновлён — overlay HeroKPIs (top) + ActivityFeed (right) + Analytics в nav
+- [x] **7.6** `farm.ts` → ActivityStore — маппинг FarmEvent → ActivityEvent в `connectWs()`
+- [x] **7.7** Backend: `GET /api/services/kpis` — `getHeroKPIs()` в `ServicesService`
+
+> 🧪 **Тест:** Galaxy → 5 KPI-карточек сверху, ActivityFeed справа
+
+---
+
+## Фаза 8 — Analytics Page
+
+- [x] **8.1** Backend: `MetricsModule` — in-memory time-series, `GET /api/metrics/history?period&resolution`
+- [x] **8.2** Frontend: `AnalyticsPage` — 5 KPI + 5 charts с period toggle (7d/14d/30d)
+- [x] **8.3** Routing: `/analytics` в App.tsx + Layout sidebar + i18n 4 языка
+
+> 🧪 **Тест:** `/analytics` → 5 KPI + 5 графиков в neon-теме, period toggle работает
+
+---
+
+## Фаза 9 — i18n: полная локализация + переименование
+
+- [x] **9.1** `i18n/index.ts` — добавлено ~280 ключей (все 4 локали: ru/en/zh/es) + `LOCALE_MAP` + `getT()`
+- [x] **9.2** Переименование: "Ферма телефонов" → "Device Fleet" (en) / "Парк устройств" (ru) / "设备舰队" (zh) / "Flota de dispositivos" (es)
+- [x] **9.3** `SidePanel.tsx`, `PhonesPage.tsx`, `AccountsPage.tsx`, `CreateAccountModal.tsx` — мигрированы
+- [x] **9.4** `QueuePage.tsx`, `AccountDetailPage.tsx`, `VideosPage.tsx` — мигрированы + `LOCALE_MAP` для дат
+- [x] **9.5** `GeneratePage.tsx` — мигрирован (~40 строк, `useCallback` deps обновлены)
+- [x] **9.6** `PlanetPanel.tsx` — `TYPE_LABELS` и `SERVICE_ACTIONS` перенесены внутрь компонента
+- [x] **9.7** `ClientsPage.tsx`, `GalaxyPage.tsx`, `AnalyticsPage.tsx` — мигрированы
+- [x] **9.8** `PhoneDetailPage.tsx` — мигрирован
+
+> 🧪 **Тест:** переключить язык EN → RU → ZH → ES — все тексты переключаются; Galaxy: "Device Fleet" (en) / "Парк устройств" (ru); даты в /videos и /queue форматируются по локали
+
+---
+
 ## Легенда
 
 | Символ | Статус |

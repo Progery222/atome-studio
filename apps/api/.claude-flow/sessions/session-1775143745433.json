@@ -1,0 +1,14 @@
+{
+  "id": "session-1775143745433",
+  "startedAt": "2026-04-02T15:29:05.433Z",
+  "cwd": "/Users/andreysamosuk/Documents/atome-studio/apps/api",
+  "context": {},
+  "metrics": {
+    "edits": 0,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "endedAt": "2026-04-02T15:32:39.310Z",
+  "duration": 213878
+}
