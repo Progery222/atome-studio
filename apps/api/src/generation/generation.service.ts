@@ -233,16 +233,28 @@ export class GenerationService {
     raw: Record<string, unknown>,
     service: "sportzavod" | "contentzavod"
   ): GenerationJob {
+    const status = this.normalizeStatus(raw.status);
+    const isCz = service === "contentzavod";
+
+    // content-zavod has no progress/total fields — treat each job as 1 video
+    const total = typeof raw.total === "number" ? raw.total : isCz ? 1 : 0;
+    const progress =
+      typeof raw.progress === "number" ? raw.progress : isCz && status === "done" ? 1 : 0;
+
     return {
       job_id: String(raw.job_id ?? raw.id ?? crypto.randomUUID()),
       service,
-      account_ids: Array.isArray(raw.account_ids) ? (raw.account_ids as string[]) : [],
+      account_ids: Array.isArray(raw.account_ids)
+        ? (raw.account_ids as string[])
+        : raw.account_id
+          ? [String(raw.account_id)]
+          : [],
       topic: raw.topic != null ? String(raw.topic) : undefined,
       videos_per_account: typeof raw.videos_per_account === "number" ? raw.videos_per_account : 1,
-      status: this.normalizeStatus(raw.status),
+      status,
       is_auto: raw.is_auto === true,
-      progress: typeof raw.progress === "number" ? raw.progress : 0,
-      total: typeof raw.total === "number" ? raw.total : 0,
+      progress,
+      total,
       errors_count:
         typeof raw.errors_count === "number"
           ? raw.errors_count
@@ -260,7 +272,9 @@ export class GenerationService {
     if (s === "running") return "running";
     if (s === "stopping") return "stopping";
     if (s === "stopped") return "stopped";
-    if (s === "done" || s === "completed" || s === "success") return "done";
+    if (s === "done" || s === "completed" || s === "success" || s === "queued") return "done";
+    if (s === "pending") return "running"; // content-zavod: pending = just started
+    if (s === "failed") return "error";
     return "error";
   }
 }
