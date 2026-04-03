@@ -314,11 +314,14 @@ export function GeneratePage() {
   }, [accountInput, activeAccounts, t]);
 
   const handleLaunch = async () => {
-    if (selectedIds.size === 0 || launching) return;
+    if (launching) return;
+    if (service === "contentzavod" && !topic.trim()) return;
+    if (service === "sportzavod" && selectedIds.size === 0) return;
     setLaunching(true);
     const job = await startGeneration({
       service,
-      account_ids: [...selectedIds],
+      account_ids:
+        service === "contentzavod" && selectedIds.size === 0 ? ["default"] : [...selectedIds],
       videos_per_account: videosPerAcc,
       topic: service === "contentzavod" ? topic : undefined,
     });
@@ -661,110 +664,127 @@ export function GeneratePage() {
             )}
           </div>
 
-          {/* ── 4. Account list ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitleRow}>
-              <div className={styles.cardTitle}>
-                {t("gen_accs_title")}
-                {isLoading && <span className={styles.loading}> {t("gen_loading_sm")}</span>}
-              </div>
-              <span className={styles.selBadge}>
-                {selectedIds.size} {t("gen_selected")}
-              </span>
-            </div>
-
-            <div className={styles.filterRow}>
-              <button
-                className={`${styles.filterChip} ${nicheFilter === null ? styles.filterChipActive : ""}`}
-                onClick={() => {
-                  setNicheFilter(null);
-                  setNicheOpen(false);
-                }}
-              >
-                {t("gen_all_filter")}
-              </button>
-              <div className={styles.nicheDropdown} ref={nicheRef}>
+          {/* ── 4. Account list (SportZavod) / Launch button (content-zavod) ── */}
+          {service === "contentzavod" ? (
+            <div className={styles.card}>
+              <div className={styles.cardFooter}>
                 <button
-                  className={`${styles.filterChip} ${nicheFilter !== null ? styles.filterChipActive : ""}`}
-                  onClick={() => setNicheOpen((o) => !o)}
+                  className={styles.launchBtn}
+                  disabled={!topic.trim() || launching}
+                  onClick={() => {
+                    setScopeLabel(topic.trim());
+                    setShowConfirm(true);
+                  }}
                 >
-                  {nicheFilter || t("gen_niche_filter")}
+                  {launching ? t("gen_launching") : t("gen_launch_btn")}
                 </button>
-                {nicheOpen && allNiches.length > 0 && (
-                  <div className={styles.nicheMenu}>
-                    {allNiches.map((n) => (
-                      <button
-                        key={n}
-                        className={styles.nicheItem}
-                        onClick={() => {
-                          setNicheFilter(n);
-                          setNicheOpen(false);
-                        }}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
-              <button className={styles.filterChip} onClick={toggleAll}>
-                {selectedIds.size === visibleAccounts.length && visibleAccounts.length > 0
-                  ? t("gen_deselect_all")
-                  : t("gen_select_all")}
-              </button>
             </div>
+          ) : (
+            <div className={styles.card}>
+              <div className={styles.cardTitleRow}>
+                <div className={styles.cardTitle}>
+                  {t("gen_accs_title")}
+                  {isLoading && <span className={styles.loading}> {t("gen_loading_sm")}</span>}
+                </div>
+                <span className={styles.selBadge}>
+                  {selectedIds.size} {t("gen_selected")}
+                </span>
+              </div>
 
-            <div className={styles.accountList}>
-              {visibleAccounts.length === 0 && !isLoading && (
-                <div className={styles.emptySmall}>{t("gen_no_accounts")}</div>
-              )}
-              {visibleAccounts.map((acc) => (
-                <label key={acc.account_id} className={styles.accRow}>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(acc.account_id)}
-                    onChange={() => toggleAccount(acc.account_id)}
-                    className={styles.checkbox}
-                  />
-                  <span
-                    className={`${styles.accAvatarBadge} ${acc.heygen_avatar_id ? styles.accAvatarOk : styles.accAvatarNo}`}
+              <div className={styles.filterRow}>
+                <button
+                  className={`${styles.filterChip} ${nicheFilter === null ? styles.filterChipActive : ""}`}
+                  onClick={() => {
+                    setNicheFilter(null);
+                    setNicheOpen(false);
+                  }}
+                >
+                  {t("gen_all_filter")}
+                </button>
+                <div className={styles.nicheDropdown} ref={nicheRef}>
+                  <button
+                    className={`${styles.filterChip} ${nicheFilter !== null ? styles.filterChipActive : ""}`}
+                    onClick={() => setNicheOpen((o) => !o)}
                   >
-                    {acc.heygen_avatar_id ? "A" : "-"}
-                  </span>
-                  <span className={styles.accName}>@{acc.username}</span>
-                  <span className={styles.accNiche}>{acc.niche}</span>
-                  <span
-                    className={styles.accStatus}
-                    style={{
-                      color:
-                        acc.status === "active"
-                          ? "#22c55e"
-                          : acc.status === "banned"
-                            ? "#ef4444"
-                            : "#fbbf24",
-                    }}
-                  >
-                    {acc.status}
-                  </span>
-                </label>
-              ))}
-            </div>
+                    {nicheFilter || t("gen_niche_filter")}
+                  </button>
+                  {nicheOpen && allNiches.length > 0 && (
+                    <div className={styles.nicheMenu}>
+                      {allNiches.map((n) => (
+                        <button
+                          key={n}
+                          className={styles.nicheItem}
+                          onClick={() => {
+                            setNicheFilter(n);
+                            setNicheOpen(false);
+                          }}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button className={styles.filterChip} onClick={toggleAll}>
+                  {selectedIds.size === visibleAccounts.length && visibleAccounts.length > 0
+                    ? t("gen_deselect_all")
+                    : t("gen_select_all")}
+                </button>
+              </div>
 
-            {/* Launch from manual selection */}
-            <div className={styles.cardFooter}>
-              <button
-                className={styles.launchBtn}
-                disabled={selectedIds.size === 0 || launching}
-                onClick={() => {
-                  if (selectedIds.size === 0) return;
-                  setScopeLabel(`${t("gen_scope_manual")} (${selectedIds.size})`);
-                  setShowConfirm(true);
-                }}
-              >
-                {launching ? t("gen_launching") : `${t("gen_launch_btn")} (${selectedIds.size})`}
-              </button>
+              <div className={styles.accountList}>
+                {visibleAccounts.length === 0 && !isLoading && (
+                  <div className={styles.emptySmall}>{t("gen_no_accounts")}</div>
+                )}
+                {visibleAccounts.map((acc) => (
+                  <label key={acc.account_id} className={styles.accRow}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(acc.account_id)}
+                      onChange={() => toggleAccount(acc.account_id)}
+                      className={styles.checkbox}
+                    />
+                    <span
+                      className={`${styles.accAvatarBadge} ${acc.heygen_avatar_id ? styles.accAvatarOk : styles.accAvatarNo}`}
+                    >
+                      {acc.heygen_avatar_id ? "A" : "-"}
+                    </span>
+                    <span className={styles.accName}>@{acc.username}</span>
+                    <span className={styles.accNiche}>{acc.niche}</span>
+                    <span
+                      className={styles.accStatus}
+                      style={{
+                        color:
+                          acc.status === "active"
+                            ? "#22c55e"
+                            : acc.status === "banned"
+                              ? "#ef4444"
+                              : "#fbbf24",
+                      }}
+                    >
+                      {acc.status}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Launch from manual selection */}
+              <div className={styles.cardFooter}>
+                <button
+                  className={styles.launchBtn}
+                  disabled={selectedIds.size === 0 || launching}
+                  onClick={() => {
+                    if (selectedIds.size === 0) return;
+                    setScopeLabel(`${t("gen_scope_manual")} (${selectedIds.size})`);
+                    setShowConfirm(true);
+                  }}
+                >
+                  {launching ? t("gen_launching") : `${t("gen_launch_btn")} (${selectedIds.size})`}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* ════════════ RIGHT COLUMN ════════════ */}
