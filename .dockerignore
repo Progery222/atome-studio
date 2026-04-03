@@ -3,7 +3,6 @@ node_modules
 .claude
 **/.claude-flow
 **/.claude
-apps/web
 *.md
 .git
 .gitignore
