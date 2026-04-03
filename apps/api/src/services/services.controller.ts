@@ -1,6 +1,6 @@
 import { Controller, Get, NotFoundException, Param, Post } from "@nestjs/common";
 import { Public } from "../auth/public.decorator";
-import type { ServicesService } from "./services.service";
+import { ServicesService } from "./services.service";
 
 @Public()
 @Controller("services")

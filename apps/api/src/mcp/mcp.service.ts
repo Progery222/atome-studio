@@ -1,8 +1,8 @@
 import { EMPTY_FARM_STATS, type FarmStats, type Service } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
-import type { ContentZavodAdapter } from "./contentzavod/contentzavod.adapter";
-import type { FarmAdapter } from "./farm/farm.adapter";
-import type { SportZavodAdapter } from "./sportzavod/sportzavod.adapter";
+import { ContentZavodAdapter } from "./contentzavod/contentzavod.adapter";
+import { FarmAdapter } from "./farm/farm.adapter";
+import { SportZavodAdapter } from "./sportzavod/sportzavod.adapter";
 
 /**
  * Aggregates data from all service adapters.

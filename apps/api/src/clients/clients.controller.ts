@@ -1,6 +1,6 @@
 import type { Client } from "@atome/shared";
 import { Body, Controller, Get, NotFoundException, Param, Patch, Post } from "@nestjs/common";
-import type { ClientsService } from "./clients.service";
+import { ClientsService } from "./clients.service";
 
 @Controller()
 export class ClientsController {

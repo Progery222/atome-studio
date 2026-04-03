@@ -1,6 +1,6 @@
 import type { Account } from "@atome/shared";
 import { Body, Controller, Get, NotFoundException, Param, Patch, Post } from "@nestjs/common";
-import type { FarmService } from "./farm.service";
+import { FarmService } from "./farm.service";
 
 @Controller()
 export class FarmController {

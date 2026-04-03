@@ -1,5 +1,5 @@
 import { Controller, Get } from "@nestjs/common";
-import type { VideosService } from "./videos.service";
+import { VideosService } from "./videos.service";
 
 @Controller()
 export class VideosController {

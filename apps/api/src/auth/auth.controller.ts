@@ -1,5 +1,5 @@
 import { Body, Controller, Post } from "@nestjs/common";
-import type { AuthService } from "./auth.service";
+import { AuthService } from "./auth.service";
 import { Public } from "./public.decorator";
 
 @Public()
