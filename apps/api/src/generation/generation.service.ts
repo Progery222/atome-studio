@@ -1,5 +1,6 @@
 import type { GenerationJob } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
+import { EventsGateway } from "../events/events.gateway";
 
 interface GenerateDto {
   service: "sportzavod" | "contentzavod";
@@ -13,6 +14,8 @@ export class GenerationService {
   private readonly logger = new Logger(GenerationService.name);
   private readonly sportzavodUrl = process.env.SPORTZAVOD_URL ?? "http://localhost:8000";
   private readonly contentzavodUrl = process.env.CONTENTZAVOD_URL ?? "http://localhost:8002";
+
+  constructor(private readonly events: EventsGateway) {}
 
   /** Maps job_id → service name for later routing */
   private readonly jobServiceMap = new Map<string, "sportzavod" | "contentzavod">();
@@ -68,6 +71,22 @@ export class GenerationService {
 
     const job = this.normalizeJob(raw, dto.service);
     this.jobServiceMap.set(job.job_id, dto.service);
+
+    this.events.emit({
+      event: "job_started",
+      phone_id: "",
+      details: {
+        job_id: job.job_id,
+        service: job.service,
+        account_ids: job.account_ids,
+        videos_per_account: job.videos_per_account,
+        topic: job.topic,
+        total: job.total,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    this.pollJobUntilDone(job.job_id);
     return job;
   }
 
@@ -125,6 +144,14 @@ export class GenerationService {
 
     const base = this.baseUrlFor(service);
     const result = await this.post(`${base}/api/jobs/${id}/stop`, {});
+    if (result !== null) {
+      this.events.emit({
+        event: "job_stopped",
+        phone_id: "",
+        details: { job_id: id, service },
+        timestamp: new Date().toISOString(),
+      });
+    }
     return { ok: result !== null };
   }
 
@@ -143,6 +170,20 @@ export class GenerationService {
     if (!raw) return null;
     const job = this.normalizeJob(raw, "sportzavod");
     this.jobServiceMap.set(job.job_id, "sportzavod");
+
+    this.events.emit({
+      event: "job_started",
+      phone_id: "",
+      details: {
+        job_id: job.job_id,
+        service: "sportzavod",
+        is_auto: true,
+        total: job.total,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    this.pollJobUntilDone(job.job_id);
     return job;
   }
 
@@ -152,6 +193,40 @@ export class GenerationService {
       {}
     );
     return { stopped_count: result?.stopped_count ?? 0 };
+  }
+
+  /** Poll a running job every 8 s, emit job_complete or error when it finishes */
+  private pollJobUntilDone(jobId: string, intervalMs = 8000, maxAttempts = 90) {
+    let attempts = 0;
+    const timer = setInterval(async () => {
+      attempts++;
+      const job = await this.getJob(jobId);
+      if (!job || attempts >= maxAttempts) {
+        clearInterval(timer);
+        return;
+      }
+      if (job.status === "done" || job.status === "stopped" || job.status === "error") {
+        clearInterval(timer);
+        this.events.emit({
+          event:
+            job.status === "done"
+              ? "job_complete"
+              : job.status === "stopped"
+                ? "job_stopped"
+                : "error",
+          phone_id: "",
+          details: {
+            job_id: job.job_id,
+            service: job.service,
+            progress: job.progress,
+            total: job.total,
+            errors_count: job.errors_count,
+            status: job.status,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }, intervalMs);
   }
 
   private normalizeJob(

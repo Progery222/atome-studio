@@ -1,5 +1,6 @@
 import type {
   Account,
+  ActivityEvent,
   FarmEvent,
   GenerationJob,
   Phone,
@@ -524,17 +525,37 @@ export const useFarmStore = create<FarmState>((set, get) => ({
     socket.on("farm_event", (event: FarmEvent) => {
       set({ lastEvent: event });
 
+      const svcName = (event.details?.service as string) || event.phone_id || "orchestrator";
+
+      const MESSAGE_MAP: Partial<Record<FarmEvent["event"], string>> = {
+        job_started: `Job started · ${svcName}${event.details?.total ? ` · ${event.details.total as number} videos` : ""}`,
+        job_complete: `Job complete · ${svcName} · ${event.details?.progress ?? 0}/${event.details?.total ?? 0} videos`,
+        job_stopped: `Job stopped · ${svcName}`,
+        service_online: `${svcName} came online`,
+        service_offline: `${svcName} went offline`,
+        published: event.account_id ? `Published · ${event.account_id}` : "Published",
+        banned: event.account_id ? `Account banned · ${event.account_id}` : "Account banned",
+        error: event.account_id ? `Error · ${event.account_id}` : "Error",
+        failed: event.account_id ? `Failed · ${event.account_id}` : "Failed",
+        heartbeat: "Heartbeat",
+      };
+
+      const SEVERITY_MAP: Partial<Record<FarmEvent["event"], "info" | "warning" | "error">> = {
+        banned: "error",
+        error: "error",
+        failed: "error",
+        service_offline: "warning",
+        job_stopped: "warning",
+      };
+
       // Push to ActivityFeed
       useActivityStore.getState().push({
         id: `${event.timestamp}-${event.phone_id}-${event.event}`,
         timestamp: event.timestamp,
-        service: event.phone_id || "orchestrator",
-        type: event.event === "failed" ? "error" : event.event,
-        message: event.account_id ? `${event.event} · ${event.account_id}` : event.event,
-        severity:
-          event.event === "banned" || event.event === "error" || event.event === "failed"
-            ? "error"
-            : "info",
+        service: svcName,
+        type: event.event === "failed" ? "error" : (event.event as ActivityEvent["type"]),
+        message: MESSAGE_MAP[event.event] ?? event.event,
+        severity: SEVERITY_MAP[event.event] ?? "info",
       });
 
       switch (event.event) {
@@ -564,6 +585,9 @@ export const useFarmStore = create<FarmState>((set, get) => ({
               ),
             }));
           }
+          break;
+        case "job_started":
+          get().fetchJobs();
           break;
       }
     });

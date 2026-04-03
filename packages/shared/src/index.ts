@@ -163,7 +163,17 @@ export type GenerationScope = "all" | "theme" | "account" | "query";
 // ─── WebSocket events (Phase 3) ───────────────────────────────────────────────
 
 export interface FarmEvent {
-  event: "published" | "banned" | "error" | "failed" | "heartbeat" | "job_complete";
+  event:
+    | "published"
+    | "banned"
+    | "error"
+    | "failed"
+    | "heartbeat"
+    | "job_complete"
+    | "job_started"
+    | "job_stopped"
+    | "service_online"
+    | "service_offline";
   phone_id: string;
   account_id?: string;
   details: Record<string, unknown>;
@@ -193,7 +203,17 @@ export interface ActivityEvent {
   id: string;
   timestamp: string;
   service: string;
-  type: "published" | "banned" | "error" | "job_complete" | "heartbeat" | "info";
+  type:
+    | "published"
+    | "banned"
+    | "error"
+    | "job_complete"
+    | "job_started"
+    | "job_stopped"
+    | "heartbeat"
+    | "service_online"
+    | "service_offline"
+    | "info";
   message: string;
   severity: "info" | "warning" | "error";
 }

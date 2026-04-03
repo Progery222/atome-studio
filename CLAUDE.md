@@ -45,8 +45,8 @@ TikTok content farm dashboard. Управляет фермой телефоно�
 mcp/                    ← адаптеры к внешним сервисам (cloudflare, postman, posthog, sportzavod, farm, contentzavod)
 services/               ← ServicesService (polling каждые 30с), ServicesController, GET /api/services/kpis
 auth/                   ← JWT авторизация, in-memory users (admin@atome.studio / admin123)
-generation/             ← POST /api/generate, GET /api/jobs/:id
-events/                 ← EventsGateway (Socket.io WS мост к orchestrator)
+generation/             ← POST /api/generate, GET /api/jobs/:id; эмитит job_started/job_complete/job_stopped через EventsGateway
+events/                 ← EventsGateway (Socket.io WS мост к orchestrator); экспортируется из EventsModule; метод emit(FarmEvent) для внутреннего использования
 videos/                 ← VideosService (S3 XML API к MinIO), GET /api/videos
 clients/                ← CRUD клиентов (super_admin only)
 metrics/                ← MetricsService (in-memory time-series), GET /api/metrics/history
@@ -133,7 +133,8 @@ GET  /api/jobs/:id                    → статус
 - `Phone` — телефон фермы (phone_id, serial, status, warmup_day, health_score, accounts[])
 - `Account` — TikTok аккаунт (account_id, username, niche, content_sources[], stats)
 - `QueueTask` — задача публикации (task_id, account_id, file_url, status, scheduled_at)
-- `FarmEvent` — WS событие (event: published|banned|error|heartbeat|job_complete)
+- `FarmEvent` — WS событие (event: published|banned|error|failed|heartbeat|job_complete|job_started|job_stopped|service_online|service_offline)
+- `ActivityEvent.type` — те же значения плюс `info`
 - `VideoFile` — видео в MinIO (filename, url, thumbnail_url, status)
 - `GenerationJob` — задание генерации (job_id, service, progress, status)
 

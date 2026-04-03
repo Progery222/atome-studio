@@ -1,4 +1,5 @@
-import { Logger } from "@nestjs/common";
+import type { FarmEvent } from "@atome/shared";
+import { Injectable, Logger } from "@nestjs/common";
 import {
   type OnGatewayConnection,
   type OnGatewayDisconnect,
@@ -23,7 +24,8 @@ const RECONNECT_MS = 10_000; // try to reconnect WS bridge every 10 s
  *    every 5 s and emitting the result as a 'farm_event' to all connected clients.
  * 3. Every 10 s we attempt to (re)establish the WS connection.
  */
-@WebSocketGateway({ cors: { origin: "http://localhost:5173" }, namespace: "/ws" })
+@Injectable()
+@WebSocketGateway({ cors: { origin: true }, namespace: "/ws" })
 export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 
@@ -46,6 +48,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
+  }
+
+  // ─── Public emit helper (for GenerationService / ServicesService) ─────────
+
+  emit(event: FarmEvent) {
+    this.server?.emit("farm_event", event);
   }
 
   // ─── WebSocket bridge ──────────────────────────────────────────────────────
