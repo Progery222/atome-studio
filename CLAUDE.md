@@ -72,7 +72,8 @@ components/
   MetricChart/          ← Canvas 2D: line/area/bar/donut/gauge/sparkline
 pages/
   Galaxy/               ← / (без AuthGuard) — 3D галактика + HeroKPIs + ActivityFeed
-  Phones, PhoneDetail, Accounts, AccountDetail, Generate, Queue, Videos, Analytics, Clients, Login
+  Phones, PhoneDetail, Accounts, AccountDetail, Generate, Queue, Videos, Analytics, Login
+  Clients ← таблица клиентов + inline форма создания (name, email, plan: basic/pro/enterprise, phones_limit); только super_admin
 ```
 
 ---
@@ -166,8 +167,9 @@ docker compose up    # вся инфраструктура
   - `.claude-flow`, `.claude`, `galaxy` исключены из проверки (`files.includes` excludes)
 - Git-хуки: **Lefthook** (`lefthook.yml`) — pre-commit запускает biome + tsc
   - `--diagnostic-level=error` — хук падает только на errors, warnings не блокируют коммит
-- **Все запросы к API** — использовать `apiFetch` из `apps/web/src/lib/api.ts`, **не** raw `fetch` — иначе JWT не передаётся → 401
+- **Все запросы к API** — использовать `apiFetch` из `apps/web/src/lib/api.ts`, **не** raw `fetch` — иначе JWT не передаётся → 401; после ответа проверять `Array.isArray(data)` перед setState если ожидается массив (иначе 401-объект крашит `.map()`)
 - **useEffect с локальными функциями** — не включать их в deps array (новая ссылка каждый рендер → бесконечный цикл). Пример: `useEffect(() => { localFn(); }, [])` — только `[]`
+- **Vite proxy (vite.config.ts)**: `/api` → `http://localhost:3001`; `/socket.io` → `http://localhost:3001` с `ws: true` (socket.io handshake идёт на `/socket.io/...`, не на `/ws`)
 
 ## i18n
 
