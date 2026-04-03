@@ -1,5 +1,5 @@
 import { Body, Controller, Get, NotFoundException, Param, Post } from "@nestjs/common";
-import type { GenerationService } from "./generation.service";
+import { GenerationService } from "./generation.service";
 
 interface GenerateDto {
   service: "sportzavod" | "contentzavod";

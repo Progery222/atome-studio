@@ -1,7 +1,7 @@
 import { EMPTY_FARM_STATS, type FarmStats, type HeroKPI, type Service } from "@atome/shared";
 import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import type { McpService } from "../mcp/mcp.service";
+import { McpService } from "../mcp/mcp.service";
 
 @Injectable()
 export class ServicesService implements OnModuleInit {
