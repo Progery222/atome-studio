@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from "@nestjs/common";
 import { Public } from "../auth/public.decorator";
-import type { MetricsService } from "./metrics.service";
+import { MetricsService } from "./metrics.service";
 
 @Public()
 @Controller("metrics")

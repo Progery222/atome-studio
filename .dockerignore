@@ -1,0 +1,9 @@
+node_modules
+.claude-flow
+.claude
+**/.claude-flow
+**/.claude
+apps/web
+*.md
+.git
+.gitignore
