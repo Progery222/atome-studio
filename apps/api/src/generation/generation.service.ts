@@ -274,6 +274,8 @@ export class GenerationService {
     if (s === "stopped") return "stopped";
     if (s === "done" || s === "completed" || s === "success" || s === "queued") return "done";
     if (s === "pending") return "running"; // content-zavod: pending = just started
+    if (s === "waiting_approval") return "running"; // content-zavod: ждёт апрув в Telegram
+    if (s === "not_relevant") return "stopped"; // content-zavod: тема нерелевантна
     if (s === "failed") return "error";
     return "error";
   }

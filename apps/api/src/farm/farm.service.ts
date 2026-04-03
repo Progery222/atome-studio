@@ -133,8 +133,8 @@ export class FarmService {
     })
       .then(async (res) => {
         if (!res.ok) return { ok: false };
-        const data = (await res.json()) as { reloaded?: number };
-        return { ok: true, reloaded: data.reloaded };
+        const data = (await res.json()) as { loaded?: number; reloaded?: number };
+        return { ok: true, reloaded: data.reloaded ?? data.loaded };
       })
       .catch(() => {
         this.logger.warn("SportZavod unavailable: POST /api/accounts/reload");

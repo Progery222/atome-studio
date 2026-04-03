@@ -123,6 +123,7 @@ POST /api/accounts/reload             → перезагрузка из Google S
 ```
 GET  /health                          → статус
 POST /api/generate                    → { account_id, topic, videos_per_account }
+GET  /api/jobs                        → список jobs
 GET  /api/jobs/:id                    → статус
 ```
 
@@ -184,4 +185,18 @@ docker compose up    # вся инфраструктура
 
 - `VideosService` использует S3 XML API (`GET /{bucket}/?list-type=2`) без SDK
 - Переменные: `MINIO_URL` (default: `http://localhost:9000`), `MINIO_BUCKET` (default: `atome-videos`)
-- Работает только с **публичными** бакетами — для приватных нужна AWS Signature v4
+- Работает только с **публичными** бакетами — требует политика `s3:ListBucket` + `s3:GetObject`
+- **Все сервисы должны писать в один бакет `atome-videos`** — иначе Videos страница пустая
+- `docker-compose.yml` включает `minio-init` контейнер — автоматически создаёт бакет и ставит публичную политику при `docker compose up`
+- SportZavod и content-zavod при первой загрузке файла сами создают бакет с нужной политикой (list+read)
+- Конфигурация в `apps/api/.env`: `MINIO_URL`, `MINIO_BUCKET`
+- В `.env` каждого завода: `MINIO_BUCKET=atome-videos`, `MINIO_ACCESS_KEY=minioadmin`, `MINIO_SECRET_KEY=minioadmin`
+
+## Generation / Jobs
+
+- `generation.service.ts:normalizeStatus()` нормализует статусы обоих сервисов:
+  - content-zavod `waiting_approval` → `running` (ждёт апрув в Telegram, ещё не завершён)
+  - content-zavod `not_relevant` → `stopped` (тема нерелевантна, пайплайн прерван)
+  - `pending` → `running` (только что стартовал)
+- `contentzavod.adapter.ts` считает активными задачи со статусом `running` **или** `pending`
+- `farm.service.ts:reloadAccounts()` читает `data.loaded ?? data.reloaded` из SportZavod (SportZavod возвращает `{ loaded: N }`, не `reloaded`)

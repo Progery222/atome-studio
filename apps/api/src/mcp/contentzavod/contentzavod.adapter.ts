@@ -47,7 +47,7 @@ export class ContentZavodAdapter {
     try {
       const res = await fetch(`${this.baseUrl}/api/jobs`, { signal: AbortSignal.timeout(3000) });
       const jobs = (await res.json()) as { status: string }[];
-      return jobs.filter((j) => j.status === "running").length;
+      return jobs.filter((j) => j.status === "running" || j.status === "pending").length;
     } catch {
       return 0;
     }
