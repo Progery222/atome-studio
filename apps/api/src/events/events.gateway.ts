@@ -30,6 +30,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   private readonly logger = new Logger(EventsGateway.name);
   private ws: WebSocket | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private reconnectTimer: ReturnType<typeof setInterval> | null = null;
   private usingPoll = false;
 
   afterInit() {
