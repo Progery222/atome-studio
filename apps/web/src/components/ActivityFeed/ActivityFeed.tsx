@@ -5,7 +5,12 @@ const ICONS: Record<string, string> = {
   published: "✓",
   banned: "✗",
   error: "!",
+  failed: "!",
   job_complete: "●",
+  job_started: "▶",
+  job_stopped: "■",
+  service_online: "↑",
+  service_offline: "↓",
   heartbeat: "♥",
   info: "·",
 };

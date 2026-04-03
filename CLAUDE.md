@@ -55,8 +55,8 @@ metrics/                ← MetricsService (in-memory time-series), GET /api/met
 ### Frontend (`apps/web/src/`)
 ```
 stores/
-  services.ts           ← главный store (Service[], metrics, tooltip)
-  farm.ts               ← Phone[], Account[], QueueTask[], WS events
+  services.ts           ← главный store (Service[], metrics, tooltip); fetchServices пушит ActivityEvent при смене статуса сервиса
+  farm.ts               ← Phone[], Account[], QueueTask[], WS events; fetchJobs пушит synthetic ActivityEvent (job progress/done/error) когда wsConnected=false
   metrics.ts            ← kpis: HeroKPI, fetchKPIs()
   activity.ts           ← кольцевой буфер ActivityEvent (max 50)
   auth.ts               ← useAuthStore — JWT token, user, login/logout
@@ -66,7 +66,7 @@ i18n/
 components/
   AtomicCanvas/         ← Three.js галактика; getGalaxyServices() возвращает переведённые данные
   HeroKPIs/             ← 5 KPI-карточек с count-up, фиксированная высота 90px
-  ActivityFeed/         ← скролл-лог событий
+  ActivityFeed/         ← скролл-лог событий; иконки: ✓published ✗banned !error ▶job_started ●job_complete ■job_stopped ↑service_online ↓service_offline
   PlanetPanel/          ← панель при клике на планету
   Layout/               ← sidebar навигация
   MetricChart/          ← Canvas 2D: line/area/bar/donut/gauge/sparkline
@@ -166,6 +166,8 @@ docker compose up    # вся инфраструктура
   - `.claude-flow`, `.claude`, `galaxy` исключены из проверки (`files.includes` excludes)
 - Git-хуки: **Lefthook** (`lefthook.yml`) — pre-commit запускает biome + tsc
   - `--diagnostic-level=error` — хук падает только на errors, warnings не блокируют коммит
+- **Все запросы к API** — использовать `apiFetch` из `apps/web/src/lib/api.ts`, **не** raw `fetch` — иначе JWT не передаётся → 401
+- **useEffect с локальными функциями** — не включать их в deps array (новая ссылка каждый рендер → бесконечный цикл). Пример: `useEffect(() => { localFn(); }, [])` — только `[]`
 
 ## i18n
 

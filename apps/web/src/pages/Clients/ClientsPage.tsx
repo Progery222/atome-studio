@@ -61,7 +61,8 @@ export function ClientsPage() {
 
   useEffect(() => {
     fetchClients();
-  }, [fetchClients]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreate = async () => {
     if (!form.name.trim() || !form.email.trim()) {

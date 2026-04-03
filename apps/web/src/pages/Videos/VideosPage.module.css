@@ -195,6 +195,45 @@
   border-radius: 100px;
 }
 
+/* ─── Card content (Telegram-style) ──────────────────────────────────────── */
+
+.cardTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardDescription {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardHashtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cardHashtag {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(0, 210, 255, 0.8);
+  background: rgba(0, 210, 255, 0.06);
+  border: 1px solid rgba(0, 210, 255, 0.15);
+  border-radius: 100px;
+  padding: 2px 7px;
+}
+
 /* ─── Card actions ────────────────────────────────────────────────────────── */
 
 .cardActions {
@@ -329,8 +368,15 @@
   font-weight: 700;
   color: var(--text-primary);
   word-break: break-all;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   line-height: 1.4;
+}
+
+.modalDescription {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin-bottom: 12px;
 }
 
 .modalRow {

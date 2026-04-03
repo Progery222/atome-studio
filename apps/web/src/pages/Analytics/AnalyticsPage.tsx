@@ -1,6 +1,7 @@
 import type { MetricsHistoryPoint, MetricsHistoryResponse } from "@atome/shared";
 import { useEffect, useState } from "react";
 import { type ChartSeries, MetricChart } from "../../components/MetricChart";
+import { apiFetch } from "../../lib/api";
 import { useMetricsStore } from "../../stores/metrics";
 import styles from "./AnalyticsPage.module.css";
 
@@ -13,7 +14,7 @@ const PERIOD_LABELS: Record<Period, string> = {
 };
 
 async function fetchHistory(period: Period): Promise<MetricsHistoryResponse> {
-  const res = await fetch(`/api/metrics/history?period=${period}&resolution=1h`);
+  const res = await apiFetch(`/api/metrics/history?period=${period}&resolution=1h`);
   if (!res.ok) return { period, resolution: "1h", points: [] };
   return res.json();
 }

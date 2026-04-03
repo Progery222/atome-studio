@@ -378,7 +378,73 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       const res = await apiFetch("/api/jobs");
       if (!res.ok) throw new Error();
       const jobs = (await res.json()) as GenerationJob[];
-      set({ activeJobs: jobs.length > 0 ? jobs : MOCK_JOBS });
+      const newJobs = jobs.length > 0 ? jobs : MOCK_JOBS;
+
+      // Synthetic activity events when WS is not connected (no orchestrator)
+      if (!get().wsConnected) {
+        const prevJobs = get().activeJobs;
+        const activity = useActivityStore.getState();
+        for (const job of newJobs) {
+          const prev = prevJobs.find((j) => j.job_id === job.job_id);
+          const svcName = job.service === "sportzavod" ? "SportZavod" : "content-zavod";
+          if (!prev && (job.status === "running" || job.status === "done")) {
+            activity.push({
+              id: `poll-job-start-${job.job_id}`,
+              timestamp: new Date().toISOString(),
+              service: svcName,
+              type: "job_started",
+              message: `Job started · ${svcName}${job.total ? ` · ${job.total} videos` : ""}`,
+              severity: "info",
+            });
+          } else if (prev && prev.status !== job.status) {
+            if (job.status === "done") {
+              activity.push({
+                id: `poll-job-done-${job.job_id}`,
+                timestamp: new Date().toISOString(),
+                service: svcName,
+                type: "job_complete",
+                message: `Job complete · ${svcName} · ${job.progress}/${job.total}`,
+                severity: "info",
+              });
+            } else if (job.status === "error") {
+              activity.push({
+                id: `poll-job-err-${job.job_id}`,
+                timestamp: new Date().toISOString(),
+                service: svcName,
+                type: "error",
+                message: `Job error · ${svcName}`,
+                severity: "error",
+              });
+            } else if (job.status === "stopped") {
+              activity.push({
+                id: `poll-job-stop-${job.job_id}`,
+                timestamp: new Date().toISOString(),
+                service: svcName,
+                type: "job_stopped",
+                message: `Job stopped · ${svcName}`,
+                severity: "warning",
+              });
+            }
+          } else if (prev?.status === "running" && job.status === "running" && job.total > 0) {
+            const prevPct = Math.floor((prev.progress / prev.total) * 100);
+            const newPct = Math.floor((job.progress / job.total) * 100);
+            for (const milestone of [25, 50, 75]) {
+              if (prevPct < milestone && newPct >= milestone) {
+                activity.push({
+                  id: `poll-job-prog-${job.job_id}-${milestone}`,
+                  timestamp: new Date().toISOString(),
+                  service: svcName,
+                  type: "info",
+                  message: `${milestone}% · ${job.progress}/${job.total} · ${svcName}`,
+                  severity: "info",
+                });
+              }
+            }
+          }
+        }
+      }
+
+      set({ activeJobs: newJobs });
     } catch {
       if (get().activeJobs.length === 0) set({ activeJobs: MOCK_JOBS });
     }

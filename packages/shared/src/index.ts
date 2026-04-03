@@ -133,6 +133,11 @@ export interface VideoFile {
   size_bytes: number;
   created_at: string;
   status: "queued" | "published" | "rejected";
+  /** Populated from companion JSON in MinIO */
+  title?: string;
+  caption?: string;
+  description?: string;
+  hashtags?: string[];
 }
 
 export interface GenerationJob {

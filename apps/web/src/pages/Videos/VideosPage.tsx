@@ -64,7 +64,25 @@ function VideoModal({ video, onClose }: { video: VideoFile; onClose: () => void 
         </div>
 
         <div className={styles.modalInfo}>
-          <div className={styles.modalFilename}>{video.filename}</div>
+          {video.title ? (
+            <div className={styles.modalFilename}>{video.title}</div>
+          ) : (
+            <div className={styles.modalFilename}>{video.filename}</div>
+          )}
+
+          {(video.caption || video.description) && (
+            <div className={styles.modalDescription}>{video.caption || video.description}</div>
+          )}
+
+          {video.hashtags && video.hashtags.length > 0 && (
+            <div className={styles.cardHashtags} style={{ marginBottom: 12 }}>
+              {video.hashtags.map((tag) => (
+                <span key={tag} className={styles.cardHashtag}>
+                  #{tag.replace(/^#/, "")}
+                </span>
+              ))}
+            </div>
+          )}
 
           <div className={styles.modalRow}>
             <span className={styles.modalLabel}>{t("videos_modal_account")}</span>
@@ -109,6 +127,11 @@ function VideoCard({ video, onSelect }: { video: VideoFile; onSelect: () => void
         ? "rgba(239,68,68,0.6)"
         : "rgba(96,165,250,0.6)";
 
+  const svcColor =
+    video.source_service === "sportzavod" ? "rgba(34,197,94,0.55)" : "rgba(56,189,248,0.55)";
+  const svcBorder =
+    video.source_service === "sportzavod" ? "rgba(34,197,94,0.15)" : "rgba(56,189,248,0.15)";
+
   return (
     <div className={styles.card} onClick={onSelect} style={{ cursor: "pointer" }}>
       {/* Preview */}
@@ -129,24 +152,32 @@ function VideoCard({ video, onSelect }: { video: VideoFile; onSelect: () => void
         </span>
       </div>
 
-      {/* Info */}
+      {/* Info — Telegram-style */}
       <div className={styles.cardBody}>
-        <div className={styles.cardUsername}>{video.account_id}</div>
+        {/* Title */}
+        {video.title && <div className={styles.cardTitle}>{video.title}</div>}
+
+        {/* Caption / description */}
+        {(video.caption || video.description) && (
+          <div className={styles.cardDescription}>{video.caption || video.description}</div>
+        )}
+
+        {/* Hashtags */}
+        {video.hashtags && video.hashtags.length > 0 && (
+          <div className={styles.cardHashtags}>
+            {video.hashtags.map((tag) => (
+              <span key={tag} className={styles.cardHashtag}>
+                #{tag.replace(/^#/, "")}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Footer: account · time · service */}
         <div className={styles.cardMeta}>
+          <span className={styles.cardUsername}>{video.account_id}</span>
           <span className={styles.cardTime}>{formatTime(video.created_at, LOCALE_MAP[lang])}</span>
-          <span
-            className={styles.sourceBadge}
-            style={{
-              color:
-                video.source_service === "sportzavod"
-                  ? "rgba(34,197,94,0.55)"
-                  : "rgba(56,189,248,0.55)",
-              borderColor:
-                video.source_service === "sportzavod"
-                  ? "rgba(34,197,94,0.15)"
-                  : "rgba(56,189,248,0.15)",
-            }}
-          >
+          <span className={styles.sourceBadge} style={{ color: svcColor, borderColor: svcBorder }}>
             {video.source_service}
           </span>
         </div>
