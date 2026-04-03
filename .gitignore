@@ -3,3 +3,8 @@ dist/
 .env
 *.local
 .DS_Store
+
+# Claude Code internal files
+.claude/helpers/
+.claude/settings.json
+.mcp.json
