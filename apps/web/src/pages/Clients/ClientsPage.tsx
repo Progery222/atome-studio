@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useT } from "../../i18n";
+import { apiFetch } from "../../lib/api";
 import styles from "./ClientsPage.module.css";
 
 type Plan = "basic" | "pro" | "enterprise";
@@ -49,9 +50,10 @@ export function ClientsPage() {
   const fetchClients = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/clients");
-      const data = (await res.json()) as Client[];
-      setClients(data);
+      const res = await apiFetch("/api/clients");
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = (await res.json()) as unknown;
+      if (Array.isArray(data)) setClients(data as Client[]);
     } catch {
       // ignore
     } finally {
@@ -72,7 +74,7 @@ export function ClientsPage() {
     setSaving(true);
     setFormError("");
     try {
-      const res = await fetch("/api/clients", {
+      const res = await apiFetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
