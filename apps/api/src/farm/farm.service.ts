@@ -92,7 +92,8 @@ export class FarmService {
         username: sz.instagram,
         niche: sz.theme_name ?? sz.theme_key ?? "",
         content_sources: sz.project ? [sz.project] : [],
-        heygen_avatar_id: sz.has_avatar ? `sz-${sz.id}` : undefined,
+        // SportZavod uses a global HEYGEN_AVATAR_ID env fallback — all active accounts can generate
+        heygen_avatar_id: `sz-${sz.id}`,
         post_frequency_hours: 24,
         timezone: "UTC",
         health_score: 100,
