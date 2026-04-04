@@ -203,3 +203,4 @@ docker compose up    # вся инфраструктура
 - **SportZavod не имеет `GET /api/jobs/:id`** — `generation.service.ts:getJobFromService()` делает fallback на `GET /api/jobs` + поиск по `job_id` в списке
 - **`farm.ts:startGeneration()`** — обязательно передаёт `service` в теле POST `/api/generate` (без него запрос уходит в content-zavod по умолчанию)
 - **`farm.service.ts:getSportzavodAccounts()`** — маппит `has_avatar: bool` → `heygen_avatar_id: "sz-{id}" | undefined`; без этого все аккаунты считаются "без аватара" и `readyAccounts` пуст
+- **`SportZavod/agent/sheets_manager.py:_FILL_DOWN_COLS`** — включает `"HeyGen Avatar ID"` и `"HeyGen Voice ID"`, чтобы объединённые ячейки в Google Sheet заполнялись вниз по всем аккаунтам группы; без этого `has_avatar` возвращает `false` для аккаунтов кроме первого в группе
