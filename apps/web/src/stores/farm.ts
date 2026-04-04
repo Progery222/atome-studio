@@ -335,7 +335,7 @@ export const useFarmStore = create<FarmState>((set, get) => ({
   fetchSportzavodAccounts: async () => {
     set({ sportzavodAccountsLoading: true });
     try {
-      const res = await apiFetch("/api/sportzavod/accounts");
+      const res = await apiFetch("/api/sportzavod/accounts", { cache: "no-store" });
       if (!res.ok) throw new Error();
       const data = (await res.json()) as Account[];
       set({
@@ -508,7 +508,7 @@ export const useFarmStore = create<FarmState>((set, get) => ({
     try {
       const res = await apiFetch("/api/sportzavod/accounts/reload", { method: "POST" });
       if (!res.ok) return false;
-      await get().fetchAccounts();
+      await get().fetchSportzavodAccounts();
       return true;
     } catch {
       return false;
