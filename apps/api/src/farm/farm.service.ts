@@ -92,7 +92,7 @@ export class FarmService {
         username: sz.instagram,
         niche: sz.theme_name ?? sz.theme_key ?? "",
         content_sources: sz.project ? [sz.project] : [],
-        heygen_avatar_id: undefined,
+        heygen_avatar_id: sz.has_avatar ? `sz-${sz.id}` : undefined,
         post_frequency_hours: 24,
         timezone: "UTC",
         health_score: 100,

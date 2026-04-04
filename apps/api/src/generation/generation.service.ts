@@ -95,20 +95,32 @@ export class GenerationService {
     if (!service) {
       // Try both services if mapping is unknown (e.g. after restart)
       for (const svc of ["sportzavod", "contentzavod"] as const) {
-        const raw = await this.get<Record<string, unknown>>(
-          `${this.baseUrlFor(svc)}/api/jobs/${id}`
-        );
-        if (raw) {
+        const found = await this.getJobFromService(id, svc);
+        if (found) {
           this.jobServiceMap.set(id, svc);
-          return this.normalizeJob(raw, svc);
+          return found;
         }
       }
       return null;
     }
 
+    return this.getJobFromService(id, service);
+  }
+
+  /** Fetch single job — falls back to list scan if service has no GET /jobs/:id */
+  private async getJobFromService(
+    id: string,
+    service: "sportzavod" | "contentzavod"
+  ): Promise<GenerationJob | null> {
     const base = this.baseUrlFor(service);
     const raw = await this.get<Record<string, unknown>>(`${base}/api/jobs/${id}`);
-    return raw ? this.normalizeJob(raw, service) : null;
+    if (raw) return this.normalizeJob(raw, service);
+
+    // SportZavod has no GET /api/jobs/:id — scan the list instead
+    const list = await this.get<Record<string, unknown>[]>(`${base}/api/jobs`);
+    if (!list) return null;
+    const found = list.find((j) => String(j.job_id ?? j.id) === id);
+    return found ? this.normalizeJob(found, service) : null;
   }
 
   async getAllJobs(): Promise<GenerationJob[]> {

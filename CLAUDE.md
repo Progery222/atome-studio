@@ -200,3 +200,6 @@ docker compose up    # вся инфраструктура
   - `pending` → `running` (только что стартовал)
 - `contentzavod.adapter.ts` считает активными задачи со статусом `running` **или** `pending`
 - `farm.service.ts:reloadAccounts()` читает `data.loaded ?? data.reloaded` из SportZavod (SportZavod возвращает `{ loaded: N }`, не `reloaded`)
+- **SportZavod не имеет `GET /api/jobs/:id`** — `generation.service.ts:getJobFromService()` делает fallback на `GET /api/jobs` + поиск по `job_id` в списке
+- **`farm.ts:startGeneration()`** — обязательно передаёт `service` в теле POST `/api/generate` (без него запрос уходит в content-zavod по умолчанию)
+- **`farm.service.ts:getSportzavodAccounts()`** — маппит `has_avatar: bool` → `heygen_avatar_id: "sz-{id}" | undefined`; без этого все аккаунты считаются "без аватара" и `readyAccounts` пуст

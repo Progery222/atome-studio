@@ -521,6 +521,7 @@ export const useFarmStore = create<FarmState>((set, get) => ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          service: data.service,
           account_ids: data.account_ids,
           videos_per_account: data.videos_per_account,
           topic: data.topic,
