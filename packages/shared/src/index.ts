@@ -153,6 +153,7 @@ export interface GenerationJob {
   errors_count: number;
   created_at: string;
   results?: { account_id: string; video_url: string }[];
+  latest_log?: string;
 }
 
 // ─── SportZavod types ────────────────────────────────────────────────────────

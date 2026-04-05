@@ -4,7 +4,7 @@ const TOKEN_KEY = "atome_token";
  * Thin wrapper around fetch that automatically attaches
  * the JWT Bearer token from localStorage to every request.
  */
-export function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+export async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
   const token = localStorage.getItem(TOKEN_KEY);
 
   const headers: Record<string, string> = {
@@ -15,5 +15,18 @@ export function apiFetch(url: string, init?: RequestInit): Promise<Response> {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  return fetch(url, { ...init, headers });
+  const res = await fetch(url, { ...init, headers });
+
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const data = await res.json();
+      msg = data.message || data.error || msg;
+    } catch {
+      // not json
+    }
+    throw new Error(msg);
+  }
+
+  return res;
 }

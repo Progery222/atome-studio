@@ -89,11 +89,17 @@ export function PhoneDetailPage() {
       {canControl && (
         <div className={styles.actions}>
           {phone.status === "paused" ? (
-            <button className={styles.btnGreen} onClick={() => resumePhone(phone.phone_id)}>
+            <button
+              className={styles.btnGreen}
+              onClick={() => resumePhone(phone.phone_id).catch((e) => alert(e.message))}
+            >
               {t("phones_resume")}
             </button>
           ) : (
-            <button className={styles.btnAmber} onClick={() => pausePhone(phone.phone_id)}>
+            <button
+              className={styles.btnAmber}
+              onClick={() => pausePhone(phone.phone_id).catch((e) => alert(e.message))}
+            >
               {t("phones_pause")}
             </button>
           )}

@@ -316,7 +316,8 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       const res = await apiFetch("/api/phones");
       const phones = (await res.json()) as Phone[];
       set({ phones, phonesLoading: false });
-    } catch {
+    } catch (e) {
+      console.warn("fetchPhones failed", e);
       set({ phonesLoading: false });
     }
   },
@@ -327,7 +328,8 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       const res = await apiFetch("/api/accounts");
       const accounts = (await res.json()) as Account[];
       set({ accounts, accountsLoading: false });
-    } catch {
+    } catch (e) {
+      console.warn("fetchAccounts failed", e);
       set({ accountsLoading: false });
     }
   },
@@ -336,14 +338,15 @@ export const useFarmStore = create<FarmState>((set, get) => ({
     set({ sportzavodAccountsLoading: true });
     try {
       const res = await apiFetch("/api/sportzavod/accounts", { cache: "no-store" });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as Account[];
       set({
-        sportzavodAccounts: data.length > 0 ? data : MOCK_SZ_ACCOUNTS,
+        sportzavodAccounts: data,
         sportzavodAccountsLoading: false,
       });
-    } catch {
-      set({ sportzavodAccounts: MOCK_SZ_ACCOUNTS, sportzavodAccountsLoading: false });
+    } catch (e) {
+      console.warn("fetchSportzavodAccounts failed:", e);
+      set({ sportzavodAccountsLoading: false });
     }
   },
 
@@ -351,14 +354,15 @@ export const useFarmStore = create<FarmState>((set, get) => ({
     set({ sportzavodThemesLoading: true });
     try {
       const res = await apiFetch("/api/sportzavod/themes");
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as SportZavodTheme[];
       set({
-        sportzavodThemes: data.length > 0 ? data : MOCK_SZ_THEMES,
+        sportzavodThemes: data,
         sportzavodThemesLoading: false,
       });
-    } catch {
-      set({ sportzavodThemes: MOCK_SZ_THEMES, sportzavodThemesLoading: false });
+    } catch (e) {
+      console.warn("fetchSportzavodThemes failed:", e);
+      set({ sportzavodThemesLoading: false });
     }
   },
 
@@ -368,7 +372,8 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       const res = await apiFetch("/api/queue");
       const queue = (await res.json()) as QueueTask[];
       set({ queue, queueLoading: false });
-    } catch {
+    } catch (e) {
+      console.warn("fetchQueue failed", e);
       set({ queueLoading: false });
     }
   },
@@ -456,7 +461,8 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       const res = await apiFetch("/api/videos");
       const videos = (await res.json()) as VideoFile[];
       set({ videos, videosLoading: false });
-    } catch {
+    } catch (e) {
+      console.warn("fetchVideos failed", e);
       set({ videosLoading: false });
     }
   },
@@ -472,104 +478,74 @@ export const useFarmStore = create<FarmState>((set, get) => ({
   },
 
   createAccount: async (data) => {
-    try {
-      const res = await apiFetch("/api/accounts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const account = (await res.json()) as Account;
-      set((s) => ({ accounts: [...s.accounts, account] }));
-      return account;
-    } catch {
-      return null;
-    }
+    const res = await apiFetch("/api/accounts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const account = (await res.json()) as Account;
+    set((s) => ({ accounts: [...s.accounts, account] }));
+    return account;
   },
 
   updateAccount: async (id, data) => {
-    try {
-      const res = await apiFetch(`/api/accounts/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) return null;
-      const account = (await res.json()) as Account;
-      set((s) => ({
-        accounts: s.accounts.map((a) => (a.account_id === id ? account : a)),
-      }));
-      return account;
-    } catch {
-      return null;
-    }
+    const res = await apiFetch(`/api/accounts/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const account = (await res.json()) as Account;
+    set((s) => ({
+      accounts: s.accounts.map((a) => (a.account_id === id ? account : a)),
+    }));
+    return account;
   },
 
   reloadFromSheets: async () => {
-    try {
-      const res = await apiFetch("/api/sportzavod/accounts/reload", { method: "POST" });
-      if (!res.ok) return false;
-      await get().fetchSportzavodAccounts();
-      return true;
-    } catch {
-      return false;
-    }
+    await apiFetch("/api/sportzavod/accounts/reload", { method: "POST" });
+    await get().fetchSportzavodAccounts();
+    return true;
   },
 
   startGeneration: async (data) => {
-    try {
-      const res = await apiFetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          service: data.service,
-          account_ids: data.account_ids,
-          videos_per_account: data.videos_per_account,
-          topic: data.topic,
-        }),
-      });
-      const job = (await res.json()) as GenerationJob;
-      set((s) => ({ activeJobs: [...s.activeJobs, job] }));
-      return job;
-    } catch {
-      return null;
-    }
+    const res = await apiFetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        service: data.service,
+        account_ids: data.account_ids,
+        videos_per_account: data.videos_per_account,
+        topic: data.topic,
+      }),
+    });
+    const job = (await res.json()) as GenerationJob;
+    set((s) => ({ activeJobs: [...s.activeJobs, job] }));
+    return job;
   },
 
   startAutoGeneration: async (accountIds) => {
-    try {
-      const body: Record<string, unknown> = { videos_per_account: 1 };
-      if (accountIds?.length) body.account_ids = accountIds;
-      const res = await apiFetch("/api/generate/auto", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const job = (await res.json()) as GenerationJob;
-      set((s) => ({ activeJobs: [...s.activeJobs, job] }));
-      return job;
-    } catch {
-      return null;
-    }
+    const body: Record<string, unknown> = { videos_per_account: 1 };
+    if (accountIds?.length) body.account_ids = accountIds;
+    const res = await apiFetch("/api/generate/auto", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const job = (await res.json()) as GenerationJob;
+    set((s) => ({ activeJobs: [...s.activeJobs, job] }));
+    return job;
   },
 
   stopJob: async (jobId) => {
-    try {
-      await apiFetch(`/api/jobs/${jobId}/stop`, { method: "POST" });
-      await get().fetchJobs();
-    } catch {
-      // silently ignore
-    }
+    await apiFetch(`/api/jobs/${jobId}/stop`, { method: "POST" });
+    await get().fetchJobs();
   },
 
   stopAllJobs: async () => {
-    try {
-      const res = await apiFetch("/api/jobs/stop-all", { method: "POST" });
-      const data = (await res.json()) as { stopped_count: number };
-      await get().fetchJobs();
-      return data.stopped_count;
-    } catch {
-      return 0;
-    }
+    const res = await apiFetch("/api/jobs/stop-all", { method: "POST" });
+    const data = (await res.json()) as { stopped_count: number };
+    await get().fetchJobs();
+    return data.stopped_count;
   },
 
   connectWs: () => {

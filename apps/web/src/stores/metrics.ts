@@ -1,5 +1,6 @@
 import type { HeroKPI } from "@atome/shared";
 import { create } from "zustand";
+import { apiFetch } from "../lib/api";
 
 const EMPTY_KPI: HeroKPI = {
   videos_today: 0,
@@ -29,13 +30,13 @@ export const useMetricsStore = create<MetricsState>((set) => ({
   fetchKPIs: async () => {
     set({ loading: true });
     try {
-      const res = await fetch("/api/services/kpis");
+      const res = await apiFetch("/api/services/kpis");
       if (res.ok) {
         const data: HeroKPI = await res.json();
         set({ kpis: data });
       }
-    } catch {
-      // keep existing values
+    } catch (e) {
+      console.warn("Failed to fetch KPIs", e);
     } finally {
       set({ loading: false });
     }

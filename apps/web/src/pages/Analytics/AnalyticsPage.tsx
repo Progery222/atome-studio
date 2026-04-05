@@ -14,9 +14,13 @@ const PERIOD_LABELS: Record<Period, string> = {
 };
 
 async function fetchHistory(period: Period): Promise<MetricsHistoryResponse> {
-  const res = await apiFetch(`/api/metrics/history?period=${period}&resolution=1h`);
-  if (!res.ok) return { period, resolution: "1h", points: [] };
-  return res.json();
+  try {
+    const res = await apiFetch(`/api/metrics/history?period=${period}&resolution=1h`);
+    return await res.json();
+  } catch (e: any) {
+    console.warn("fetchHistory failed:", e);
+    return { period, resolution: "1h", points: [] };
+  }
 }
 
 export function AnalyticsPage() {

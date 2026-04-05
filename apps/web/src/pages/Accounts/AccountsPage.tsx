@@ -86,9 +86,14 @@ export function AccountsPage() {
               onClick={async () => {
                 setImporting(true);
                 setImportResult(null);
-                const ok = await reloadFromSheets();
+                try {
+                  const ok = await reloadFromSheets();
+                  setImportResult(ok ? "ok" : "err");
+                } catch (e: any) {
+                  setImportResult("err");
+                  alert(e.message || "Failed to reload");
+                }
                 setImporting(false);
-                setImportResult(ok ? "ok" : "err");
                 setTimeout(() => setImportResult(null), 3000);
               }}
             >

@@ -67,7 +67,7 @@ function ProgressScreen({ job, onBack }: { job: GenerationJob; onBack: () => voi
         <div className={styles.headerActions}>
           <button
             className={styles.btnDanger}
-            onClick={() => stopJob(liveJob.job_id)}
+            onClick={() => stopJob(liveJob.job_id).catch((e) => alert(e.message))}
             disabled={liveJob.status !== "running"}
           >
             {t("gen_stop_btn")}
@@ -123,6 +123,27 @@ function ProgressScreen({ job, onBack }: { job: GenerationJob; onBack: () => voi
             </div>
           )}
         </div>
+        {liveJob.latest_log && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: 12,
+              background: "rgba(0,0,0,0.2)",
+              borderRadius: 8,
+              fontSize: "0.9rem",
+              color: "#cbd5e1",
+              lineHeight: "1.4",
+            }}
+          >
+            {liveJob.latest_log.split("\n").map((line, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: log lines have no stable key
+              <span key={i}>
+                {line}
+                <br />
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Accounts in job ── */}
@@ -197,6 +218,7 @@ export function GeneratePage() {
   const [searchResults, setSearchResults] = useState<Account[] | null>(null);
   const [accountInput, setAccountInput] = useState("");
   const [accountError, setAccountError] = useState("");
+  const [launchError, setLaunchError] = useState("");
   const nicheRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -234,8 +256,12 @@ export function GeneratePage() {
   const withoutAvatar = activeAccounts.length - withAvatar;
 
   const toggleAll = () => {
-    if (selectedIds.size === visibleAccounts.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(visibleAccounts.map((a) => a.account_id)));
+    const validVisible = visibleAccounts.filter((a) => a.heygen_avatar_id);
+    if (selectedIds.size === validVisible.length && validVisible.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(validVisible.map((a) => a.account_id)));
+    }
   };
 
   const toggleAccount = (id: string) => {
@@ -318,35 +344,49 @@ export function GeneratePage() {
     if (service === "contentzavod" && !topic.trim()) return;
     if (service === "sportzavod" && selectedIds.size === 0) return;
     setLaunching(true);
-    const job = await startGeneration({
-      service,
-      account_ids:
-        service === "contentzavod" && selectedIds.size === 0 ? ["default"] : [...selectedIds],
-      videos_per_account: videosPerAcc,
-      topic: service === "contentzavod" ? topic : undefined,
-    });
-    setLaunching(false);
-    if (job) {
+    setLaunchError("");
+    try {
+      const job = await startGeneration({
+        service,
+        account_ids:
+          service === "contentzavod" && selectedIds.size === 0 ? ["default"] : [...selectedIds],
+        videos_per_account: videosPerAcc,
+        topic: service === "contentzavod" ? topic : undefined,
+      });
       setViewingJob(job);
       setShowConfirm(false);
+    } catch (e: any) {
+      setLaunchError(e.message || t("gen_status_error"));
+    } finally {
+      setLaunching(false);
     }
   };
 
   const handleAutoMode = async () => {
     setLaunching(true);
-    const job = await startAutoGeneration(selectedIds.size > 0 ? [...selectedIds] : undefined);
-    setLaunching(false);
-    if (job) setViewingJob(job);
+    try {
+      const job = await startAutoGeneration(selectedIds.size > 0 ? [...selectedIds] : undefined);
+      if (job) setViewingJob(job);
+    } catch (e: any) {
+      alert(e.message || "Failed to start auto generation");
+    } finally {
+      setLaunching(false);
+    }
   };
 
   const handleReload = async () => {
     setReloading(true);
-    await reloadFromSheets();
-    if (service === "sportzavod") {
-      await fetchSportzavodAccounts();
-      await fetchSportzavodThemes();
+    try {
+      await reloadFromSheets();
+      if (service === "sportzavod") {
+        await fetchSportzavodAccounts();
+        await fetchSportzavodThemes();
+      }
+    } catch (e: any) {
+      alert(e.message || "Failed to reload accounts");
+    } finally {
+      setReloading(false);
     }
-    setReloading(false);
   };
 
   // ── Progress screen ──
@@ -393,6 +433,11 @@ export function GeneratePage() {
               <span className={styles.confirmCellBig}>{total}</span>
             </div>
           </div>
+          {launchError && (
+            <div className={styles.errorText} style={{ textAlign: "center", marginBottom: "16px" }}>
+              {launchError}
+            </div>
+          )}
           <div className={styles.confirmActions}>
             <button className={styles.launchBtn} onClick={handleLaunch} disabled={launching}>
               {launching ? t("gen_launching") : t("generate_run")}
@@ -743,6 +788,7 @@ export function GeneratePage() {
                       type="checkbox"
                       checked={selectedIds.has(acc.account_id)}
                       onChange={() => toggleAccount(acc.account_id)}
+                      disabled={!acc.heygen_avatar_id}
                       className={styles.checkbox}
                     />
                     <span
@@ -794,7 +840,10 @@ export function GeneratePage() {
             <div className={styles.cardTitleRow}>
               <div className={styles.cardTitle}>{t("gen_jobs_title")}</div>
               {runningJobs.length > 1 && (
-                <button className={styles.btnDangerSmall} onClick={() => stopAllJobs()}>
+                <button
+                  className={styles.btnDangerSmall}
+                  onClick={() => stopAllJobs().catch((e) => alert(e.message))}
+                >
                   {t("gen_stop_all")}
                 </button>
               )}

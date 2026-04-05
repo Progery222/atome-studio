@@ -99,15 +99,16 @@ export function AccountDetailPage() {
     if (!draft || !id) return;
     setSaving(true);
     setSaveError("");
-    const result = await updateAccount(id, draft);
-    setSaving(false);
-    if (result) {
+    try {
+      await updateAccount(id, draft);
       setSaved(true);
       setIsEditing(false);
       setDraft(null);
       setTimeout(() => setSaved(false), 3000);
-    } else {
-      setSaveError(t("acc_save_err"));
+    } catch (e: any) {
+      setSaveError(e.message || t("acc_save_err"));
+    } finally {
+      setSaving(false);
     }
   };
 

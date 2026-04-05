@@ -33,20 +33,19 @@ export function CreateAccountModal({ phones, onClose }: Props) {
     setLoading(true);
     setError("");
 
-    const result = await createAccount({
-      username: username.trim(),
-      niche: niche.trim(),
-      phone_id: phoneId,
-      post_frequency_hours: Number(freq),
-      platform: "tiktok",
-    });
-
-    setLoading(false);
-
-    if (!result) {
-      setError(t("modal_err_offline"));
-    } else {
+    try {
+      await createAccount({
+        username: username.trim(),
+        niche: niche.trim(),
+        phone_id: phoneId,
+        post_frequency_hours: Number(freq),
+        platform: "tiktok",
+      });
       onClose();
+    } catch (err: any) {
+      setError(err.message || t("modal_err_offline"));
+    } finally {
+      setLoading(false);
     }
   };
 

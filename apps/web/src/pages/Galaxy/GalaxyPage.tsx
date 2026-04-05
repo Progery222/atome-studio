@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ActivityFeed } from "../../components/ActivityFeed";
 import { AtomicCanvas, type AtomicCanvasHandle } from "../../components/AtomicCanvas/AtomicCanvas";
@@ -46,9 +46,15 @@ export function GalaxyPage() {
   const [panelExiting, setPanelExiting] = useState(false);
   const exitTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  const focusedPlanet = selectedId
-    ? (getGalaxyServices().find((s) => s.id === selectedId) ?? null)
-    : null;
+  // Memoize by selectedId — getGalaxyServices().find() creates a new reference every render
+  const focusedPlanet = useMemo(
+    () => (selectedId ? (getGalaxyServices().find((s) => s.id === selectedId) ?? null) : null),
+    [selectedId]
+  );
+
+  // Ref to read visiblePlanet inside effects without adding it to deps
+  const visiblePlanetRef = useRef<GalaxyService | null>(null);
+  visiblePlanetRef.current = visiblePlanet;
 
   // Track camera settled state
   const rafRef = useRef(0);
@@ -71,19 +77,20 @@ export function GalaxyPage() {
     return () => cancelAnimationFrame(rafRef.current);
   }, [selectedId, trackSettled]);
 
-  // Manage enter/exit transitions
+  // Manage enter/exit transitions — visiblePlanet read via ref to avoid circular dep
   useEffect(() => {
+    const prev = visiblePlanetRef.current;
     if (focusedPlanet && settled) {
       clearTimeout(exitTimer.current);
       setPanelExiting(false);
       setVisiblePlanet(focusedPlanet);
-    } else if (visiblePlanet && !focusedPlanet) {
+    } else if (prev && !focusedPlanet) {
       setPanelExiting(true);
       exitTimer.current = setTimeout(() => {
         setVisiblePlanet(null);
         setPanelExiting(false);
       }, EXIT_DURATION);
-    } else if (visiblePlanet && focusedPlanet && visiblePlanet.id !== focusedPlanet.id) {
+    } else if (prev && focusedPlanet && prev.id !== focusedPlanet.id) {
       setPanelExiting(true);
       exitTimer.current = setTimeout(() => {
         setPanelExiting(false);
@@ -91,7 +98,7 @@ export function GalaxyPage() {
       }, EXIT_DURATION);
     }
     return () => clearTimeout(exitTimer.current);
-  }, [focusedPlanet, settled, visiblePlanet?.id, visiblePlanet]);
+  }, [focusedPlanet, settled]);
 
   // Show new planet after exit finishes
   useEffect(() => {

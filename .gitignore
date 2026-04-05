@@ -8,3 +8,5 @@ dist/
 .claude/helpers/
 .claude/settings.json
 .mcp.json
+.claude-flow/
+dashboard_analysis_report.md
