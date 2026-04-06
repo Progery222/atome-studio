@@ -13,6 +13,8 @@ import { Injectable, Logger } from "@nestjs/common";
 export class VideosService {
   private readonly logger = new Logger(VideosService.name);
   private readonly minioUrl = process.env.MINIO_URL ?? "http://localhost:9000";
+  private readonly minioPublicUrl =
+    process.env.MINIO_PUBLIC_URL ?? process.env.MINIO_URL ?? "http://localhost:9000";
   private readonly bucket = process.env.MINIO_BUCKET ?? "atome-videos";
 
   async getVideos(): Promise<VideoFile[]> {
@@ -64,7 +66,7 @@ export class VideosService {
         account_id: this.inferAccountId(key),
         tenant_id: this.inferTenantId(key),
         source_service: service,
-        url: `${this.minioUrl}/${this.bucket}/${encodeURIComponent(key)}`,
+        url: `${this.minioPublicUrl}/${this.bucket}/${this.encodeKey(key)}`,
         thumbnail_url: "",
         size_bytes: parseInt(sizeStr, 10) || 0,
         created_at: lastMod,
@@ -89,7 +91,7 @@ export class VideosService {
 
       tasks.push(async () => {
         try {
-          const jsonUrl = `${this.minioUrl}/${this.bucket}/${encodeURIComponent(jsonKey)}`;
+          const jsonUrl = `${this.minioUrl}/${this.bucket}/${this.encodeKey(jsonKey)}`;
           const res = await fetch(jsonUrl, { signal: AbortSignal.timeout(3000) });
           if (!res.ok) return;
           const data = (await res.json()) as Record<string, unknown>;
@@ -146,6 +148,10 @@ export class VideosService {
 
   private strArr(v: unknown): string[] | undefined {
     return Array.isArray(v) && v.length > 0 ? (v as string[]) : undefined;
+  }
+
+  private encodeKey(key: string): string {
+    return key.split("/").map(encodeURIComponent).join("/");
   }
 
   private extractTag(block: string, tag: string): string | null {
