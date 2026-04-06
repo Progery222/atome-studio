@@ -4,6 +4,7 @@ import { useT } from "../../i18n";
 import { useAuthStore } from "../../stores/auth";
 import { useFarmStore } from "../../stores/farm";
 import { type Lang, useLangStore } from "../../stores/lang";
+import { useMetricsStore } from "../../stores/metrics";
 import styles from "./Layout.module.css";
 
 const LANGS: { code: Lang; label: string }[] = [
@@ -18,6 +19,10 @@ export function Layout() {
   const lang = useLangStore((s) => s.lang);
   const setLang = useLangStore((s) => s.setLang);
   const role = useAuthStore((s) => s.role);
+
+  const demoMode = useMetricsStore((s) => s.demoMode);
+  const enableDemo = useMetricsStore((s) => s.enableDemo);
+  const disableDemo = useMetricsStore((s) => s.disableDemo);
 
   const phones = useFarmStore((s) => s.phones);
   const queue = useFarmStore((s) => s.queue);
@@ -98,6 +103,14 @@ export function Layout() {
         </div>
 
         <div className={styles.spacer} />
+
+        {/* Demo mode toggle */}
+        <button
+          className={`${styles.demoBtn} ${demoMode ? styles.demoBtnActive : ""}`}
+          onClick={() => (demoMode ? disableDemo() : enableDemo())}
+        >
+          {demoMode ? "✕ DEMO" : "DEMO"}
+        </button>
 
         {/* Language switcher */}
         <div className={styles.langSwitcher}>

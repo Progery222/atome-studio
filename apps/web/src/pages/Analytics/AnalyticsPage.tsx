@@ -23,9 +23,34 @@ async function fetchHistory(period: Period): Promise<MetricsHistoryResponse> {
   }
 }
 
+function generateDemoHistory(period: Period): MetricsHistoryPoint[] {
+  const days = period === "7d" ? 7 : period === "14d" ? 14 : 30;
+  const now = Date.now();
+  const points: MetricsHistoryPoint[] = [];
+  for (let i = days; i >= 0; i--) {
+    const ts = now - i * 86_400_000;
+    const dow = new Date(ts).getDay();
+    const isWeekend = dow === 0 || dow === 6;
+    const progress = (days - i) / days;
+    const r = (d: number) => (Math.random() - 0.5) * 2 * d;
+    const videos = Math.max(0, Math.round(18 + progress * 32 + (isWeekend ? -4 : 0) + r(5)));
+    const costPer = 0.28 + progress * 0.07 + r(0.03);
+    points.push({
+      ts,
+      videos,
+      revenue: +(videos * 1.25 + r(3)).toFixed(2),
+      cost: +(videos * costPer + r(1)).toFixed(2),
+      accounts_active: Math.max(1, Math.round(14 + progress * 9 + r(2))),
+      jobs_completed: Math.max(0, Math.round(2 + progress * 6 + r(2))),
+    });
+  }
+  return points;
+}
+
 export function AnalyticsPage() {
   const kpis = useMetricsStore((s) => s.kpis);
   const fetchKPIs = useMetricsStore((s) => s.fetchKPIs);
+  const demoMode = useMetricsStore((s) => s.demoMode);
 
   const [period, setPeriod] = useState<Period>("30d");
   const [history, setHistory] = useState<MetricsHistoryPoint[]>([]);
@@ -35,8 +60,12 @@ export function AnalyticsPage() {
   }, [fetchKPIs]);
 
   useEffect(() => {
-    fetchHistory(period).then((r) => setHistory(r.points));
-  }, [period]);
+    if (demoMode) {
+      setHistory(generateDemoHistory(period));
+    } else {
+      fetchHistory(period).then((r) => setHistory(r.points));
+    }
+  }, [period, demoMode]);
 
   const labels = history.map((p) =>
     new Date(p.ts).toLocaleDateString("en", { month: "short", day: "numeric" })
