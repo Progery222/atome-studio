@@ -74,7 +74,7 @@ function VideoModal({ video, onClose }: { video: VideoFile; onClose: () => void 
             <div className={styles.modalDescription}>{video.caption || video.description}</div>
           )}
 
-          {video.hashtags && video.hashtags.length > 0 && (
+          {video.source_service !== "sportzavod" && video.hashtags && video.hashtags.length > 0 && (
             <div className={styles.cardHashtags} style={{ marginBottom: 12 }}>
               {video.hashtags.map((tag) => (
                 <span key={tag} className={styles.cardHashtag}>
@@ -155,8 +155,12 @@ function VideoCard({ video, onSelect }: { video: VideoFile; onSelect: () => void
         {/* Title */}
         {video.title && <div className={styles.cardTitle}>{video.title}</div>}
 
-        {/* Description */}
-        {video.description && <div className={styles.cardDescription}>{video.description}</div>}
+        {/* Description — for sportzavod use full caption (matches Telegram), else description */}
+        {(video.source_service === "sportzavod" ? video.caption : video.description) && (
+          <div className={styles.cardDescription}>
+            {video.source_service === "sportzavod" ? video.caption : video.description}
+          </div>
+        )}
 
         {/* Hashtags */}
         {video.hashtags && video.hashtags.length > 0 && (

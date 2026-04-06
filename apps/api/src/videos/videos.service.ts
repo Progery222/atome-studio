@@ -136,9 +136,6 @@ export class VideosService {
       video.title = this.str(script.title);
       video.description = this.str(script.description);
       video.hashtags = this.strArr(script.tags);
-      if (data.user_query) {
-        video.caption = this.str(data.user_query);
-      }
     }
   }
 
