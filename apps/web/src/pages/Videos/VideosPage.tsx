@@ -139,9 +139,7 @@ function VideoCard({ video, onSelect }: { video: VideoFile; onSelect: () => void
         {video.thumbnail_url ? (
           <img src={video.thumbnail_url} alt={video.filename} className={styles.thumb} />
         ) : (
-          <div className={styles.thumbPlaceholder}>
-            <span className={styles.thumbIcon}>▶</span>
-          </div>
+          <video src={video.url} className={styles.thumb} preload="metadata" muted playsInline />
         )}
         <div className={styles.playOverlay}>▶</div>
         <span
@@ -157,10 +155,8 @@ function VideoCard({ video, onSelect }: { video: VideoFile; onSelect: () => void
         {/* Title */}
         {video.title && <div className={styles.cardTitle}>{video.title}</div>}
 
-        {/* Caption / description */}
-        {(video.caption || video.description) && (
-          <div className={styles.cardDescription}>{video.caption || video.description}</div>
-        )}
+        {/* Description */}
+        {video.description && <div className={styles.cardDescription}>{video.description}</div>}
 
         {/* Hashtags */}
         {video.hashtags && video.hashtags.length > 0 && (
