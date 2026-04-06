@@ -151,8 +151,13 @@ export class GenerationService {
   }
 
   async stopJob(id: string): Promise<{ ok: boolean }> {
-    const service = this.jobServiceMap.get(id);
-    if (!service) return { ok: false };
+    let service = this.jobServiceMap.get(id);
+    if (!service) {
+      // Map may be empty after API restart — resolve via getJob lookup
+      await this.getJob(id);
+      service = this.jobServiceMap.get(id);
+      if (!service) return { ok: false };
+    }
 
     const base = this.baseUrlFor(service);
     const result = await this.post(`${base}/api/jobs/${id}/stop`, {});
