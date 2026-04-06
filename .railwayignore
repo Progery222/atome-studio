@@ -1,0 +1,10 @@
+SportZavod/
+content-zavod/
+galaxy/
+files/
+node_modules/
+apps/web/node_modules/
+apps/api/node_modules/
+*.local
+.DS_Store
+.env

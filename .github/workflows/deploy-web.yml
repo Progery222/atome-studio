@@ -1,0 +1,39 @@
+name: Deploy Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/shared/**"
+      - ".railwayignore"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Swap railway.toml to web Dockerfile
+        run: |
+          cat > railway.toml << 'EOF'
+          [build]
+          builder = "DOCKERFILE"
+          dockerfilePath = "apps/web/Dockerfile"
+
+          [deploy]
+          restartPolicyType = "ON_FAILURE"
+          restartPolicyMaxRetries = 10
+          EOF
+
+      - name: Deploy Web to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up \
+            --service 7e15772c-9831-4566-bbd6-2c6803da4357 \
+            --environment production \
+            --detach
