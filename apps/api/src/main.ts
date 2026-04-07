@@ -1,7 +1,12 @@
 import "reflect-metadata";
+import dns from "node:dns";
 import * as dotenv from "dotenv";
 
 dotenv.config();
+
+// Railway меняет IP при каждом деплое.
+// ipv4first — Railway иногда возвращает IPv6 адреса которые не работают внутри сети.
+dns.setDefaultResultOrder("ipv4first");
 
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
