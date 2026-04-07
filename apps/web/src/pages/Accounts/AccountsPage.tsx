@@ -169,54 +169,56 @@ export function AccountsPage() {
           {accounts.length === 0 ? t("accounts_empty") : t("accounts_empty_filter")}
         </div>
       ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              {[
-                "Username",
-                t("accounts_col_niche"),
-                t("accounts_col_status"),
-                "Health",
-                t("accounts_col_posts_today"),
-                t("accounts_col_posts_total"),
-                t("accounts_col_phone"),
-              ].map((h) => (
-                <th key={h} className={styles.th}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((acc) => (
-              <tr
-                key={acc.account_id}
-                className={styles.tr}
-                onClick={() => navigate(`/accounts/${acc.account_id}`)}
-              >
-                <td className={styles.td}>
-                  <span className={styles.username}>{acc.username}</span>
-                </td>
-                <td className={styles.td}>
-                  <span className={styles.niche}>{acc.niche}</span>
-                </td>
-                <td className={styles.td}>
-                  <span
-                    className={styles.statusDot}
-                    style={{ background: STATUS_COLOR[acc.status] }}
-                  />
-                  {acc.status}
-                </td>
-                <td className={styles.td}>{acc.health_score}%</td>
-                <td className={styles.td}>{acc.stats?.posts_today ?? 0}</td>
-                <td className={styles.td}>{acc.stats?.posts_total ?? 0}</td>
-                <td className={styles.td} style={{ color: "rgba(55,115,195,0.5)" }}>
-                  {acc.phone_id || "—"}
-                </td>
+        <div className={styles.tableWrapper}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                {[
+                  "Username",
+                  t("accounts_col_niche"),
+                  t("accounts_col_status"),
+                  "Health",
+                  t("accounts_col_posts_today"),
+                  t("accounts_col_posts_total"),
+                  t("accounts_col_phone"),
+                ].map((h) => (
+                  <th key={h} className={styles.th}>
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((acc) => (
+                <tr
+                  key={acc.account_id}
+                  className={styles.tr}
+                  onClick={() => navigate(`/accounts/${acc.account_id}`)}
+                >
+                  <td className={styles.td}>
+                    <span className={styles.username}>{acc.username}</span>
+                  </td>
+                  <td className={styles.td}>
+                    <span className={styles.niche}>{acc.niche}</span>
+                  </td>
+                  <td className={styles.td}>
+                    <span
+                      className={styles.statusDot}
+                      style={{ background: STATUS_COLOR[acc.status] }}
+                    />
+                    {acc.status}
+                  </td>
+                  <td className={styles.td}>{acc.health_score}%</td>
+                  <td className={styles.td}>{acc.stats?.posts_today ?? 0}</td>
+                  <td className={styles.td}>{acc.stats?.posts_total ?? 0}</td>
+                  <td className={styles.td} style={{ color: "rgba(55,115,195,0.5)" }}>
+                    {acc.phone_id || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {showModal && <CreateAccountModal phones={phones} onClose={() => setShowModal(false)} />}

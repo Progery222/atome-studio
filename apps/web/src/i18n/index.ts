@@ -326,6 +326,19 @@ const T = {
     galaxy_demo_stop_title: "Остановить презентацию",
     galaxy_demo_start_title: "Запустить презентацию",
     galaxy_demo_stop: "Стоп",
+
+    // Performance analytics
+    analytics_performance: "Эффективность",
+    analytics_total_views: "Всего просмотров",
+    analytics_avg_views: "Просм./видео",
+    analytics_link_clicks: "Переходы",
+    analytics_conversion: "Конверсия",
+    analytics_views_clicks: "Просмотры и переходы",
+    analytics_top_accounts: "Топ аккаунтов",
+    analytics_top_videos: "Топ видео",
+    analytics_traffic_sources: "Источники трафика",
+    analytics_conversion_funnel: "Конверсия по дням",
+    analytics_no_data: "Нет данных — включите Demo",
   },
 
   en: {
@@ -635,6 +648,18 @@ const T = {
     galaxy_demo_stop_title: "Stop presentation",
     galaxy_demo_start_title: "Start presentation",
     galaxy_demo_stop: "Stop",
+
+    analytics_performance: "Performance",
+    analytics_total_views: "Total Views",
+    analytics_avg_views: "Avg Views/Video",
+    analytics_link_clicks: "Link Clicks",
+    analytics_conversion: "Conversion",
+    analytics_views_clicks: "Views & Link Clicks",
+    analytics_top_accounts: "Top Accounts",
+    analytics_top_videos: "Top Videos",
+    analytics_traffic_sources: "Traffic Sources",
+    analytics_conversion_funnel: "Daily Conversion",
+    analytics_no_data: "No data — enable Demo",
   },
 
   zh: {
@@ -944,6 +969,18 @@ const T = {
     galaxy_demo_stop_title: "停止演示",
     galaxy_demo_start_title: "开始演示",
     galaxy_demo_stop: "停止",
+
+    analytics_performance: "效果分析",
+    analytics_total_views: "总观看量",
+    analytics_avg_views: "平均观看/视频",
+    analytics_link_clicks: "链接点击",
+    analytics_conversion: "转化率",
+    analytics_views_clicks: "观看与点击",
+    analytics_top_accounts: "热门账户",
+    analytics_top_videos: "热门视频",
+    analytics_traffic_sources: "流量来源",
+    analytics_conversion_funnel: "每日转化",
+    analytics_no_data: "无数据 — 启用Demo",
   },
 
   es: {
@@ -1253,6 +1290,18 @@ const T = {
     galaxy_demo_stop_title: "Detener presentación",
     galaxy_demo_start_title: "Iniciar presentación",
     galaxy_demo_stop: "Parar",
+
+    analytics_performance: "Rendimiento",
+    analytics_total_views: "Vistas totales",
+    analytics_avg_views: "Vistas/video",
+    analytics_link_clicks: "Clics en enlace",
+    analytics_conversion: "Conversión",
+    analytics_views_clicks: "Vistas y clics",
+    analytics_top_accounts: "Top cuentas",
+    analytics_top_videos: "Top videos",
+    analytics_traffic_sources: "Fuentes de tráfico",
+    analytics_conversion_funnel: "Conversión diaria",
+    analytics_no_data: "Sin datos — active Demo",
   },
 } satisfies Record<Lang, Record<string, string>>;
 

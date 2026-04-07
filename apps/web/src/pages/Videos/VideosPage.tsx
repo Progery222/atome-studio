@@ -155,11 +155,9 @@ function VideoCard({ video, onSelect }: { video: VideoFile; onSelect: () => void
         {/* Title */}
         {video.title && <div className={styles.cardTitle}>{video.title}</div>}
 
-        {/* Description — for sportzavod use full caption (matches Telegram), else description */}
-        {(video.source_service === "sportzavod" ? video.caption : video.description) && (
-          <div className={styles.cardDescription}>
-            {video.source_service === "sportzavod" ? video.caption : video.description}
-          </div>
+        {/* Description — full caption (matches Telegram) */}
+        {(video.caption || video.description) && (
+          <div className={styles.cardDescription}>{video.caption || video.description}</div>
         )}
 
         {/* Hashtags */}

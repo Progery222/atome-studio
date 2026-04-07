@@ -17,14 +17,18 @@ export class ServicesService implements OnModuleInit {
 
   @Cron(CronExpression.EVERY_30_SECONDS)
   async sync() {
-    this.logger.log("Syncing services and farm stats...");
-    const [services, farmStats] = await Promise.all([
-      this.mcp.fetchAllServices(),
-      this.mcp.fetchFarmStats(),
-    ]);
-    this.services = services;
-    this.farmStats = farmStats;
-    this.logger.log(`Loaded ${this.services.length} services`);
+    try {
+      this.logger.log("Syncing services and farm stats...");
+      const [services, farmStats] = await Promise.all([
+        this.mcp.fetchAllServices(),
+        this.mcp.fetchFarmStats(),
+      ]);
+      this.services = services;
+      this.farmStats = farmStats;
+      this.logger.log(`Loaded ${this.services.length} services`);
+    } catch (e) {
+      this.logger.error(`Sync failed: ${e}`);
+    }
   }
 
   getAll(): Service[] {

@@ -18,27 +18,30 @@ export class VideosService {
   private readonly bucket = process.env.MINIO_BUCKET ?? "atome-videos";
 
   async getVideos(): Promise<VideoFile[]> {
-    try {
-      const url = `${this.minioUrl}/${this.bucket}/?list-type=2`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const url = `${this.minioUrl}/${this.bucket}/?list-type=2`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
 
-      if (!res.ok) {
-        this.logger.warn(`MinIO returned ${res.status} for bucket ${this.bucket}`);
-        return [];
+        if (!res.ok) {
+          this.logger.warn(`MinIO returned ${res.status} for bucket ${this.bucket}`);
+          return [];
+        }
+
+        const xml = await res.text();
+        const { videos, jsonKeys } = this.parseXml(xml);
+        await this.enrichWithMeta(videos, jsonKeys);
+        return videos.filter((v) => v.filename.endsWith(".mp4"));
+      } catch {
+        if (attempt === 0) {
+          this.logger.warn("MinIO attempt 1 failed, retrying in 2s...");
+          await new Promise((r) => setTimeout(r, 2000));
+        } else {
+          this.logger.warn(`MinIO unavailable at ${this.minioUrl}`);
+        }
       }
-
-      const xml = await res.text();
-      const { videos, jsonKeys } = this.parseXml(xml);
-
-      // Enrich with companion JSON metadata in parallel
-      await this.enrichWithMeta(videos, jsonKeys);
-
-      // Only return .mp4 files
-      return videos.filter((v) => v.filename.endsWith(".mp4"));
-    } catch {
-      this.logger.warn(`MinIO unavailable at ${this.minioUrl}`);
-      return [];
     }
+    return [];
   }
 
   private parseXml(xml: string): { videos: VideoFile[]; jsonKeys: Set<string> } {
@@ -136,6 +139,14 @@ export class VideosService {
       video.title = this.str(script.title);
       video.description = this.str(script.description);
       video.hashtags = this.strArr(script.tags);
+
+      // Assemble full caption like Telegram: title + description + hashtags
+      const parts: string[] = [];
+      if (video.title) parts.push(video.title);
+      if (video.description) parts.push(video.description);
+      if (video.hashtags?.length)
+        parts.push(video.hashtags.map((t) => `#${t.replace(/^#/, "")}`).join(" "));
+      if (parts.length) video.caption = parts.join("\n\n");
     }
   }
 

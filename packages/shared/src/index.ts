@@ -260,6 +260,42 @@ export interface MetricsHistoryResponse {
   points: MetricsHistoryPoint[];
 }
 
+// ─── Performance analytics ──────────────────────────────────────────────────
+
+export interface AccountAnalytics {
+  account_id: string;
+  username: string;
+  platform: string;
+  total_views: number;
+  total_likes: number;
+  link_clicks: number;
+  avg_views_per_video: number;
+}
+
+export interface VideoAnalytics {
+  video_id: string;
+  title: string;
+  account_id: string;
+  views: number;
+  likes: number;
+  link_clicks: number;
+  completion_rate: number;
+  published_at: string;
+}
+
+export interface TrafficSource {
+  source: string;
+  views: number;
+  percentage: number;
+}
+
+export interface ConversionPoint {
+  ts: number;
+  views: number;
+  link_clicks: number;
+  conversion_rate: number;
+}
+
 // ─── Client (super_admin — Phase 5) ───────────────────────────────────────────
 
 export interface Client {

@@ -144,74 +144,83 @@ export function QueuePage() {
       {filtered.length === 0 && !queueLoading ? (
         <div className={styles.empty}>{t("queue_empty")}</div>
       ) : (
-        <div className={styles.list}>
-          {filtered.map((task) => (
-            <div
-              key={task.task_id}
-              className={`${styles.row} ${task.status === "in_progress" ? styles.rowActive : ""}`}
-            >
-              {/* Status dot */}
-              <span
-                className={styles.dot}
-                style={{
-                  background: STATUS_COLOR[task.status],
-                  boxShadow:
-                    task.status === "in_progress" ? `0 0 8px ${STATUS_COLOR[task.status]}` : "none",
-                }}
-              />
-
-              {/* Thumbnail (FR-12.1) */}
-              <div className={styles.thumb}>
-                {task.thumbnail_url ? (
-                  <img src={task.thumbnail_url} alt="" />
-                ) : (
-                  <span className={styles.thumbPlaceholder}>[vid]</span>
-                )}
-              </div>
-
-              {/* Account */}
-              <span className={styles.accountId}>{task.account_id}</span>
-
-              {/* Caption + hashtags (FR-12.2) */}
-              <div className={styles.captionBlock}>
-                {task.caption && (
-                  <div className={styles.captionText}>
-                    {task.caption.length > 80 ? `${task.caption.slice(0, 80)}…` : task.caption}
-                  </div>
-                )}
-                {task.hashtags && task.hashtags.length > 0 && (
-                  <div className={styles.hashtags}>
-                    {task.hashtags.map((h) => `#${h}`).join(" ")}
-                  </div>
-                )}
-                {!task.caption && (
-                  <span className={styles.statusText} style={{ color: STATUS_COLOR[task.status] }}>
-                    <Countdown task={task} />
-                  </span>
-                )}
-              </div>
-
-              {/* Scheduled time */}
-              <span className={styles.time}>{formatTime(task.scheduled_at, LOCALE_MAP[lang])}</span>
-
-              {/* Source badge */}
-              <span
-                className={styles.source}
-                style={{
-                  color:
-                    task.source_service === "sportzavod"
-                      ? "rgba(34,197,94,0.5)"
-                      : "rgba(56,189,248,0.5)",
-                  borderColor:
-                    task.source_service === "sportzavod"
-                      ? "rgba(34,197,94,0.15)"
-                      : "rgba(56,189,248,0.15)",
-                }}
+        <div className={styles.listWrapper}>
+          <div className={styles.list}>
+            {filtered.map((task) => (
+              <div
+                key={task.task_id}
+                className={`${styles.row} ${task.status === "in_progress" ? styles.rowActive : ""}`}
               >
-                {task.source_service}
-              </span>
-            </div>
-          ))}
+                {/* Status dot */}
+                <span
+                  className={styles.dot}
+                  style={{
+                    background: STATUS_COLOR[task.status],
+                    boxShadow:
+                      task.status === "in_progress"
+                        ? `0 0 8px ${STATUS_COLOR[task.status]}`
+                        : "none",
+                  }}
+                />
+
+                {/* Thumbnail (FR-12.1) */}
+                <div className={styles.thumb}>
+                  {task.thumbnail_url ? (
+                    <img src={task.thumbnail_url} alt="" />
+                  ) : (
+                    <span className={styles.thumbPlaceholder}>[vid]</span>
+                  )}
+                </div>
+
+                {/* Account */}
+                <span className={styles.accountId}>{task.account_id}</span>
+
+                {/* Caption + hashtags (FR-12.2) */}
+                <div className={styles.captionBlock}>
+                  {task.caption && (
+                    <div className={styles.captionText}>
+                      {task.caption.length > 80 ? `${task.caption.slice(0, 80)}…` : task.caption}
+                    </div>
+                  )}
+                  {task.hashtags && task.hashtags.length > 0 && (
+                    <div className={styles.hashtags}>
+                      {task.hashtags.map((h) => `#${h}`).join(" ")}
+                    </div>
+                  )}
+                  {!task.caption && (
+                    <span
+                      className={styles.statusText}
+                      style={{ color: STATUS_COLOR[task.status] }}
+                    >
+                      <Countdown task={task} />
+                    </span>
+                  )}
+                </div>
+
+                {/* Scheduled time */}
+                <span className={styles.time}>
+                  {formatTime(task.scheduled_at, LOCALE_MAP[lang])}
+                </span>
+
+                {/* Source badge */}
+                <span
+                  className={styles.source}
+                  style={{
+                    color:
+                      task.source_service === "sportzavod"
+                        ? "rgba(34,197,94,0.5)"
+                        : "rgba(56,189,248,0.5)",
+                    borderColor:
+                      task.source_service === "sportzavod"
+                        ? "rgba(34,197,94,0.15)"
+                        : "rgba(56,189,248,0.15)",
+                  }}
+                >
+                  {task.source_service}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

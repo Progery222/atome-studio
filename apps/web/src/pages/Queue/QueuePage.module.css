@@ -107,10 +107,15 @@
 
 /* ─── List ────────────────────────────────────────────────────────────────── */
 
+.listWrapper {
+  overflow-x: auto;
+}
+
 .list {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 600px;
 }
 
 .row {

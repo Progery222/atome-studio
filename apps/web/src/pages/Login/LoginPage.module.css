@@ -23,7 +23,8 @@
 /* ─── Card ─────────────────────────────────────────────────────────────────── */
 
 .card {
-  width: 400px;
+  width: 100%;
+  max-width: 400px;
   background: rgba(15, 15, 15, 0.7);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);

@@ -1,7 +1,10 @@
 import type { MetricsHistoryPoint, MetricsHistoryResponse } from "@atome/shared";
 import { useEffect, useState } from "react";
+import { Leaderboard } from "../../components/Leaderboard";
 import { type ChartSeries, MetricChart } from "../../components/MetricChart";
+import { useT } from "../../i18n";
 import { apiFetch } from "../../lib/api";
+import { useAnalyticsExtraStore } from "../../stores/analyticsExtra";
 import { useMetricsStore } from "../../stores/metrics";
 import styles from "./AnalyticsPage.module.css";
 
@@ -48,9 +51,17 @@ function generateDemoHistory(period: Period): MetricsHistoryPoint[] {
 }
 
 export function AnalyticsPage() {
+  const t = useT();
   const kpis = useMetricsStore((s) => s.kpis);
   const fetchKPIs = useMetricsStore((s) => s.fetchKPIs);
   const demoMode = useMetricsStore((s) => s.demoMode);
+
+  const perfKpis = useAnalyticsExtraStore((s) => s.kpis);
+  const accountStats = useAnalyticsExtraStore((s) => s.accountStats);
+  const topVideos = useAnalyticsExtraStore((s) => s.topVideos);
+  const trafficSources = useAnalyticsExtraStore((s) => s.trafficSources);
+  const conversionHistory = useAnalyticsExtraStore((s) => s.conversionHistory);
+  const generateDemo = useAnalyticsExtraStore((s) => s.generateDemo);
 
   const [period, setPeriod] = useState<Period>("30d");
   const [history, setHistory] = useState<MetricsHistoryPoint[]>([]);
@@ -62,10 +73,11 @@ export function AnalyticsPage() {
   useEffect(() => {
     if (demoMode) {
       setHistory(generateDemoHistory(period));
+      generateDemo(period);
     } else {
       fetchHistory(period).then((r) => setHistory(r.points));
     }
-  }, [period, demoMode]);
+  }, [period, demoMode, generateDemo]);
 
   const labels = history.map((p) =>
     new Date(p.ts).toLocaleDateString("en", { month: "short", day: "numeric" })
@@ -174,6 +186,154 @@ export function AnalyticsPage() {
           <MetricChart option={{ type: "line", series: jobsSeries, labels, height: 180 }} />
         </div>
       </div>
+
+      {/* ─── Performance Analytics ────────────────────────────────────────────── */}
+
+      <div className={styles.sectionDivider}>{t("analytics_performance")}</div>
+
+      <div className={styles.kpiRow}>
+        {[
+          { label: t("analytics_total_views"), value: perfKpis.total_views, fmt: fmtCompact },
+          { label: t("analytics_avg_views"), value: perfKpis.avg_views_per_video, fmt: fmtCompact },
+          { label: t("analytics_link_clicks"), value: perfKpis.total_link_clicks, fmt: fmtCompact },
+          {
+            label: t("analytics_conversion"),
+            value: perfKpis.conversion_rate,
+            fmt: (v: number) => `${v}%`,
+          },
+        ].map(({ label, value, fmt }) => (
+          <div key={label} className={styles.kpiCard}>
+            <span className={styles.kpiValue}>{fmt(value)}</span>
+            <span className={styles.kpiLabel}>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {conversionHistory.length > 0 && (
+        <div className={styles.chartFull}>
+          <div className={styles.chartCard}>
+            <div className={styles.chartTitle}>{t("analytics_views_clicks")}</div>
+            <MetricChart
+              option={{
+                type: "area",
+                series: [
+                  {
+                    name: t("analytics_total_views"),
+                    data: conversionHistory.map((p) => p.views),
+                    color: "var(--accent-cyan)",
+                  },
+                  {
+                    name: t("analytics_link_clicks"),
+                    data: conversionHistory.map((p) => p.link_clicks),
+                    color: "var(--accent-pink)",
+                  },
+                ],
+                labels: conversionHistory.map((p) =>
+                  new Date(p.ts).toLocaleDateString("en", { month: "short", day: "numeric" })
+                ),
+                height: 200,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className={styles.chartRow}>
+        <div className={styles.chartCard}>
+          <div className={styles.chartTitle}>{t("analytics_top_accounts")}</div>
+          {accountStats.length > 0 ? (
+            <Leaderboard
+              items={accountStats.map((a) => ({ label: a.username, value: a.total_views }))}
+            />
+          ) : (
+            <div style={{ color: "var(--text-muted)", fontSize: 12, padding: 16 }}>
+              {t("analytics_no_data")}
+            </div>
+          )}
+        </div>
+        <div className={styles.chartCard}>
+          <div className={styles.chartTitle}>{t("analytics_traffic_sources")}</div>
+          {trafficSources.length > 0 ? (
+            <MetricChart
+              option={{
+                type: "donut",
+                series: trafficSources.map((s) => ({
+                  name: s.source,
+                  data: [s.percentage],
+                  color:
+                    s.source === "FYP"
+                      ? "var(--accent-cyan)"
+                      : s.source === "Following"
+                        ? "var(--accent-pink)"
+                        : s.source === "Search"
+                          ? "var(--accent-amber)"
+                          : s.source === "Profile"
+                            ? "var(--color-success)"
+                            : s.source === "Hashtag"
+                              ? "var(--accent-purple)"
+                              : "var(--text-muted)",
+                })),
+                height: 180,
+              }}
+            />
+          ) : (
+            <div style={{ color: "var(--text-muted)", fontSize: 12, padding: 16 }}>
+              {t("analytics_no_data")}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.chartRow}>
+        <div className={styles.chartCard}>
+          <div className={styles.chartTitle}>{t("analytics_top_videos")}</div>
+          {topVideos.length > 0 ? (
+            <Leaderboard
+              items={topVideos.map((v) => ({
+                label: v.title,
+                sublabel: v.account_id,
+                value: v.views,
+              }))}
+              color="var(--accent-pink)"
+            />
+          ) : (
+            <div style={{ color: "var(--text-muted)", fontSize: 12, padding: 16 }}>
+              {t("analytics_no_data")}
+            </div>
+          )}
+        </div>
+        <div className={styles.chartCard}>
+          <div className={styles.chartTitle}>{t("analytics_conversion_funnel")}</div>
+          {conversionHistory.length > 0 ? (
+            <MetricChart
+              option={{
+                type: "line",
+                series: [
+                  {
+                    name: t("analytics_conversion"),
+                    data: conversionHistory.map((p) => p.conversion_rate),
+                    color: "var(--color-success)",
+                  },
+                ],
+                labels: conversionHistory.map((p) =>
+                  new Date(p.ts).toLocaleDateString("en", { month: "short", day: "numeric" })
+                ),
+                height: 180,
+              }}
+            />
+          ) : (
+            <div style={{ color: "var(--text-muted)", fontSize: 12, padding: 16 }}>
+              {t("analytics_no_data")}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
+}
+
+function fmtCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
 }

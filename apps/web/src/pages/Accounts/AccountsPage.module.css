@@ -50,8 +50,14 @@
   color: #fff;
 }
 
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+}
+
 .table {
   width: 100%;
+  min-width: 640px;
   border-collapse: separate;
   border-spacing: 0;
   background: var(--bg-card);

@@ -15,6 +15,34 @@ TikTok content farm dashboard. Управляет фермой телефоно�
 
 - `atomic_monitor.html` — автономный дашборд мониторинга (без сборки, открывается в браузере напрямую). Не часть монорепо, не трогать без нужды. 5 орбитальных колец (CF, PostHog, Postman, Cyan, Gold) с 3-слойным glow (широкое свечение + ядро + белый core) и спарклами на передних сегментах; центральная планета: белое горячее ядро, анимированные световые лучи, экваториальный пылевой диск (60 частиц), энергетическая турбулентность, экваториальные полосы; боковая панель метрик.
 - `apps/api/Dockerfile` — multi-stage Docker образ для деплоя API. Build context — корень монорепо (нужен для `packages/shared`). Билдит shared → api, запускает `node dist/main` на порту 3001.
+- `apps/web/Dockerfile` — multi-stage образ для фронтенда. Билдит Vite → nginx. `$PORT` и `$API_INTERNAL_URL` подставляются через `envsubst` в `nginx.conf` при старте.
+- `.railwayignore` — исключает SportZavod/, content-zavod/, galaxy/, files/, node_modules/ из Railway upload.
+- `.github/workflows/deploy-api.yml` — деплой API при пуше в `apps/api/**` или `packages/shared/**`. Использует service ID `1ad14f0e-dd02-44ec-ac73-7418751678ab`.
+- `.github/workflows/deploy-web.yml` — деплой фронтенда при пуше в `apps/web/**` или `packages/shared/**`. Перезаписывает `railway.toml` на web Dockerfile перед деплоем. Использует service ID `c4612d57-2a39-471d-8a76-9de9bec3d693`.
+
+---
+
+## Деплой (Railway / production)
+
+| Сервис | Railway имя | URL | Dockerfile |
+|--------|------------|-----|-----------|
+| Dashboard API | `atome-studio` | `atome-studio-production.up.railway.app` | `apps/api/Dockerfile` |
+| Dashboard Web | `zooming-delight` | `zooming-delight-production-9bdf.up.railway.app` | `apps/web/Dockerfile` |
+| SportZavod | `SportZavod` | `sportzavod-production.up.railway.app` | репо `Progery222/SportZavod` |
+| content-zavod | `content-zavod` | — | репо `Progery222/content-zavod` |
+| MinIO | `minio` | `minio-production-553a.up.railway.app` | Railway template |
+
+**Ключевые переменные API (`atome-studio`):**
+- `SPORTZAVOD_URL=http://sportzavod.railway.internal:8000`
+- `CONTENTZAVOD_URL=http://content-zavod.railway.internal:8002`
+- `MINIO_URL=http://minio.railway.internal:9000`, `MINIO_BUCKET=atome-videos`
+- `JWT_SECRET` — задан в Railway Variables
+
+**Ключевые переменные Web (`zooming-delight`):**
+- `API_INTERNAL_URL=http://atome-studio.railway.internal:3001`
+- `PORT=80`
+
+**GitHub Actions:** требуют секрет `RAILWAY_TOKEN` в репо `Progery222/atome-studio`.
 
 ---
 
@@ -57,23 +85,26 @@ metrics/                ← MetricsService (in-memory time-series), GET /api/met
 stores/
   services.ts           ← главный store (Service[], metrics, tooltip); fetchServices пушит ActivityEvent при смене статуса сервиса
   farm.ts               ← Phone[], Account[], QueueTask[], WS events; fetchJobs пушит synthetic ActivityEvent (job progress/done/error) когда wsConnected=false
-  metrics.ts            ← kpis: HeroKPI, fetchKPIs()
+  metrics.ts            ← kpis: HeroKPI, fetchKPIs(); demoMode toggle
+  analyticsExtra.ts     ← Performance Analytics store: accountStats, topVideos, trafficSources, conversionHistory, kpis (total_views/avg_views/link_clicks/conversion_rate); generateDemo(period) для demo mode
   activity.ts           ← кольцевой буфер ActivityEvent (max 50)
   auth.ts               ← useAuthStore — JWT token, user, login/logout
   lang.ts               ← useLangStore — текущий язык (ru/en/zh/es)
 i18n/
-  index.ts              ← ~280 ключей, 4 локали; useT() хук; getT() для не-React кода; LOCALE_MAP
+  index.ts              ← ~290 ключей, 4 локали; useT() хук; getT() для не-React кода; LOCALE_MAP
 components/
   AtomicCanvas/         ← Three.js галактика; getGalaxyServices() возвращает переведённые данные
   HeroKPIs/             ← 5 KPI-карточек с count-up, фиксированная высота 90px
   ActivityFeed/         ← скролл-лог событий; иконки: ✓published ✗banned !error ▶job_started ●job_complete ■job_stopped ↑service_online ↓service_offline
   PlanetPanel/          ← панель при клике на планету
-  Layout/               ← sidebar навигация
+  Layout/               ← sidebar навигация; hamburger + overlay на <768px (sidebarOpen state)
   MetricChart/          ← Canvas 2D: line/area/bar/donut/gauge/sparkline
+  Leaderboard/          ← ранжированный список (rank, label, bar, value); props: items, formatValue, color, max
 pages/
-  Galaxy/               ← / (без AuthGuard) — 3D галактика + HeroKPIs + ActivityFeed
-  Phones, PhoneDetail, Accounts, AccountDetail, Generate, Queue, Videos, Analytics, Login
+  Galaxy/               ← / (без AuthGuard) — 3D галактика + HeroKPIs + ActivityFeed; activityFeed скрывается на <1100px
+  Phones, PhoneDetail, Accounts (scroll wrapper), AccountDetail, Generate, Queue (scroll wrapper), Videos, Analytics, Login
   Clients ← таблица клиентов + inline форма создания (name, email, plan: basic/pro/enterprise, phones_limit); только super_admin
+  Analytics ← 2 секции: основные KPI + графики; Performance секция с views/clicks/traffic/leaderboards (данные из analyticsExtra, demo-aware)
 ```
 
 ---
@@ -139,6 +170,10 @@ GET  /api/jobs/:id                    → статус
 - `ActivityEvent.type` — те же значения плюс `info`
 - `VideoFile` — видео в MinIO (filename, url, thumbnail_url, status)
 - `GenerationJob` — задание генерации (job_id, service, progress, status)
+- `AccountAnalytics` — аналитика аккаунта (account_id, username, platform, total_views, total_likes, link_clicks, avg_views_per_video)
+- `VideoAnalytics` — аналитика видео (video_id, title, account_id, views, likes, link_clicks, completion_rate, published_at)
+- `TrafficSource` — источник трафика (source, views, percentage)
+- `ConversionPoint` — точка воронки (ts, views, link_clicks, conversion_rate)
 
 ---
 
@@ -180,6 +215,15 @@ docker compose up    # вся инфраструктура
 - `LOCALE_MAP` — для форматирования дат по локали
 - Все ключи должны присутствовать в **всех 4 локалях** (TypeScript constraint `satisfies`)
 - Galaxy `farm` планета: название всегда "Device Fleet" (захардкожено, не через i18n)
+
+## Стабильность / Railway
+
+- `ServicesService.sync()` обёрнут в try-catch — ошибка адаптера не убивает cron job
+- `EventsGateway.connectWebSocket()` закрывает старый WS перед созданием нового (предотвращает утечку)
+- `VideosService.getVideos()` — 1 retry через 2с при ошибке сети к MinIO
+- `nginx.conf`: `resolver 127.0.0.11 8.8.8.8 valid=10s ipv6=off` — fallback DNS на Railway
+- `GET /health` → `{ status: "ok", uptime: N }` — без JWT, без `/api` префикса; используется Railway для liveness check
+- Карточки видео: `caption` для content-zavod собирается на бэкенде (`title + description + hashtags`); фронт использует `video.caption || video.description`
 
 ## MinIO / Videos
 

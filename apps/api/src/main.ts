@@ -63,6 +63,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix("api");
   app.enableCors({ origin: true, credentials: true });
+  // Health endpoint outside /api prefix — used by Railway to detect liveness
+  app.getHttpAdapter().get("/health", (_req: unknown, res: { json: (o: unknown) => void }) => {
+    res.json({ status: "ok", uptime: Math.floor(process.uptime()) });
+  });
   const port = process.env.PORT ?? 3001;
   await app.listen(port, "0.0.0.0");
   console.log(`Atome API running on port ${port}`);

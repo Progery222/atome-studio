@@ -59,12 +59,16 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   // ─── WebSocket bridge ──────────────────────────────────────────────────────
 
   private connectWebSocket() {
-    // Don't re-open if already connected
-    if (
-      this.ws &&
-      (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
-    ) {
-      return;
+    if (this.ws) {
+      // Don't re-open if already connected
+      if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
+        return;
+      }
+      // Clean up stale socket
+      try {
+        this.ws.close();
+      } catch {}
+      this.ws = null;
     }
 
     const wsUrl = `${ORCHESTRATOR_URL.replace(/^http/, "ws")}/ws/events`;
@@ -95,6 +99,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
       };
 
       this.ws.onclose = () => {
+        this.ws = null;
         this.logger.warn(`WS bridge closed — falling back to polling`);
         this.startPolling();
       };

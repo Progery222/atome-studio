@@ -34,6 +34,6 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           railway up \
-            --service 7e15772c-9831-4566-bbd6-2c6803da4357 \
+            --service c4612d57-2a39-471d-8a76-9de9bec3d693 \
             --environment production \
             --detach

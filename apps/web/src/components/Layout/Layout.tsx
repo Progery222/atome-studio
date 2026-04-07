@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useT } from "../../i18n";
 import { useAuthStore } from "../../stores/auth";
 import { useFarmStore } from "../../stores/farm";
@@ -19,6 +19,14 @@ export function Layout() {
   const lang = useLangStore((s) => s.lang);
   const setLang = useLangStore((s) => s.setLang);
   const role = useAuthStore((s) => s.role);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  // Close sidebar on navigation
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the trigger
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   const demoMode = useMetricsStore((s) => s.demoMode);
   const enableDemo = useMetricsStore((s) => s.enableDemo);
@@ -70,7 +78,16 @@ export function Layout() {
 
   return (
     <div className={styles.root}>
-      <nav className={styles.sidebar}>
+      <button type="button" className={styles.hamburger} onClick={() => setSidebarOpen(true)}>
+        &#9776;
+      </button>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: overlay dismiss */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: overlay dismiss */}
+      <div
+        className={`${styles.overlay} ${sidebarOpen ? styles.overlayVisible : ""}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+      <nav className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ""}`}>
         <Link to="/" className={styles.logo}>
           {t("logo")}
         </Link>
