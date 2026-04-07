@@ -154,6 +154,7 @@ export interface GenerationJob {
   created_at: string;
   results?: { account_id: string; video_url: string }[];
   latest_log?: string;
+  cost_usd?: number; // реальная стоимость пайплайна из сервиса-генератора
 }
 
 // ─── SportZavod types ────────────────────────────────────────────────────────

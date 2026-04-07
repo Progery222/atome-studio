@@ -16,3 +16,17 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+model GenerationJobLog {
+  id          String   @id @default(cuid())
+  jobId       String   @unique
+  service     String   // "sportzavod" | "contentzavod"
+  durationSec Int
+  videosCount Int      @default(0)
+  costUsd     Float    @default(0) // реальная стоимость из сервиса-генератора
+  status      String   // "done" | "error" | "stopped"
+  createdAt   DateTime @default(now())
+
+  @@index([service, createdAt])
+  @@index([status, createdAt])
+}

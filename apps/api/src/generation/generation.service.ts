@@ -1,6 +1,7 @@
 import type { GenerationJob, GenerationStats } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
 import { EventsGateway } from "../events/events.gateway";
+import { PrismaService } from "../prisma/prisma.service";
 
 interface GenerateDto {
   service: "sportzavod" | "contentzavod";
@@ -15,14 +16,13 @@ export class GenerationService {
   private readonly sportzavodUrl = process.env.SPORTZAVOD_URL ?? "http://localhost:8000";
   private readonly contentzavodUrl = process.env.CONTENTZAVOD_URL ?? "http://localhost:8002";
 
-  constructor(private readonly events: EventsGateway) {}
+  constructor(
+    private readonly events: EventsGateway,
+    private readonly prisma: PrismaService
+  ) {}
 
   /** Maps job_id → service name for later routing */
   private readonly jobServiceMap = new Map<string, "sportzavod" | "contentzavod">();
-
-  /** Rolling window of last 100 generation durations per service (ms) */
-  private readonly genTimesMs = new Map<string, number[]>();
-  private readonly GEN_TIME_WINDOW = 100;
 
   private baseUrlFor(service: "sportzavod" | "contentzavod"): string {
     return service === "sportzavod" ? this.sportzavodUrl : this.contentzavodUrl;
@@ -228,10 +228,8 @@ export class GenerationService {
       }
       if (job.status === "done" || job.status === "stopped" || job.status === "error") {
         clearInterval(timer);
-        if (job.status === "done") {
-          const durationMs = Date.now() - new Date(job.created_at).getTime();
-          if (durationMs > 0) this.recordGenTime(job.service, durationMs);
-        }
+        const durationMs = Date.now() - new Date(job.created_at).getTime();
+        this.saveJobLog(job, Math.max(0, Math.round(durationMs / 1000))).catch(() => {});
         this.events.emit({
           event:
             job.status === "done"
@@ -254,21 +252,37 @@ export class GenerationService {
     }, intervalMs);
   }
 
-  private recordGenTime(service: string, durationMs: number) {
-    if (!this.genTimesMs.has(service)) this.genTimesMs.set(service, []);
-    const arr = this.genTimesMs.get(service)!;
-    arr.push(durationMs);
-    if (arr.length > this.GEN_TIME_WINDOW) arr.shift();
+  private async saveJobLog(job: GenerationJob, durationSec: number): Promise<void> {
+    const costUsd = job.cost_usd ?? 0;
+    await this.prisma.generationJobLog.upsert({
+      where: { jobId: job.job_id },
+      update: { status: job.status, durationSec, videosCount: job.progress, costUsd },
+      create: {
+        jobId: job.job_id,
+        service: job.service,
+        durationSec,
+        videosCount: job.progress,
+        costUsd,
+        status: job.status,
+      },
+    });
   }
 
-  getStats(): GenerationStats {
+  async getStats(): Promise<GenerationStats> {
+    const rows = await this.prisma.generationJobLog.groupBy({
+      by: ["service"],
+      where: { status: "done" },
+      _avg: { durationSec: true },
+      _count: { id: true },
+      _max: { createdAt: true },
+    });
+
     const result: GenerationStats = {};
-    for (const [svc, times] of this.genTimesMs.entries()) {
-      if (times.length === 0) continue;
-      result[svc] = {
-        avg_sec: Math.round(times.reduce((s, t) => s + t, 0) / times.length / 1000),
-        count: times.length,
-        last_updated: new Date().toISOString(),
+    for (const row of rows) {
+      result[row.service] = {
+        avg_sec: Math.round(row._avg.durationSec ?? 0),
+        count: row._count.id,
+        last_updated: row._max.createdAt?.toISOString() ?? new Date().toISOString(),
       };
     }
     return result;
@@ -310,6 +324,7 @@ export class GenerationService {
       results: Array.isArray(raw.results)
         ? (raw.results as Array<{ account_id: string; video_url: string }>)
         : undefined,
+      cost_usd: typeof raw.cost_usd === "number" ? raw.cost_usd : 0,
     };
   }
 

@@ -73,14 +73,14 @@ TikTok content farm dashboard. Управляет фермой телефоно�
 ### Backend (`apps/api/src/`)
 ```
 mcp/                    ← адаптеры к внешним сервисам (cloudflare, postman, posthog, sportzavod, farm, contentzavod)
-services/               ← ServicesService (polling каждые 30с), ServicesController, GET /api/services/kpis
+services/               ← ServicesService (polling каждые 30с), ServicesController, GET /api/services/kpis; videos_today из GenerationJobLog (Postgres); cost_per_video = AVG(costUsd) WHERE costUsd > 0 из GenerationJobLog (реальная стоимость из content-zavod, не env)
 auth/                   ← JWT авторизация; пользователи в Neon Postgres через Prisma; роли: admin/editor/viewer
-prisma/                 ← PrismaService + PrismaModule (global); schema в apps/api/prisma/schema.prisma
-generation/             ← POST /api/generate, POST /api/generate/auto, GET /api/jobs/:id, GET /api/jobs/stats, POST /api/jobs/stop-all; эмитит job_started/job_complete/job_stopped через EventsGateway; внутренний поллинг каждые 8с; jobServiceMap → роутинг job_id к нужному сервису; getStats() → GenerationStats (rolling 100-window avg per service)
+prisma/                 ← PrismaService + PrismaModule (global); schema в apps/api/prisma/schema.prisma; таблицы: User (auth), GenerationJobLog (jobId, service, durationSec, videosCount, costUsd, status, createdAt)
+generation/             ← POST /api/generate, POST /api/generate/auto, GET /api/jobs/:id, GET /api/jobs/stats, POST /api/jobs/stop-all; эмитит job_started/job_complete/job_stopped через EventsGateway; внутренний поллинг каждые 8с; jobServiceMap → роутинг job_id к нужному сервису; при завершении сохраняет в GenerationJobLog включая costUsd из ответа сервиса; getStats() → AVG(durationSec) из БД per service
 events/                 ← EventsGateway (Socket.io WS мост к orchestrator); экспортируется из EventsModule; метод emit(FarmEvent) для внутреннего использования
 videos/                 ← VideosService (S3 XML API к MinIO), GET /api/videos
 clients/                ← CRUD клиентов (super_admin only)
-metrics/                ← MetricsService (in-memory time-series), GET /api/metrics/history
+metrics/                ← MetricsService, GET /api/metrics/history — читает из GenerationJobLog (Postgres), группирует по дням/часам; возвращает videos + jobs_completed из реальных данных; revenue/cost/accounts_active = 0 (нет источника)
 ```
 
 ### Frontend (`apps/web/src/`)
@@ -172,7 +172,7 @@ GET  /api/jobs/:id                    → статус
 - `FarmEvent` — WS событие (event: published|banned|error|failed|heartbeat|job_complete|job_started|job_stopped|service_online|service_offline)
 - `ActivityEvent.type` — те же значения плюс `info`
 - `VideoFile` — видео в MinIO (filename, url, thumbnail_url, status)
-- `GenerationJob` — задание генерации (job_id, service, progress, status: running|done|error|stopped|**stopping**, is_auto, results[])
+- `GenerationJob` — задание генерации (job_id, service, progress, status: running|done|error|stopped|**stopping**, is_auto, results[], cost_usd?: number)
 - `GenerationServiceStats` / `GenerationStats` — статистика генерации (avg_sec, count, last_updated); `Record<string, GenerationServiceStats>`
 - `SportZavodTheme` — тема генерации SportZavod (theme_key, theme_name, count)
 - `GenerationScope` — `"all" | "theme" | "account" | "query"`
@@ -285,7 +285,8 @@ content-zavod/{YYYY-MM-DD}/{topic_slug}/{title_slug}.mp4              ← conten
 - **`farm.ts:startGeneration()`** — обязательно передаёт `service` в теле POST `/api/generate` (без него запрос уходит в content-zavod по умолчанию)
 - **`GenerationService.generateAuto()`** — POST `/api/generate/auto` к SportZavod; `is_auto: true` в джобе; эмитит `job_started` с флагом `is_auto`
 - **`GenerationService.stopAllJobs()`** — POST `/api/jobs/stop-all` к SportZavod; возвращает `{ stopped_count }`
-- **`GenerationService.getStats()`** — возвращает `GenerationStats` (среднее время генерации по последним 100 джобам per service, сбрасывается при рестарте API)
+- **`GenerationService.getStats()`** — возвращает `GenerationStats` из Postgres (avg duration per service, накапливается постоянно, не сбрасывается при рестарте)
+- **`GenerationJob.cost_usd`** — реальная стоимость пайплайна из сервиса-генератора; content-zavod считает через `CostTracker` (Brave Search + LLM токены + Kie.ai $0.30); SportZavod возвращает 0 (нет cloud API); сохраняется в `GenerationJobLog.costUsd`; KPI "Cost/Video" = AVG(costUsd) WHERE costUsd > 0 — не env переменная, а реальные данные
 - **`normalizeStatus()`** также нормализует: `queued`/`success`/`completed` → `done`; `stopping` сохраняется as-is
 - **`farm.service.ts:getSportzavodAccounts()`** — маппит `has_avatar: bool` → `heygen_avatar_id: "sz-{id}" | undefined`; без этого все аккаунты считаются "без аватара" и `readyAccounts` пуст
 - **`SportZavod/agent/sheets_manager.py:_FILL_DOWN_COLS`** — включает `"HeyGen Avatar ID"` и `"HeyGen Voice ID"`, чтобы объединённые ячейки в Google Sheet заполнялись вниз по всем аккаунтам группы; без этого `has_avatar` возвращает `false` для аккаунтов кроме первого в группе

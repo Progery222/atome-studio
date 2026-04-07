@@ -8,7 +8,7 @@ export class MetricsController {
   constructor(private readonly svc: MetricsService) {}
 
   @Get("history")
-  getHistory(@Query("period") period?: string, @Query("resolution") resolution?: string) {
+  async getHistory(@Query("period") period?: string, @Query("resolution") resolution?: string) {
     return this.svc.getHistory(period, resolution);
   }
 }
