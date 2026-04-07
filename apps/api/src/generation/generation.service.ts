@@ -24,6 +24,9 @@ export class GenerationService {
   /** Maps job_id → service name for later routing */
   private readonly jobServiceMap = new Map<string, "sportzavod" | "contentzavod">();
 
+  /** Maps job_id → start timestamp (ms) for accurate duration tracking */
+  private readonly jobStartTimes = new Map<string, number>();
+
   private baseUrlFor(service: "sportzavod" | "contentzavod"): string {
     return service === "sportzavod" ? this.sportzavodUrl : this.contentzavodUrl;
   }
@@ -75,6 +78,7 @@ export class GenerationService {
 
     const job = this.normalizeJob(raw, dto.service);
     this.jobServiceMap.set(job.job_id, dto.service);
+    this.jobStartTimes.set(job.job_id, Date.now());
 
     this.events.emit({
       event: "job_started",
@@ -191,6 +195,7 @@ export class GenerationService {
     if (!raw) return null;
     const job = this.normalizeJob(raw, "sportzavod");
     this.jobServiceMap.set(job.job_id, "sportzavod");
+    this.jobStartTimes.set(job.job_id, Date.now());
 
     this.events.emit({
       event: "job_started",
@@ -228,8 +233,10 @@ export class GenerationService {
       }
       if (job.status === "done" || job.status === "stopped" || job.status === "error") {
         clearInterval(timer);
-        const durationMs = Date.now() - new Date(job.created_at).getTime();
-        this.saveJobLog(job, Math.max(0, Math.round(durationMs / 1000))).catch(() => {});
+        const startTime = this.jobStartTimes.get(jobId) ?? Date.now();
+        this.jobStartTimes.delete(jobId);
+        const durationSec = Math.max(0, Math.round((Date.now() - startTime) / 1000));
+        this.saveJobLog(job, durationSec).catch(() => {});
         this.events.emit({
           event:
             job.status === "done"

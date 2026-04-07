@@ -76,7 +76,7 @@ mcp/                    ← адаптеры к внешним сервисам 
 services/               ← ServicesService (polling каждые 30с), ServicesController, GET /api/services/kpis; videos_today из GenerationJobLog (Postgres); cost_per_video = AVG(costUsd) WHERE costUsd > 0 из GenerationJobLog (реальная стоимость из content-zavod, не env)
 auth/                   ← JWT авторизация; пользователи в Neon Postgres через Prisma; роли: admin/editor/viewer
 prisma/                 ← PrismaService + PrismaModule (global); schema в apps/api/prisma/schema.prisma; таблицы: User (auth), GenerationJobLog (jobId, service, durationSec, videosCount, costUsd, status, createdAt)
-generation/             ← POST /api/generate, POST /api/generate/auto, GET /api/jobs/:id, GET /api/jobs/stats, POST /api/jobs/stop-all; эмитит job_started/job_complete/job_stopped через EventsGateway; внутренний поллинг каждые 8с; jobServiceMap → роутинг job_id к нужному сервису; при завершении сохраняет в GenerationJobLog включая costUsd из ответа сервиса; getStats() → AVG(durationSec) из БД per service
+generation/             ← POST /api/generate, POST /api/generate/auto, GET /api/jobs/:id, GET /api/jobs/stats, POST /api/jobs/stop-all; эмитит job_started/job_complete/job_stopped через EventsGateway; внутренний поллинг каждые 8с; jobServiceMap → роутинг job_id к нужному сервису; jobStartTimes → Map<jobId, timestamp> для точного подсчёта durationSec (SportZavod не возвращает created_at → нельзя полагаться на job.created_at); при завершении сохраняет в GenerationJobLog включая costUsd из ответа сервиса; getStats() → AVG(durationSec) из БД per service
 events/                 ← EventsGateway (Socket.io WS мост к orchestrator); экспортируется из EventsModule; метод emit(FarmEvent) для внутреннего использования
 videos/                 ← VideosService (S3 XML API к MinIO), GET /api/videos
 clients/                ← CRUD клиентов (super_admin only)
@@ -106,6 +106,7 @@ components/
 pages/
   Galaxy/               ← / (без AuthGuard) — 3D галактика + HeroKPIs + ActivityFeed; activityFeed скрывается на <1100px
   Phones, PhoneDetail, Accounts (scroll wrapper), AccountDetail, Generate, Queue (scroll wrapper), Videos, Analytics, Login — все страницы имеют адаптивные breakpoints: 768px (mobile), 1100px (tablet)
+  Generate ← правая колонка (ЗАДАЧИ): компактная карточка джоба показывает статус текстом (gen_status_* ключи) с цветом jColor, рядом с job_id; ProgressScreen — полный просмотр джоба при клике
   Clients ← таблица клиентов + inline форма создания (name, email, plan: basic/pro/enterprise, phones_limit); только super_admin
   Analytics ← 2 секции: основные KPI + графики; Performance секция с views/clicks/traffic/leaderboards (данные из analyticsExtra, demo-aware)
 ```

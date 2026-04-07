@@ -736,6 +736,14 @@
   color: var(--text-muted);
 }
 
+.jobItemStatus {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+
 .jobItemPct {
   margin-left: auto;
   font-size: 14px;

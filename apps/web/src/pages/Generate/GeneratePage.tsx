@@ -878,6 +878,17 @@ export function GeneratePage() {
                           <span className={styles.dot} style={{ background: jColor }} />
                           <span className={styles.jobItemId}>{j.job_id.slice(0, 8)}</span>
                           {j.is_auto && <span className={styles.tagAuto}>{t("gen_tag_auto")}</span>}
+                          <span className={styles.jobItemStatus} style={{ color: jColor }}>
+                            {j.status === "running"
+                              ? t("gen_status_running")
+                              : j.status === "stopping"
+                                ? t("gen_status_stopping")
+                                : j.status === "done"
+                                  ? t("gen_status_done")
+                                  : j.status === "stopped"
+                                    ? t("gen_status_stopped")
+                                    : t("gen_status_error")}
+                          </span>
                           <span className={styles.jobItemPct}>{jPct}%</span>
                         </div>
                         <div className={styles.jobItemBar}>
