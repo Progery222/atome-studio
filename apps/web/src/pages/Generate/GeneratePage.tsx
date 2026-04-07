@@ -133,15 +133,10 @@ function ProgressScreen({ job, onBack }: { job: GenerationJob; onBack: () => voi
               fontSize: "0.9rem",
               color: "#cbd5e1",
               lineHeight: "1.4",
+              whiteSpace: "pre-line",
             }}
           >
-            {liveJob.latest_log.split("\n").map((line, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: log lines have no stable key
-              <span key={i}>
-                {line}
-                <br />
-              </span>
-            ))}
+            {liveJob.latest_log.replace(/<[^>]+>/g, "")}
           </div>
         )}
       </div>

@@ -332,6 +332,7 @@ export class GenerationService {
         ? (raw.results as Array<{ account_id: string; video_url: string }>)
         : undefined,
       cost_usd: typeof raw.cost_usd === "number" ? raw.cost_usd : 0,
+      latest_log: typeof raw.latest_log === "string" && raw.latest_log ? raw.latest_log : undefined,
     };
   }
 
