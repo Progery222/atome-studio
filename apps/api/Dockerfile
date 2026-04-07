@@ -47,4 +47,5 @@ ENV NODE_ENV=production
 EXPOSE 3001
 
 # Run migrations, seed admin (idempotent), then start
-CMD ["sh", "-c", "npx prisma migrate deploy && npx ts-node --transpile-only prisma/seed.ts || true && node dist/main"]
+# P3005 = schema exists but no migration record → baseline it, then retry
+CMD ["sh", "-c", "MIGRATE=$(npx prisma migrate deploy 2>&1); echo \"$MIGRATE\"; if echo \"$MIGRATE\" | grep -q 'P3005'; then npx prisma migrate resolve --applied 20260407091803_init && npx prisma migrate deploy; fi; npx ts-node --transpile-only prisma/seed.ts 2>/dev/null || true; node dist/main"]
