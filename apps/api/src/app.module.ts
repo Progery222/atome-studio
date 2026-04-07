@@ -9,6 +9,7 @@ import { FarmModule } from "./farm/farm.module";
 import { GenerationModule } from "./generation/generation.module";
 import { McpModule } from "./mcp/mcp.module";
 import { MetricsModule } from "./metrics/metrics.module";
+import { PrismaModule } from "./prisma/prisma.module";
 import { QueueModule } from "./queue/queue.module";
 import { ServicesModule } from "./services/services.module";
 import { VideosModule } from "./videos/videos.module";
@@ -16,6 +17,7 @@ import { VideosModule } from "./videos/videos.module";
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    PrismaModule,
     AuthModule,
     McpModule,
     ServicesModule,

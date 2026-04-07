@@ -553,7 +553,13 @@ export const useFarmStore = create<FarmState>((set, get) => ({
     if (existing) return; // already connected
 
     // Connect via Vite proxy to NestJS /ws namespace
-    const socket = io("/ws", { transports: ["websocket", "polling"] });
+    const socket = io("/ws", {
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
+    });
 
     socket.on("connect", () => {
       set({ wsConnected: true });

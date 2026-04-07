@@ -37,6 +37,8 @@ TikTok content farm dashboard. Управляет фермой телефоно�
 - `CONTENTZAVOD_URL=http://content-zavod.railway.internal:8002`
 - `MINIO_URL=http://minio.railway.internal:9000`, `MINIO_BUCKET=atome-videos`
 - `JWT_SECRET` — задан в Railway Variables
+- `DATABASE_URL` — Neon Postgres connection string (pooler URL с `sslmode=require`)
+- `ADMIN_EMAIL` / `ADMIN_PASSWORD` — начальный admin (fallback: `admin@atome.studio` / `admin123`)
 
 **Ключевые переменные Web (`zooming-delight`):**
 - `API_INTERNAL_URL=http://atome-studio.railway.internal:3001`
@@ -72,7 +74,8 @@ TikTok content farm dashboard. Управляет фермой телефоно�
 ```
 mcp/                    ← адаптеры к внешним сервисам (cloudflare, postman, posthog, sportzavod, farm, contentzavod)
 services/               ← ServicesService (polling каждые 30с), ServicesController, GET /api/services/kpis
-auth/                   ← JWT авторизация, in-memory users (admin@atome.studio / admin123)
+auth/                   ← JWT авторизация; пользователи в Neon Postgres через Prisma; роли: admin/editor/viewer
+prisma/                 ← PrismaService + PrismaModule (global); schema в apps/api/prisma/schema.prisma
 generation/             ← POST /api/generate, GET /api/jobs/:id; эмитит job_started/job_complete/job_stopped через EventsGateway
 events/                 ← EventsGateway (Socket.io WS мост к orchestrator); экспортируется из EventsModule; метод emit(FarmEvent) для внутреннего использования
 videos/                 ← VideosService (S3 XML API к MinIO), GET /api/videos
@@ -187,6 +190,12 @@ npm run check        # biome lint + format check
 npm run check:fix    # biome автоисправление
 npm run changelog    # сгенерировать CHANGELOG.md
 docker compose up    # вся инфраструктура
+
+# Prisma (запускать из apps/api/)
+npx prisma migrate dev --name <name>   # создать миграцию + применить
+npx prisma db seed                      # засеять admin (идемпотентно)
+npx prisma generate                     # регенерировать клиент после изменений схемы
+npx prisma studio                       # GUI для просмотра БД
 ```
 
 ---
@@ -225,6 +234,11 @@ docker compose up    # вся инфраструктура
 - `GET /health` → `{ status: "ok", uptime: N }` — без JWT, без `/api` префикса; используется Railway для liveness check
 - Карточки видео: `caption` для content-zavod собирается на бэкенде (`title + description + hashtags`); фронт использует `video.caption || video.description`
 
+**WebSocket стабильность (Railway):**
+- `nginx.conf` `/socket.io/`: `proxy_read_timeout 3600s` + `proxy_send_timeout 3600s` — иначе nginx убивает WS через 60с (дефолт)
+- `EventsGateway`: `pingInterval: 25000, pingTimeout: 20000` — Socket.io пингует каждые 25с, держит соединение живым через Railway edge (таймаут 300с)
+- `farm.ts` `connectWs()`: `reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 1000..10000` — клиент переподключается автоматически при разрыве
+
 ## MinIO / Videos
 
 - `VideosService` использует S3 XML API (`GET /{bucket}/?list-type=2`) без SDK
@@ -235,6 +249,26 @@ docker compose up    # вся инфраструктура
 - SportZavod и content-zavod при первой загрузке файла сами создают бакет с нужной политикой (list+read)
 - Конфигурация в `apps/api/.env`: `MINIO_URL`, `MINIO_BUCKET`
 - В `.env` каждого завода: `MINIO_BUCKET=atome-videos`, `MINIO_ACCESS_KEY=minioadmin`, `MINIO_SECRET_KEY=minioadmin`
+
+**Структура путей в MinIO:**
+```
+sportzavod/{YYYY-MM-DD}/{account_folder}/{post_slug}/{filename}.mp4   ← SportZavod
+content-zavod/{YYYY-MM-DD}/{topic_slug}/{title_slug}.mp4              ← content-zavod
+```
+- `account_folder` = `{id}_{instagram_user}` из Google Sheets
+- `topic_slug` = тема запроса (одинаково для Telegram-бота и API дашборда)
+
+## Telegram бот в заводах
+
+Оба сервиса поддерживают запуск с ботом или без:
+
+| Переменная | SportZavod | content-zavod |
+|---|---|---|
+| Включить бота | `BOT_ENABLED=true` (дефолт) | `BOT_ENABLED=true` (дефолт) |
+| Только REST API | `BOT_ENABLED=false` | `BOT_ENABLED=false` |
+| Токен бота | `TELEGRAM_BOT_TOKEN` | `TG_BOT_TOKEN` |
+
+- При `BOT_ENABLED=false` токен не обязателен — сервис стартует только как REST API для дашборда
 
 ## Generation / Jobs
 

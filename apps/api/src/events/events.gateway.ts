@@ -25,7 +25,12 @@ const RECONNECT_MS = 10_000; // try to reconnect WS bridge every 10 s
  * 3. Every 10 s we attempt to (re)establish the WS connection.
  */
 @Injectable()
-@WebSocketGateway({ cors: { origin: true }, namespace: "/ws" })
+@WebSocketGateway({
+  cors: { origin: true },
+  namespace: "/ws",
+  pingInterval: 25000, // ping every 25s — keeps connection alive through Railway proxy
+  pingTimeout: 20000, // wait 20s for pong before disconnecting
+})
 export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 
