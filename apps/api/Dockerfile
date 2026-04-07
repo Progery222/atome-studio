@@ -14,12 +14,12 @@ RUN npm install --ignore-scripts
 COPY packages/shared/ ./packages/shared/
 COPY apps/api/ ./apps/api/
 
+# Generate Prisma client BEFORE TypeScript compilation
+RUN cd apps/api && npx prisma generate
+
 # Build shared first, then api
 RUN npm run build -w packages/shared
 RUN npm run build -w apps/api
-
-# Generate Prisma client (requires schema to be present)
-RUN cd apps/api && npx prisma generate
 
 # Production image
 FROM node:22-alpine
