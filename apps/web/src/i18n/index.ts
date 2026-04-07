@@ -339,6 +339,9 @@ const T = {
     analytics_traffic_sources: "Источники трафика",
     analytics_conversion_funnel: "Конверсия по дням",
     analytics_no_data: "Нет данных — включите Demo",
+    analytics_gen_speed: "Скорость генерации",
+    analytics_gen_jobs: "заданий",
+    analytics_gen_no_data: "Нет завершённых заданий",
   },
 
   en: {
@@ -660,6 +663,9 @@ const T = {
     analytics_traffic_sources: "Traffic Sources",
     analytics_conversion_funnel: "Daily Conversion",
     analytics_no_data: "No data — enable Demo",
+    analytics_gen_speed: "Generation Speed",
+    analytics_gen_jobs: "jobs",
+    analytics_gen_no_data: "No completed jobs yet",
   },
 
   zh: {
@@ -981,6 +987,9 @@ const T = {
     analytics_traffic_sources: "流量来源",
     analytics_conversion_funnel: "每日转化",
     analytics_no_data: "无数据 — 启用Demo",
+    analytics_gen_speed: "生成速度",
+    analytics_gen_jobs: "任务",
+    analytics_gen_no_data: "暂无完成任务",
   },
 
   es: {
@@ -1302,6 +1311,9 @@ const T = {
     analytics_traffic_sources: "Fuentes de tráfico",
     analytics_conversion_funnel: "Conversión diaria",
     analytics_no_data: "Sin datos — active Demo",
+    analytics_gen_speed: "Velocidad de generación",
+    analytics_gen_jobs: "tareas",
+    analytics_gen_no_data: "Sin tareas completadas",
   },
 } satisfies Record<Lang, Record<string, string>>;
 

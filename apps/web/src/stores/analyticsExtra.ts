@@ -1,10 +1,12 @@
 import type {
   AccountAnalytics,
   ConversionPoint,
+  GenerationStats,
   TrafficSource,
   VideoAnalytics,
 } from "@atome/shared";
 import { create } from "zustand";
+import { apiFetch } from "../lib/api";
 import { useMetricsStore } from "./metrics";
 
 type Period = "7d" | "14d" | "30d";
@@ -22,7 +24,9 @@ interface AnalyticsExtraState {
   topVideos: VideoAnalytics[];
   trafficSources: TrafficSource[];
   conversionHistory: ConversionPoint[];
+  generationStats: GenerationStats;
   loading: boolean;
+  fetchGenerationStats: () => Promise<void>;
   generateDemo: (period: Period) => void;
   clear: () => void;
 }
@@ -124,7 +128,17 @@ export const useAnalyticsExtraStore = create<AnalyticsExtraState>((set) => ({
   topVideos: [],
   trafficSources: [],
   conversionHistory: [],
+  generationStats: {},
   loading: false,
+
+  fetchGenerationStats: async () => {
+    try {
+      const res = await apiFetch("/api/jobs/stats");
+      if (!res.ok) return;
+      const data = (await res.json()) as GenerationStats;
+      set({ generationStats: data });
+    } catch {}
+  },
 
   generateDemo: (period: Period) => {
     const accounts = generateDemoAccounts();
@@ -142,6 +156,10 @@ export const useAnalyticsExtraStore = create<AnalyticsExtraState>((set) => ({
         total_link_clicks: totalClicks,
         conversion_rate: +((totalClicks / totalViews) * 100).toFixed(2),
       },
+      generationStats: {
+        sportzavod: { avg_sec: 234, count: 45, last_updated: new Date().toISOString() },
+        contentzavod: { avg_sec: 487, count: 23, last_updated: new Date().toISOString() },
+      },
     });
   },
 
@@ -152,6 +170,7 @@ export const useAnalyticsExtraStore = create<AnalyticsExtraState>((set) => ({
       topVideos: [],
       trafficSources: [],
       conversionHistory: [],
+      generationStats: {},
     }),
 }));
 

@@ -49,3 +49,35 @@
 .trendDown {
   color: var(--color-error);
 }
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1200px) {
+  .value {
+    font-size: clamp(14px, 1.6vw, 20px);
+  }
+
+  .card {
+    padding: 8px 10px 6px;
+    height: 82px;
+  }
+
+  .label {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 900px) {
+  .root {
+    gap: 6px;
+  }
+
+  .value {
+    font-size: 13px;
+  }
+
+  .card {
+    height: 72px;
+    padding: 6px 8px;
+  }
+}

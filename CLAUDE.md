@@ -76,7 +76,7 @@ mcp/                    ← адаптеры к внешним сервисам 
 services/               ← ServicesService (polling каждые 30с), ServicesController, GET /api/services/kpis
 auth/                   ← JWT авторизация; пользователи в Neon Postgres через Prisma; роли: admin/editor/viewer
 prisma/                 ← PrismaService + PrismaModule (global); schema в apps/api/prisma/schema.prisma
-generation/             ← POST /api/generate, GET /api/jobs/:id; эмитит job_started/job_complete/job_stopped через EventsGateway
+generation/             ← POST /api/generate, POST /api/generate/auto, GET /api/jobs/:id, GET /api/jobs/stats, POST /api/jobs/stop-all; эмитит job_started/job_complete/job_stopped через EventsGateway; внутренний поллинг каждые 8с; jobServiceMap → роутинг job_id к нужному сервису; getStats() → GenerationStats (rolling 100-window avg per service)
 events/                 ← EventsGateway (Socket.io WS мост к orchestrator); экспортируется из EventsModule; метод emit(FarmEvent) для внутреннего использования
 videos/                 ← VideosService (S3 XML API к MinIO), GET /api/videos
 clients/                ← CRUD клиентов (super_admin only)
@@ -89,23 +89,23 @@ stores/
   services.ts           ← главный store (Service[], metrics, tooltip); fetchServices пушит ActivityEvent при смене статуса сервиса
   farm.ts               ← Phone[], Account[], QueueTask[], WS events; sportzavodThemes: SportZavodTheme[]; fetchSportzavodThemes(); stopAllJobs(); fetchJobs пушит synthetic ActivityEvent (job progress/done/error) когда wsConnected=false; при пустом ответе API activeJobs=[] (не mock — mock только при сетевой ошибке И пустом списке)
   metrics.ts            ← kpis: HeroKPI, fetchKPIs(); demoMode toggle
-  analyticsExtra.ts     ← Performance Analytics store: accountStats, topVideos, trafficSources, conversionHistory, kpis (total_views/avg_views/link_clicks/conversion_rate); generateDemo(period) для demo mode
+  analyticsExtra.ts     ← Performance Analytics store: accountStats, topVideos, trafficSources, conversionHistory, kpis (total_views/avg_views/link_clicks/conversion_rate), generationStats: GenerationStats; fetchGenerationStats() → GET /api/jobs/stats; generateDemo(period) для demo mode
   activity.ts           ← кольцевой буфер ActivityEvent (max 50)
   auth.ts               ← useAuthStore — JWT token, user, login/logout
   lang.ts               ← useLangStore — текущий язык (ru/en/zh/es)
 i18n/
-  index.ts              ← ~290 ключей, 4 локали; useT() хук; getT() для не-React кода; LOCALE_MAP
+  index.ts              ← ~300 ключей, 4 локали; useT() хук; getT() для не-React кода; LOCALE_MAP; analytics_gen_speed/analytics_gen_jobs/analytics_gen_no_data — ключи для блока Generation Speed на Analytics
 components/
   AtomicCanvas/         ← Three.js галактика; getGalaxyServices() возвращает переведённые данные
-  HeroKPIs/             ← 5 KPI-карточек с count-up, фиксированная высота 90px
+  HeroKPIs/             ← 5 KPI-карточек с count-up, фиксированная высота 90px; адаптивный размер: 82px @<1200px, 72px @<900px (clamp font-size)
   ActivityFeed/         ← скролл-лог событий; иконки: ✓published ✗banned !error ▶job_started ●job_complete ■job_stopped ↑service_online ↓service_offline
   PlanetPanel/          ← панель при клике на планету
-  Layout/               ← sidebar навигация; hamburger + overlay на <768px (sidebarOpen state)
+  Layout/               ← sidebar навигация; 220px → 180px @<1100px; hamburger + overlay на <768px (sidebarOpen state)
   MetricChart/          ← Canvas 2D: line/area/bar/donut/gauge/sparkline
   Leaderboard/          ← ранжированный список (rank, label, bar, value); props: items, formatValue, color, max
 pages/
   Galaxy/               ← / (без AuthGuard) — 3D галактика + HeroKPIs + ActivityFeed; activityFeed скрывается на <1100px
-  Phones, PhoneDetail, Accounts (scroll wrapper), AccountDetail, Generate, Queue (scroll wrapper), Videos, Analytics, Login
+  Phones, PhoneDetail, Accounts (scroll wrapper), AccountDetail, Generate, Queue (scroll wrapper), Videos, Analytics, Login — все страницы имеют адаптивные breakpoints: 768px (mobile), 1100px (tablet)
   Clients ← таблица клиентов + inline форма создания (name, email, plan: basic/pro/enterprise, phones_limit); только super_admin
   Analytics ← 2 секции: основные KPI + графики; Performance секция с views/clicks/traffic/leaderboards (данные из analyticsExtra, demo-aware)
 ```
@@ -172,7 +172,8 @@ GET  /api/jobs/:id                    → статус
 - `FarmEvent` — WS событие (event: published|banned|error|failed|heartbeat|job_complete|job_started|job_stopped|service_online|service_offline)
 - `ActivityEvent.type` — те же значения плюс `info`
 - `VideoFile` — видео в MinIO (filename, url, thumbnail_url, status)
-- `GenerationJob` — задание генерации (job_id, service, progress, status)
+- `GenerationJob` — задание генерации (job_id, service, progress, status: running|done|error|stopped|**stopping**, is_auto, results[])
+- `GenerationServiceStats` / `GenerationStats` — статистика генерации (avg_sec, count, last_updated); `Record<string, GenerationServiceStats>`
 - `SportZavodTheme` — тема генерации SportZavod (theme_key, theme_name, count)
 - `GenerationScope` — `"all" | "theme" | "account" | "query"`
 - `AccountAnalytics` — аналитика аккаунта (account_id, username, platform, total_views, total_likes, link_clicks, avg_views_per_video)
@@ -282,5 +283,9 @@ content-zavod/{YYYY-MM-DD}/{topic_slug}/{title_slug}.mp4              ← conten
 - `farm.service.ts:reloadAccounts()` читает `data.loaded ?? data.reloaded` из SportZavod (SportZavod возвращает `{ loaded: N }`, не `reloaded`)
 - **SportZavod не имеет `GET /api/jobs/:id`** — `generation.service.ts:getJobFromService()` делает fallback на `GET /api/jobs` + поиск по `job_id` в списке
 - **`farm.ts:startGeneration()`** — обязательно передаёт `service` в теле POST `/api/generate` (без него запрос уходит в content-zavod по умолчанию)
+- **`GenerationService.generateAuto()`** — POST `/api/generate/auto` к SportZavod; `is_auto: true` в джобе; эмитит `job_started` с флагом `is_auto`
+- **`GenerationService.stopAllJobs()`** — POST `/api/jobs/stop-all` к SportZavod; возвращает `{ stopped_count }`
+- **`GenerationService.getStats()`** — возвращает `GenerationStats` (среднее время генерации по последним 100 джобам per service, сбрасывается при рестарте API)
+- **`normalizeStatus()`** также нормализует: `queued`/`success`/`completed` → `done`; `stopping` сохраняется as-is
 - **`farm.service.ts:getSportzavodAccounts()`** — маппит `has_avatar: bool` → `heygen_avatar_id: "sz-{id}" | undefined`; без этого все аккаунты считаются "без аватара" и `readyAccounts` пуст
 - **`SportZavod/agent/sheets_manager.py:_FILL_DOWN_COLS`** — включает `"HeyGen Avatar ID"` и `"HeyGen Voice ID"`, чтобы объединённые ячейки в Google Sheet заполнялись вниз по всем аккаунтам группы; без этого `has_avatar` возвращает `false` для аккаунтов кроме первого в группе

@@ -61,6 +61,8 @@ export function AnalyticsPage() {
   const topVideos = useAnalyticsExtraStore((s) => s.topVideos);
   const trafficSources = useAnalyticsExtraStore((s) => s.trafficSources);
   const conversionHistory = useAnalyticsExtraStore((s) => s.conversionHistory);
+  const generationStats = useAnalyticsExtraStore((s) => s.generationStats);
+  const fetchGenerationStats = useAnalyticsExtraStore((s) => s.fetchGenerationStats);
   const generateDemo = useAnalyticsExtraStore((s) => s.generateDemo);
 
   const [period, setPeriod] = useState<Period>("30d");
@@ -68,7 +70,10 @@ export function AnalyticsPage() {
 
   useEffect(() => {
     fetchKPIs();
-  }, [fetchKPIs]);
+    fetchGenerationStats();
+    const id = setInterval(fetchGenerationStats, 30_000);
+    return () => clearInterval(id);
+  }, [fetchKPIs, fetchGenerationStats]);
 
   useEffect(() => {
     if (demoMode) {
@@ -328,8 +333,41 @@ export function AnalyticsPage() {
           )}
         </div>
       </div>
+      {/* ─── Generation Speed ─────────────────────────────────────────────────── */}
+
+      <div className={styles.sectionDivider}>{t("analytics_gen_speed")}</div>
+
+      {Object.keys(generationStats).length > 0 ? (
+        <div className={styles.kpiRow}>
+          {Object.entries(generationStats).map(([svc, stats]) => (
+            <div key={svc} className={styles.kpiCard}>
+              <span
+                className={styles.kpiValue}
+                style={{ color: svc === "sportzavod" ? "#d4af37" : "#b496ff" }}
+              >
+                {fmtSec(stats.avg_sec)}
+              </span>
+              <span className={styles.kpiLabel}>
+                {svc === "sportzavod" ? "SportZavod" : "content-zavod"}
+              </span>
+              <span className={styles.kpiSub}>
+                {stats.count} {t("analytics_gen_jobs")}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ color: "var(--text-muted)", fontSize: 12 }}>{t("analytics_gen_no_data")}</div>
+      )}
     </div>
   );
+}
+
+function fmtSec(s: number): string {
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return sec > 0 ? `${m}m ${sec}s` : `${m}m`;
 }
 
 function fmtCompact(n: number): string {

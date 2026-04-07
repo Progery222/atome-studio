@@ -91,6 +91,60 @@
   }
 }
 
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .page {
+    padding: 20px 24px;
+  }
+
+  .modal {
+    flex-direction: column;
+    max-width: 480px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  .modalVideo {
+    width: 100%;
+    max-height: 300px;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .videoPlayer {
+    max-height: 300px;
+  }
+
+  .modalInfo {
+    padding: 20px 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 16px;
+  }
+
+  .header {
+    margin-bottom: 20px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .modalOverlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  .modal {
+    max-width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 92vh;
+  }
+}
+
 /* ─── Card ────────────────────────────────────────────────────────────────── */
 
 .card {

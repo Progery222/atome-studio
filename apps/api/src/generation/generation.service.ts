@@ -1,4 +1,4 @@
-import type { GenerationJob } from "@atome/shared";
+import type { GenerationJob, GenerationStats } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
 import { EventsGateway } from "../events/events.gateway";
 
@@ -19,6 +19,10 @@ export class GenerationService {
 
   /** Maps job_id → service name for later routing */
   private readonly jobServiceMap = new Map<string, "sportzavod" | "contentzavod">();
+
+  /** Rolling window of last 100 generation durations per service (ms) */
+  private readonly genTimesMs = new Map<string, number[]>();
+  private readonly GEN_TIME_WINDOW = 100;
 
   private baseUrlFor(service: "sportzavod" | "contentzavod"): string {
     return service === "sportzavod" ? this.sportzavodUrl : this.contentzavodUrl;
@@ -224,6 +228,10 @@ export class GenerationService {
       }
       if (job.status === "done" || job.status === "stopped" || job.status === "error") {
         clearInterval(timer);
+        if (job.status === "done") {
+          const durationMs = Date.now() - new Date(job.created_at).getTime();
+          if (durationMs > 0) this.recordGenTime(job.service, durationMs);
+        }
         this.events.emit({
           event:
             job.status === "done"
@@ -244,6 +252,26 @@ export class GenerationService {
         });
       }
     }, intervalMs);
+  }
+
+  private recordGenTime(service: string, durationMs: number) {
+    if (!this.genTimesMs.has(service)) this.genTimesMs.set(service, []);
+    const arr = this.genTimesMs.get(service)!;
+    arr.push(durationMs);
+    if (arr.length > this.GEN_TIME_WINDOW) arr.shift();
+  }
+
+  getStats(): GenerationStats {
+    const result: GenerationStats = {};
+    for (const [svc, times] of this.genTimesMs.entries()) {
+      if (times.length === 0) continue;
+      result[svc] = {
+        avg_sec: Math.round(times.reduce((s, t) => s + t, 0) / times.length / 1000),
+        count: times.length,
+        last_updated: new Date().toISOString(),
+      };
+    }
+    return result;
   }
 
   private normalizeJob(

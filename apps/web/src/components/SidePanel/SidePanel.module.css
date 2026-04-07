@@ -218,3 +218,28 @@
   flex-direction: column;
   gap: 16px;
 }
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1200px) {
+  .panel {
+    width: clamp(220px, 22vw, 320px);
+    min-width: 220px;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .statValue {
+    font-size: 20px;
+  }
+
+  .statBox {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 900px) {
+  .panel {
+    display: none;
+  }
+}

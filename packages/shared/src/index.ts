@@ -166,6 +166,13 @@ export interface SportZavodTheme {
 
 export type GenerationScope = "all" | "theme" | "account" | "query";
 
+export interface GenerationServiceStats {
+  avg_sec: number;
+  count: number;
+  last_updated: string;
+}
+export type GenerationStats = Record<string, GenerationServiceStats>;
+
 // ─── WebSocket events (Phase 3) ───────────────────────────────────────────────
 
 export interface FarmEvent {

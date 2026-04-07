@@ -233,6 +233,25 @@
   background: rgba(0, 0, 0, 0.5);
 }
 
+/* ─── Compact breakpoint ───────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .sidebar {
+    width: 180px;
+    min-width: 180px;
+  }
+
+  .logo {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  .link {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+}
+
 /* ─── Tablet breakpoint ────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
