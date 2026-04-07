@@ -383,13 +383,14 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       const res = await apiFetch("/api/jobs");
       if (!res.ok) throw new Error();
       const jobs = (await res.json()) as GenerationJob[];
-      const newJobs = jobs.length > 0 ? jobs : MOCK_JOBS;
+      // Don't fall back to mocks when API returns empty — that's a valid state (no running jobs).
+      // Mocks are only shown when the API is completely unreachable (catch block below).
 
       // Synthetic activity events when WS is not connected (no orchestrator)
       if (!get().wsConnected) {
         const prevJobs = get().activeJobs;
         const activity = useActivityStore.getState();
-        for (const job of newJobs) {
+        for (const job of jobs) {
           const prev = prevJobs.find((j) => j.job_id === job.job_id);
           const svcName = job.service === "sportzavod" ? "SportZavod" : "content-zavod";
           if (!prev && (job.status === "running" || job.status === "done")) {
@@ -449,7 +450,7 @@ export const useFarmStore = create<FarmState>((set, get) => ({
         }
       }
 
-      set({ activeJobs: newJobs });
+      set({ activeJobs: jobs });
     } catch {
       if (get().activeJobs.length === 0) set({ activeJobs: MOCK_JOBS });
     }

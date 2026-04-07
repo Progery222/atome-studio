@@ -87,7 +87,7 @@ metrics/                ← MetricsService (in-memory time-series), GET /api/met
 ```
 stores/
   services.ts           ← главный store (Service[], metrics, tooltip); fetchServices пушит ActivityEvent при смене статуса сервиса
-  farm.ts               ← Phone[], Account[], QueueTask[], WS events; fetchJobs пушит synthetic ActivityEvent (job progress/done/error) когда wsConnected=false
+  farm.ts               ← Phone[], Account[], QueueTask[], WS events; sportzavodThemes: SportZavodTheme[]; fetchSportzavodThemes(); stopAllJobs(); fetchJobs пушит synthetic ActivityEvent (job progress/done/error) когда wsConnected=false; при пустом ответе API activeJobs=[] (не mock — mock только при сетевой ошибке И пустом списке)
   metrics.ts            ← kpis: HeroKPI, fetchKPIs(); demoMode toggle
   analyticsExtra.ts     ← Performance Analytics store: accountStats, topVideos, trafficSources, conversionHistory, kpis (total_views/avg_views/link_clicks/conversion_rate); generateDemo(period) для demo mode
   activity.ts           ← кольцевой буфер ActivityEvent (max 50)
@@ -173,6 +173,8 @@ GET  /api/jobs/:id                    → статус
 - `ActivityEvent.type` — те же значения плюс `info`
 - `VideoFile` — видео в MinIO (filename, url, thumbnail_url, status)
 - `GenerationJob` — задание генерации (job_id, service, progress, status)
+- `SportZavodTheme` — тема генерации SportZavod (theme_key, theme_name, count)
+- `GenerationScope` — `"all" | "theme" | "account" | "query"`
 - `AccountAnalytics` — аналитика аккаунта (account_id, username, platform, total_views, total_likes, link_clicks, avg_views_per_video)
 - `VideoAnalytics` — аналитика видео (video_id, title, account_id, views, likes, link_clicks, completion_rate, published_at)
 - `TrafficSource` — источник трафика (source, views, percentage)
@@ -236,7 +238,7 @@ npx prisma studio                       # GUI для просмотра БД
 
 **WebSocket стабильность (Railway):**
 - `nginx.conf` `/socket.io/`: `proxy_read_timeout 3600s` + `proxy_send_timeout 3600s` — иначе nginx убивает WS через 60с (дефолт)
-- `EventsGateway`: `pingInterval: 25000, pingTimeout: 20000` — Socket.io пингует каждые 25с, держит соединение живым через Railway edge (таймаут 300с)
+- `EventsGateway`: `pingInterval: 25000, pingTimeout: 20000` — Socket.io пингует каждые 25с, держит соединение живым через Railway edge (таймаут 300с); при разрыве WS к оркестратору — fallback на polling `GET /api/status` каждые 5с; переподключение к WS оркестратора пробует каждые 10с
 - `farm.ts` `connectWs()`: `reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 1000..10000` — клиент переподключается автоматически при разрыве
 
 ## MinIO / Videos
