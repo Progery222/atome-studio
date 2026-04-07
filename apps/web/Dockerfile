@@ -19,8 +19,10 @@ COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 COPY apps/web/nginx.conf /etc/nginx/templates/default.conf.template
 
 # envsubst replaces $PORT, $API_INTERNAL_URL, $RESOLVER; leaves nginx $variables intact
-# RESOLVER is read from /etc/resolv.conf so nginx can dynamically re-resolve Railway internal hostnames
+# RESOLVER is read from /etc/resolv.conf — Railway uses IPv6 DNS (fd12::10), needs bracket notation
 CMD ["/bin/sh", "-c", \
-  "RESOLVER=$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf) && \
+  "RAW_NS=$(grep '^nameserver' /etc/resolv.conf | head -1 | awk '{print $2}') && \
+   if echo \"$RAW_NS\" | grep -q ':'; then RESOLVER=\"[$RAW_NS]\"; else RESOLVER=\"$RAW_NS\"; fi && \
+   echo 'Using DNS resolver: '$RESOLVER && \
    envsubst '$PORT $API_INTERNAL_URL $RESOLVER' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && \
    nginx -g 'daemon off;'"]
