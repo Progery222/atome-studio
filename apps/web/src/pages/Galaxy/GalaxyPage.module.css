@@ -154,8 +154,8 @@
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
 
 @media (max-width: 1100px) {
+  /* ActivityFeed disappears — shrink right edge, but leftNav still visible so keep left offset */
   .heroKPIs {
-    left: 16px;
     right: 16px;
   }
 
@@ -165,6 +165,7 @@
 }
 
 @media (max-width: 768px) {
+  /* leftNav collapses — KPIs can use full width */
   .leftNav {
     display: none;
   }
@@ -172,7 +173,7 @@
   .heroKPIs {
     left: 12px;
     right: 12px;
-    top: 60px;
+    top: 16px;
   }
 
   .demoBtn {
