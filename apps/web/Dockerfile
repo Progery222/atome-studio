@@ -22,7 +22,7 @@ COPY apps/web/nginx.conf /etc/nginx/templates/default.conf.template
 # RESOLVER is read from /etc/resolv.conf — Railway uses IPv6 DNS (fd12::10), needs bracket notation
 CMD ["/bin/sh", "-c", \
   "RAW_NS=$(grep '^nameserver' /etc/resolv.conf | head -1 | awk '{print $2}') && \
-   if echo \"$RAW_NS\" | grep -q ':'; then RESOLVER=\"[$RAW_NS]\"; else RESOLVER=\"$RAW_NS\"; fi && \
+   if echo \"$RAW_NS\" | grep -q ':'; then export RESOLVER=\"[$RAW_NS]\"; else export RESOLVER=\"$RAW_NS\"; fi && \
    echo 'Using DNS resolver: '$RESOLVER && \
    envsubst '$PORT $API_INTERNAL_URL $RESOLVER' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && \
    nginx -g 'daemon off;'"]
