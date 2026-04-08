@@ -337,10 +337,7 @@ export class GenerationService {
         typeof raw.current_message === "string" && raw.current_message
           ? raw.current_message
           : undefined,
-      percent:
-        typeof raw.percent === "number"
-          ? raw.percent
-          : this.jobEvents.resolvePercent(progress, total),
+      percent: this.jobEvents.resolvePercent(progress, total),
       started_at:
         typeof raw.started_at === "string" && raw.started_at
           ? raw.started_at

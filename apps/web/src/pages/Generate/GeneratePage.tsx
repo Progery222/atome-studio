@@ -825,7 +825,8 @@ export function GeneratePage() {
                   const jColor = getJobStatusColor(j);
                   const jPct = getJobDisplayPercent(j);
                   const timeline = (jobEventsById[j.job_id] ?? []).slice(-3);
-                  const indeterminate = j.status === "running" && j.total === 0;
+                  const indeterminate =
+                    j.status === "running" && (j.total === 0 || j.progress === 0);
                   return (
                     <div key={j.job_id} className={styles.jobItem}>
                       <div className={styles.jobItemHead}>

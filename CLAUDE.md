@@ -106,7 +106,7 @@ components/
 pages/
   Galaxy/               ← / (без AuthGuard) — 3D галактика + HeroKPIs + ActivityFeed; activityFeed скрывается на <1100px
   Phones, PhoneDetail, Accounts (scroll wrapper), AccountDetail, Generate, Queue (scroll wrapper), Videos, Analytics, Login — все страницы имеют адаптивные breakpoints: 768px (mobile), 1100px (tablet)
-  Generate ← правая колонка (ЗАДАЧИ): компактная карточка джоба показывает статус текстом (gen_status_* ключи) с цветом jColor, рядом с job_id; ProgressScreen — полный просмотр джоба при клике: SVG-кольцо (`ProgressRing`) с анимацией (indeterminate когда total=0), процент в центре, статус-строка, стейдж = последняя строка `latest_log` (HTML-теги вырезаются, i18n: `gen_stage_label`/`gen_stage_running`), мета-данные (vpa, scope, cost)
+  Generate ← правая колонка (ЗАДАЧИ): компактная карточка джоба показывает статус текстом (gen_status_* ключи) с цветом jColor, рядом с job_id; ProgressScreen — полный просмотр джоба при клике: SVG-кольцо (`ProgressRing`) с анимацией (indeterminate когда `total=0` ИЛИ `progress=0` во время running — крутится пока не готово ни одно видео), процент в центре, статус-строка, стейдж = последняя строка `latest_log` (HTML-теги вырезаются, i18n: `gen_stage_label`/`gen_stage_running`), мета-данные (vpa, scope, cost)
   Clients ← таблица клиентов + inline форма создания (name, email, plan: basic/pro/enterprise, phones_limit); только super_admin
   Analytics ← 2 секции: основные KPI + графики; Performance секция с views/clicks/traffic/leaderboards (данные из analyticsExtra, demo-aware)
 ```
@@ -289,5 +289,6 @@ content-zavod/{YYYY-MM-DD}/{topic_slug}/{title_slug}.mp4              ← conten
 - **`GenerationService.getStats()`** — возвращает `GenerationStats` из Postgres (avg duration per service, накапливается постоянно, не сбрасывается при рестарте)
 - **`GenerationJob.cost_usd`** — реальная стоимость пайплайна из сервиса-генератора; content-zavod считает через `CostTracker` (Brave Search + LLM токены + Kie.ai $0.30); SportZavod возвращает 0 (нет cloud API); сохраняется в `GenerationJobLog.costUsd`; KPI "Cost/Video" = AVG(costUsd) WHERE costUsd > 0 — не env переменная, а реальные данные
 - **`normalizeStatus()`** также нормализует: `queued`/`success`/`completed` → `done`; `stopping` сохраняется as-is
+- **`GenerationJob.percent`** — вычисляется только из `progress/total` (`resolvePercent`); `raw.percent` от SportZavod игнорируется (SportZavod отдаёт `percent: 99` при входе в rendering-фазу — это маркер этапа, не реальный прогресс)
 - **`farm.service.ts:getSportzavodAccounts()`** — маппит `has_avatar: bool` → `heygen_avatar_id: "sz-{id}" | undefined`; без этого все аккаунты считаются "без аватара" и `readyAccounts` пуст
 - **`SportZavod/agent/sheets_manager.py:_FILL_DOWN_COLS`** — включает `"HeyGen Avatar ID"` и `"HeyGen Voice ID"`, чтобы объединённые ячейки в Google Sheet заполнялись вниз по всем аккаунтам группы; без этого `has_avatar` возвращает `false` для аккаунтов кроме первого в группе
