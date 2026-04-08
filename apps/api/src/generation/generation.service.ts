@@ -217,6 +217,11 @@ export class GenerationService {
   /** Poll a running job snapshot and persist meaningful timeline changes */
   private pollJobUntilDone(jobId: string, intervalMs = 3000, maxAttempts = 600) {
     let attempts = 0;
+    let stoppingAttempts = 0;
+    // Retry stop after 2 min stuck in stopping; force-timeout after 10 min
+    const STOPPING_RETRY_AFTER = 40; // ~2 min
+    const STOPPING_FORCE_AFTER = 200; // ~10 min
+
     const timer = setInterval(async () => {
       attempts++;
       const job = await this.getJob(jobId);
@@ -225,6 +230,40 @@ export class GenerationService {
         return;
       }
       await this.syncJobSnapshot(job);
+
+      if (job.status === "stopping") {
+        stoppingAttempts++;
+        if (stoppingAttempts === STOPPING_RETRY_AFTER) {
+          // Retry the stop request — job may not have received it
+          this.stopJob(jobId).catch(() => {});
+          this.logger.warn(`Job ${jobId} stuck in stopping — retrying stop`);
+        } else if (stoppingAttempts >= STOPPING_FORCE_AFTER) {
+          // Force-mark as stopped after 10 min
+          this.logger.warn(`Job ${jobId} stuck in stopping — force-marking as stopped`);
+          await this.jobEvents.appendJobEvent({
+            jobId,
+            service: job.service,
+            eventType: "job_stopped",
+            phase: "stopped",
+            message: "Force-stopped after timeout",
+            status: "stopped",
+            progress: job.progress,
+            total: job.total,
+            percent: job.percent,
+            level: "warning",
+          });
+          clearInterval(timer);
+          const startTime =
+            this.jobStartTimes.get(jobId) ??
+            (job.started_at ? new Date(job.started_at).getTime() : Date.now());
+          this.jobStartTimes.delete(jobId);
+          const durationSec = Math.max(0, Math.round((Date.now() - startTime) / 1000));
+          this.saveJobLog({ ...job, status: "stopped" }, durationSec).catch(() => {});
+          return;
+        }
+      } else {
+        stoppingAttempts = 0;
+      }
 
       if (job.status === "done" || job.status === "stopped" || job.status === "error") {
         clearInterval(timer);

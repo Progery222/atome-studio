@@ -37,14 +37,16 @@ export class ServicesService implements OnModuleInit {
         }),
         this.prisma.generationJobLog.aggregate({
           where: { status: "done", costUsd: { gt: 0 } },
-          _avg: { costUsd: true },
+          _sum: { costUsd: true, videosCount: true },
         }),
       ]);
 
       this.services = services;
       this.farmStats = farmStats;
       this.videosToday = todayRow._sum.videosCount ?? 0;
-      this.costPerVideo = costRow._avg.costUsd ?? 0;
+      const totalCost = costRow._sum.costUsd ?? 0;
+      const totalVideos = costRow._sum.videosCount ?? 0;
+      this.costPerVideo = totalVideos > 0 ? totalCost / totalVideos : 0;
       this.logger.log(
         `Loaded ${this.services.length} services, videos today: ${this.videosToday}, avg cost/video: $${this.costPerVideo.toFixed(4)}`
       );

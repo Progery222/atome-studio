@@ -158,12 +158,17 @@ function getJobStageText(job: GenerationJob, t: ReturnType<typeof useT>): string
 function getJobDisplayPercent(job: GenerationJob, nowMs = Date.now()): number {
   if (job.status === "done") return 100;
 
-  // Time-based estimate when no sub-video progress yet (SportZavod renders one video at a time)
-  if (
-    (job.status === "running" || job.status === "stopping") &&
-    job.total > 0 &&
-    job.progress === 0
-  ) {
+  // For stopping/stopped/error — show actual progress, no time-based estimate
+  if (job.status === "stopping" || job.status === "stopped" || job.status === "error") {
+    return typeof job.percent === "number"
+      ? job.percent
+      : job.total > 0
+        ? Math.round((job.progress / job.total) * 100)
+        : 0;
+  }
+
+  // Time-based estimate when no sub-video progress yet (running only)
+  if (job.status === "running" && job.total > 0 && job.progress === 0) {
     const startMs = job.started_at ? Date.parse(job.started_at) : nowMs;
     const elapsedSec = Number.isNaN(startMs) ? 0 : Math.max(0, (nowMs - startMs) / 1000);
     return Math.min(95, Math.floor(elapsedSec / 3)); // ~1% per 3 sec, cap at 95
@@ -175,11 +180,7 @@ function getJobDisplayPercent(job: GenerationJob, nowMs = Date.now()): number {
       : job.total > 0
         ? Math.round((job.progress / job.total) * 100)
         : 0;
-  if (
-    (job.status === "running" || job.status === "stopping") &&
-    job.total > 0 &&
-    job.progress < job.total
-  ) {
+  if (job.status === "running" && job.total > 0 && job.progress < job.total) {
     return Math.max(0, Math.min(99, basePercent));
   }
   return Math.max(0, Math.min(100, basePercent));
