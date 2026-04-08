@@ -228,7 +228,9 @@ export class GenerationService {
 
       if (job.status === "done" || job.status === "stopped" || job.status === "error") {
         clearInterval(timer);
-        const startTime = this.jobStartTimes.get(jobId) ?? Date.now();
+        const startTime =
+          this.jobStartTimes.get(jobId) ??
+          (job.started_at ? new Date(job.started_at).getTime() : Date.now());
         this.jobStartTimes.delete(jobId);
         const durationSec = Math.max(0, Math.round((Date.now() - startTime) / 1000));
         this.saveJobLog(job, durationSec).catch(() => {});
