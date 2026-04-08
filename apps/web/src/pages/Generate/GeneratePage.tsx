@@ -945,7 +945,9 @@ export function GeneratePage() {
                               {j.progress}/{j.total}
                             </span>
                             {j.current_phase && <span>{j.current_phase}</span>}
-                            <span>{formatElapsed(j.started_at ?? j.created_at, nowMs)}</span>
+                            {(j.status === "running" || j.status === "stopping") && (
+                              <span>{formatElapsed(j.started_at ?? j.created_at, nowMs)}</span>
+                            )}
                             <span>{j.service}</span>
                             {j.errors_count > 0 && (
                               <span style={{ color: "#ef4444" }}>

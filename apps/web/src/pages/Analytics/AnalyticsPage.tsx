@@ -79,7 +79,7 @@ export function AnalyticsPage() {
       fetchCostStats();
     }, 30_000);
     return () => clearInterval(id);
-  }, [fetchKPIs, fetchGenerationStats, fetchCostStats]);
+  }, []);
 
   useEffect(() => {
     if (demoMode) {

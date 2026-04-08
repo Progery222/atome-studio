@@ -200,8 +200,11 @@ export const useAnalyticsExtraStore = create<AnalyticsExtraState>((set) => ({
     }),
 }));
 
-// Sync with main demoMode
+// Sync with main demoMode — only react to actual demoMode transitions
+let _prevDemoMode = useMetricsStore.getState().demoMode;
 useMetricsStore.subscribe((state) => {
+  if (state.demoMode === _prevDemoMode) return;
+  _prevDemoMode = state.demoMode;
   const extra = useAnalyticsExtraStore.getState();
   if (state.demoMode) {
     extra.generateDemo("30d");
