@@ -512,8 +512,7 @@ export class GenerationService {
     if (s === "running") return "running";
     if (s === "stopping") return "stopping";
     if (s === "stopped") return "stopped";
-    if (s === "done" || s === "completed" || s === "success") return "done";
-    if (s === "queued") return "running"; // content-zavod: queued = accepted, pipeline not yet done
+    if (s === "done" || s === "completed" || s === "success" || s === "queued") return "done"; // queued = content-zavod terminal "done" state
     if (s === "pending") return "running"; // content-zavod: pending = just started
     if (s === "waiting_approval") return "running"; // content-zavod: ждёт апрув в Telegram
     if (s === "not_relevant") return "stopped"; // content-zavod: тема нерелевантна
