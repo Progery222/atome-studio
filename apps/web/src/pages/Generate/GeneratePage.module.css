@@ -795,19 +795,6 @@
 
 /* ─── Progress screen ────────────────────────────────────────────────────── */
 
-.progressTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.progressStatusRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .progressDot {
   composes: dot;
   width: 10px;
@@ -821,25 +808,80 @@
   text-transform: uppercase;
 }
 
-.progressPct {
-  font-size: 32px;
+/* ─── Progress ring ──────────────────────────────────────────────────────── */
+
+.ringWrapper {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  margin: 4px auto 12px;
+}
+
+.ringCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ringPct {
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
-.progressBarWrap {
-  width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 16px;
+.ringStatus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
-.progressBarFill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s ease;
+@keyframes arcSpin {
+  from {
+    transform: rotate(-90deg);
+  }
+  to {
+    transform: rotate(270deg);
+  }
+}
+
+.arcIndeterminate {
+  animation: arcSpin 1.4s linear infinite;
+}
+
+.arcDeterminate {
+  /* transition applied inline */
+}
+
+/* ─── Stage block ────────────────────────────────────────────────────────── */
+
+.stageBlock {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+}
+
+.stageLabel {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.stageValue {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  word-break: break-word;
 }
 
 .metaRow {

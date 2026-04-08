@@ -106,7 +106,7 @@ components/
 pages/
   Galaxy/               ← / (без AuthGuard) — 3D галактика + HeroKPIs + ActivityFeed; activityFeed скрывается на <1100px
   Phones, PhoneDetail, Accounts (scroll wrapper), AccountDetail, Generate, Queue (scroll wrapper), Videos, Analytics, Login — все страницы имеют адаптивные breakpoints: 768px (mobile), 1100px (tablet)
-  Generate ← правая колонка (ЗАДАЧИ): компактная карточка джоба показывает статус текстом (gen_status_* ключи) с цветом jColor, рядом с job_id; ProgressScreen — полный просмотр джоба при клике
+  Generate ← правая колонка (ЗАДАЧИ): компактная карточка джоба показывает статус текстом (gen_status_* ключи) с цветом jColor, рядом с job_id; ProgressScreen — полный просмотр джоба при клике: SVG-кольцо (`ProgressRing`) с анимацией (indeterminate когда total=0), процент в центре, статус-строка, стейдж = последняя строка `latest_log` (HTML-теги вырезаются, i18n: `gen_stage_label`/`gen_stage_running`), мета-данные (vpa, scope, cost)
   Clients ← таблица клиентов + inline форма создания (name, email, plan: basic/pro/enterprise, phones_limit); только super_admin
   Analytics ← 2 секции: основные KPI + графики; Performance секция с views/clicks/traffic/leaderboards (данные из analyticsExtra, demo-aware)
 ```

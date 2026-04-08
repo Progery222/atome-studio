@@ -8,6 +8,51 @@ import styles from "./GeneratePage.module.css";
 type Service = "sportzavod" | "contentzavod";
 type VideoCount = 1 | 2 | 3 | 5;
 
+// ─── Progress Ring ────────────────────────────────────────────────────────────
+
+function ProgressRing({
+  pct,
+  color,
+  indeterminate,
+}: {
+  pct: number;
+  color: string;
+  indeterminate: boolean;
+}) {
+  const r = 36;
+  const cx = 44;
+  const circumference = 2 * Math.PI * r; // ~226
+  const offset = indeterminate ? circumference * 0.72 : circumference * (1 - pct / 100);
+
+  return (
+    <svg width="88" height="88" viewBox="0 0 88 88">
+      <circle cx={cx} cy={cx} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="5" />
+      <circle
+        cx={cx}
+        cy={cx}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        className={indeterminate ? styles.arcIndeterminate : styles.arcDeterminate}
+        style={
+          indeterminate
+            ? { filter: `drop-shadow(0 0 5px ${color})`, transformOrigin: `${cx}px ${cx}px` }
+            : {
+                filter: `drop-shadow(0 0 5px ${color})`,
+                transform: `rotate(-90deg)`,
+                transformOrigin: `${cx}px ${cx}px`,
+                transition: "stroke-dashoffset 0.6s ease",
+              }
+        }
+      />
+    </svg>
+  );
+}
+
 // ─── Progress Screen ──────────────────────────────────────────────────────────
 
 function ProgressScreen({ job, onBack }: { job: GenerationJob; onBack: () => void }) {
@@ -80,23 +125,48 @@ function ProgressScreen({ job, onBack }: { job: GenerationJob; onBack: () => voi
 
       {/* ── Big progress card ── */}
       <div className={styles.card}>
-        <div className={styles.progressTop}>
-          <div className={styles.progressStatusRow}>
-            <span className={styles.progressDot} style={{ background: statusColor }} />
-            <span className={styles.progressStatusText} style={{ color: statusColor }}>
-              {statusText}
+        {/* Ring */}
+        <div className={styles.ringWrapper}>
+          <ProgressRing
+            pct={pct}
+            color={statusColor}
+            indeterminate={liveJob.status === "running" && liveJob.total === 0}
+          />
+          <div className={styles.ringCenter}>
+            <span className={styles.ringPct} style={{ color: statusColor }}>
+              {liveJob.status === "running" && liveJob.total === 0 ? "—" : `${pct}%`}
             </span>
           </div>
-          <span className={styles.progressPct} style={{ color: statusColor }}>
-            {pct}%
+        </div>
+
+        {/* Status */}
+        <div className={styles.ringStatus}>
+          <span className={styles.progressDot} style={{ background: statusColor }} />
+          <span className={styles.progressStatusText} style={{ color: statusColor }}>
+            {statusText}
           </span>
         </div>
-        <div className={styles.progressBarWrap}>
-          <div
-            className={styles.progressBarFill}
-            style={{ width: `${pct}%`, background: statusColor }}
-          />
-        </div>
+
+        {/* Stage / latest log */}
+        {liveJob.latest_log ? (
+          <div className={styles.stageBlock}>
+            <span className={styles.stageLabel}>{t("gen_stage_label")}</span>
+            <span className={styles.stageValue}>
+              {liveJob.latest_log
+                .replace(/<[^>]+>/g, "")
+                .trim()
+                .split("\n")
+                .filter(Boolean)
+                .pop()}
+            </span>
+          </div>
+        ) : liveJob.status === "running" ? (
+          <div className={styles.stageBlock}>
+            <span className={styles.stageValue}>{t("gen_stage_running")}</span>
+          </div>
+        ) : null}
+
+        {/* Meta */}
         <div className={styles.metaRow}>
           <div className={styles.metaCell}>
             <span className={styles.metaLabel}>{t("gen_meta_vpa")}</span>
@@ -123,22 +193,6 @@ function ProgressScreen({ job, onBack }: { job: GenerationJob; onBack: () => voi
             </div>
           )}
         </div>
-        {liveJob.latest_log && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: 12,
-              background: "rgba(0,0,0,0.2)",
-              borderRadius: 8,
-              fontSize: "0.9rem",
-              color: "#cbd5e1",
-              lineHeight: "1.4",
-              whiteSpace: "pre-line",
-            }}
-          >
-            {liveJob.latest_log.replace(/<[^>]+>/g, "")}
-          </div>
-        )}
       </div>
 
       {/* ── Accounts in job ── */}
