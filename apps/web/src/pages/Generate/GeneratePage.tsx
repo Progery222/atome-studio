@@ -930,16 +930,6 @@ export function GeneratePage() {
                             )}
                           </div>
 
-                          <div className={styles.jobStageCard}>
-                            <span
-                              className={styles.stageLabel}
-                              style={j.status === "error" ? { color: "#ef4444" } : undefined}
-                            >
-                              {j.status === "error" ? t("gen_error_label") : t("gen_stage_label")}
-                            </span>
-                            <span className={styles.jobStageText}>{getJobStageText(j, t)}</span>
-                          </div>
-
                           <div className={styles.jobItemBottom}>
                             <span>
                               {j.progress}/{j.total}
