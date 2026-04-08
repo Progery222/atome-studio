@@ -1,4 +1,4 @@
-import type { Account, GenerationJob, GenerationJobEvent, GenerationScope } from "@atome/shared";
+import type { Account, GenerationJob, GenerationScope } from "@atome/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../../i18n";
 import { useFarmStore } from "../../stores/farm";
@@ -183,7 +183,7 @@ function getJobDisplayPercent(job: GenerationJob, nowMs = Date.now()): number {
       : job.total > 0
         ? Math.round((job.progress / job.total) * 100)
         : 0;
-  if (job.status === "running" && job.total > 0 && job.progress < job.total) {
+  if (job.status === "running" && job.total > 0) {
     return Math.max(0, Math.min(99, basePercent));
   }
   return Math.max(0, Math.min(100, basePercent));
@@ -888,7 +888,7 @@ export function GeneratePage() {
                 {visibleJobs.map((j) => {
                   const jColor = getJobStatusColor(j);
                   const jPct = getJobDisplayPercent(j, nowMs);
-                  const timeline = (jobEventsById[j.job_id] ?? []).slice(-3);
+                  const latestEvent = (jobEventsById[j.job_id] ?? []).at(-1);
                   const indeterminate = j.status === "running" && j.total === 0;
                   return (
                     <div key={j.job_id} className={styles.jobItem}>
@@ -956,20 +956,18 @@ export function GeneratePage() {
                         </div>
                       </div>
 
-                      {timeline.length > 0 && (
+                      {latestEvent && (
                         <div className={styles.jobTimelinePreview}>
-                          {timeline.map((event: GenerationJobEvent) => (
-                            <div key={event.id} className={styles.jobTimelineRow}>
-                              <span className={styles.jobTimelineTime}>
-                                {formatEventClock(event.created_at)}
+                          <div className={styles.jobTimelineRow}>
+                            <span className={styles.jobTimelineTime}>
+                              {formatEventClock(latestEvent.created_at)}
+                            </span>
+                            <div className={styles.jobTimelineBody}>
+                              <span className={styles.jobTimelinePhase}>
+                                {translatePhase(latestEvent.phase, t)}
                               </span>
-                              <div className={styles.jobTimelineBody}>
-                                <span className={styles.jobTimelinePhase}>
-                                  {translatePhase(event.phase, t)}
-                                </span>
-                              </div>
                             </div>
-                          ))}
+                          </div>
                         </div>
                       )}
                     </div>
