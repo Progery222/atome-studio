@@ -41,6 +41,11 @@ export class GenerationController {
     return this.generation.getStats();
   }
 
+  @Get("jobs/cost-stats")
+  getCostStats() {
+    return this.generation.getCostStats();
+  }
+
   @Get("jobs/:id/events")
   getJobEvents(@Param("id") id: string) {
     return this.generation.getJobEvents(id);

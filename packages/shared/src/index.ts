@@ -202,6 +202,18 @@ export interface GenerationServiceStats {
 }
 export type GenerationStats = Record<string, GenerationServiceStats>;
 
+export interface GenerationCostServiceStats {
+  total_usd: number;
+  avg_usd_per_video: number;
+  videos_count: number;
+  jobs_count: number;
+}
+
+export interface GenerationCostReport {
+  services: Record<string, GenerationCostServiceStats>;
+  total: GenerationCostServiceStats;
+}
+
 // ─── WebSocket events (Phase 3) ───────────────────────────────────────────────
 
 export interface FarmEvent {

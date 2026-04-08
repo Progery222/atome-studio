@@ -1,6 +1,7 @@
 import type {
   AccountAnalytics,
   ConversionPoint,
+  GenerationCostReport,
   GenerationStats,
   TrafficSource,
   VideoAnalytics,
@@ -25,8 +26,10 @@ interface AnalyticsExtraState {
   trafficSources: TrafficSource[];
   conversionHistory: ConversionPoint[];
   generationStats: GenerationStats;
+  costReport: GenerationCostReport | null;
   loading: boolean;
   fetchGenerationStats: () => Promise<void>;
+  fetchCostStats: () => Promise<void>;
   generateDemo: (period: Period) => void;
   clear: () => void;
 }
@@ -129,6 +132,7 @@ export const useAnalyticsExtraStore = create<AnalyticsExtraState>((set) => ({
   trafficSources: [],
   conversionHistory: [],
   generationStats: {},
+  costReport: null,
   loading: false,
 
   fetchGenerationStats: async () => {
@@ -137,6 +141,15 @@ export const useAnalyticsExtraStore = create<AnalyticsExtraState>((set) => ({
       if (!res.ok) return;
       const data = (await res.json()) as GenerationStats;
       set({ generationStats: data });
+    } catch {}
+  },
+
+  fetchCostStats: async () => {
+    try {
+      const res = await apiFetch("/api/jobs/cost-stats");
+      if (!res.ok) return;
+      const data = (await res.json()) as GenerationCostReport;
+      set({ costReport: data });
     } catch {}
   },
 
@@ -160,6 +173,18 @@ export const useAnalyticsExtraStore = create<AnalyticsExtraState>((set) => ({
         sportzavod: { avg_sec: 234, count: 45, last_updated: new Date().toISOString() },
         contentzavod: { avg_sec: 487, count: 23, last_updated: new Date().toISOString() },
       },
+      costReport: {
+        services: {
+          sportzavod: { total_usd: 0, avg_usd_per_video: 0, videos_count: 45, jobs_count: 45 },
+          contentzavod: {
+            total_usd: 12.42,
+            avg_usd_per_video: 0.54,
+            videos_count: 23,
+            jobs_count: 23,
+          },
+        },
+        total: { total_usd: 12.42, avg_usd_per_video: 0.18, videos_count: 68, jobs_count: 68 },
+      },
     });
   },
 
@@ -171,6 +196,7 @@ export const useAnalyticsExtraStore = create<AnalyticsExtraState>((set) => ({
       trafficSources: [],
       conversionHistory: [],
       generationStats: {},
+      costReport: null,
     }),
 }));
 

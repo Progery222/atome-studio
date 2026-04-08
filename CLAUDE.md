@@ -76,7 +76,7 @@ mcp/                    ← адаптеры к внешним сервисам 
 services/               ← ServicesService (polling каждые 30с), ServicesController, GET /api/services/kpis; videos_today из GenerationJobLog (Postgres); cost_per_video = AVG(costUsd) WHERE costUsd > 0 из GenerationJobLog (реальная стоимость из content-zavod, не env)
 auth/                   ← JWT авторизация; пользователи в Neon Postgres через Prisma; роли: admin/editor/viewer
 prisma/                 ← PrismaService + PrismaModule (global); schema в apps/api/prisma/schema.prisma; таблицы: User (auth), GenerationJobLog (jobId, service, durationSec, videosCount, costUsd, status, createdAt)
-generation/             ← POST /api/generate, POST /api/generate/auto, GET /api/jobs/:id, GET /api/jobs/stats, POST /api/jobs/stop-all; эмитит job_started/job_complete/job_stopped через EventsGateway; внутренний поллинг каждые 8с; jobServiceMap → роутинг job_id к нужному сервису; jobStartTimes → Map<jobId, timestamp> для точного подсчёта durationSec; fallback-цепочка: jobStartTimes → job.started_at (SportZavod возвращает created_at = started_at) → Date.now(); при завершении сохраняет в GenerationJobLog включая costUsd из ответа сервиса; getStats() → AVG(durationSec) из БД per service
+generation/             ← POST /api/generate, POST /api/generate/auto, GET /api/jobs/:id, GET /api/jobs/stats, GET /api/jobs/cost-stats, POST /api/jobs/stop-all; эмитит job_started/job_complete/job_stopped через EventsGateway; внутренний поллинг каждые 8с; jobServiceMap → роутинг job_id к нужному сервису; jobStartTimes → Map<jobId, timestamp> для точного подсчёта durationSec; fallback-цепочка: jobStartTimes → job.started_at (SportZavod возвращает created_at = started_at) → Date.now(); при завершении сохраняет в GenerationJobLog включая costUsd из ответа сервиса; getStats() → AVG(durationSec) из БД per service; getCostStats() → GenerationCostReport { services: Record<service, {total_usd, avg_usd_per_video, videos_count, jobs_count}>, total: same } из БД groupBy service WHERE costUsd > 0
 events/                 ← EventsGateway (Socket.io WS мост к orchestrator); экспортируется из EventsModule; метод emit(FarmEvent) для внутреннего использования
 videos/                 ← VideosService (S3 XML API к MinIO), GET /api/videos
 clients/                ← CRUD клиентов (super_admin only)
@@ -89,7 +89,7 @@ stores/
   services.ts           ← главный store (Service[], metrics, tooltip); fetchServices пушит ActivityEvent при смене статуса сервиса
   farm.ts               ← Phone[], Account[], QueueTask[], WS events; sportzavodThemes: SportZavodTheme[]; fetchSportzavodThemes(); stopAllJobs(); fetchJobs пушит synthetic ActivityEvent (job progress/done/error) когда wsConnected=false; при пустом ответе API activeJobs=[] (не mock — mock только при сетевой ошибке И пустом списке)
   metrics.ts            ← kpis: HeroKPI, fetchKPIs(); demoMode toggle
-  analyticsExtra.ts     ← Performance Analytics store: accountStats, topVideos, trafficSources, conversionHistory, kpis (total_views/avg_views/link_clicks/conversion_rate), generationStats: GenerationStats; fetchGenerationStats() → GET /api/jobs/stats; generateDemo(period) для demo mode
+  analyticsExtra.ts     ← Performance Analytics store: accountStats, topVideos, trafficSources, conversionHistory, kpis (total_views/avg_views/link_clicks/conversion_rate), generationStats: GenerationStats, costReport: GenerationCostReport|null; fetchGenerationStats() → GET /api/jobs/stats; fetchCostStats() → GET /api/jobs/cost-stats; generateDemo(period) включает demo costReport; оба fetch вызываются каждые 30с
   activity.ts           ← кольцевой буфер ActivityEvent (max 50)
   auth.ts               ← useAuthStore — JWT token, user, login/logout
   lang.ts               ← useLangStore — текущий язык (ru/en/zh/es)
@@ -108,7 +108,7 @@ pages/
   Phones, PhoneDetail, Accounts (scroll wrapper), AccountDetail, Generate, Queue (scroll wrapper), Videos, Analytics, Login — все страницы имеют адаптивные breakpoints: 768px (mobile), 1100px (tablet)
   Generate ← правая колонка (ЗАДАЧИ): компактная карточка джоба показывает статус текстом (gen_status_* ключи) с цветом jColor, рядом с job_id; `getJobDisplayPercent()` — если `progress=0` и `total>0` во время **running**, считает процент по времени (~1%/3с, cap 95%) на основе `job.started_at`; для **stopping/stopped/error** — только реальный progress/total (без времени); indeterminate только когда `total=0` и статус `running`; ProgressScreen — полный просмотр джоба при клике: SVG-кольцо (`ProgressRing`), процент в центре, статус-строка, стейдж = последняя строка `latest_log` (HTML-теги вырезаются, i18n: `gen_stage_label`/`gen_stage_running`), при ошибке — `gen_error_label` + `current_message`, мета-данные (vpa, scope, cost)
   Clients ← таблица клиентов + inline форма создания (name, email, plan: basic/pro/enterprise, phones_limit); только super_admin
-  Analytics ← 2 секции: основные KPI + графики; Performance секция с views/clicks/traffic/leaderboards (данные из analyticsExtra, demo-aware)
+  Analytics ← 3 секции: основные KPI + графики; Performance секция с views/clicks/traffic/leaderboards; **Cost Analytics** секция — KPI (total_spent/per-service/avg_per_video) + donut (cost by service) + bar (avg $/video by service); данные из analyticsExtra.costReport, demo-aware
   Videos ← toolbar в header: сортировка (date_new/date_old/account), фильтры (service/account/status), текстовый поиск (title+caption+description+hashtags+account_id), toggle группировки по дате (groupByDate); subtitle показывает N/total; все фильтры — локальный state + useMemo pipeline на фронте
 ```
 
@@ -176,6 +176,7 @@ GET  /api/jobs/:id                    → статус
 - `VideoFile` — видео в MinIO (filename, url, thumbnail_url, status)
 - `GenerationJob` — задание генерации (job_id, service, progress, status: running|done|error|stopped|**stopping**, is_auto, results[], cost_usd?: number)
 - `GenerationServiceStats` / `GenerationStats` — статистика генерации (avg_sec, count, last_updated); `Record<string, GenerationServiceStats>`
+- `GenerationCostServiceStats` / `GenerationCostReport` — статистика затрат: `{ total_usd, avg_usd_per_video, videos_count, jobs_count }`; `GenerationCostReport = { services: Record<string, GenerationCostServiceStats>, total: GenerationCostServiceStats }`
 - `SportZavodTheme` — тема генерации SportZavod (theme_key, theme_name, count)
 - `GenerationScope` — `"all" | "theme" | "account" | "query"`
 - `AccountAnalytics` — аналитика аккаунта (account_id, username, platform, total_views, total_likes, link_clicks, avg_views_per_video)

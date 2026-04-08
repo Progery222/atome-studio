@@ -62,7 +62,9 @@ export function AnalyticsPage() {
   const trafficSources = useAnalyticsExtraStore((s) => s.trafficSources);
   const conversionHistory = useAnalyticsExtraStore((s) => s.conversionHistory);
   const generationStats = useAnalyticsExtraStore((s) => s.generationStats);
+  const costReport = useAnalyticsExtraStore((s) => s.costReport);
   const fetchGenerationStats = useAnalyticsExtraStore((s) => s.fetchGenerationStats);
+  const fetchCostStats = useAnalyticsExtraStore((s) => s.fetchCostStats);
   const generateDemo = useAnalyticsExtraStore((s) => s.generateDemo);
 
   const [period, setPeriod] = useState<Period>("30d");
@@ -71,9 +73,13 @@ export function AnalyticsPage() {
   useEffect(() => {
     fetchKPIs();
     fetchGenerationStats();
-    const id = setInterval(fetchGenerationStats, 30_000);
+    fetchCostStats();
+    const id = setInterval(() => {
+      fetchGenerationStats();
+      fetchCostStats();
+    }, 30_000);
     return () => clearInterval(id);
-  }, [fetchKPIs, fetchGenerationStats]);
+  }, [fetchKPIs, fetchGenerationStats, fetchCostStats]);
 
   useEffect(() => {
     if (demoMode) {
@@ -333,6 +339,93 @@ export function AnalyticsPage() {
           )}
         </div>
       </div>
+      {/* ─── Cost Analytics ───────────────────────────────────────────────────── */}
+
+      <div className={styles.sectionDivider}>Cost Analytics</div>
+
+      {costReport ? (
+        <>
+          <div className={styles.kpiRow}>
+            <div className={styles.kpiCard}>
+              <span className={styles.kpiValue} style={{ color: "var(--accent-cyan)" }}>
+                ${costReport.total.total_usd.toFixed(2)}
+              </span>
+              <span className={styles.kpiLabel}>Total Spent (all time)</span>
+              <span className={styles.kpiSub}>{costReport.total.jobs_count} jobs</span>
+            </div>
+            {Object.entries(costReport.services).map(([svc, stats]) => (
+              <div key={svc} className={styles.kpiCard}>
+                <span
+                  className={styles.kpiValue}
+                  style={{ color: svc === "sportzavod" ? "#d4af37" : "#b496ff" }}
+                >
+                  ${stats.total_usd.toFixed(2)}
+                </span>
+                <span className={styles.kpiLabel}>
+                  {svc === "sportzavod" ? "SportZavod" : "content-zavod"}
+                </span>
+                <span className={styles.kpiSub}>{stats.jobs_count} jobs</span>
+              </div>
+            ))}
+            <div className={styles.kpiCard}>
+              <span className={styles.kpiValue}>
+                ${costReport.total.avg_usd_per_video.toFixed(3)}
+              </span>
+              <span className={styles.kpiLabel}>Avg Cost / Video</span>
+              <span className={styles.kpiSub}>{costReport.total.videos_count} videos total</span>
+            </div>
+          </div>
+
+          {Object.keys(costReport.services).length > 0 && (
+            <div className={styles.chartRow}>
+              <div className={styles.chartCard}>
+                <div className={styles.chartTitle}>Cost by Service</div>
+                {Object.values(costReport.services).some((s) => s.total_usd > 0) ? (
+                  <MetricChart
+                    option={{
+                      type: "donut",
+                      series: Object.entries(costReport.services).map(([svc, stats]) => ({
+                        name: svc === "sportzavod" ? "SportZavod" : "content-zavod",
+                        data: [+stats.total_usd.toFixed(4)],
+                        color: svc === "sportzavod" ? "#d4af37" : "#b496ff",
+                      })),
+                      height: 180,
+                    }}
+                  />
+                ) : (
+                  <div style={{ color: "var(--text-muted)", fontSize: 12, padding: 16 }}>
+                    No cost data yet — costs accumulate when content-zavod jobs complete
+                  </div>
+                )}
+              </div>
+              <div className={styles.chartCard}>
+                <div className={styles.chartTitle}>Avg Cost / Video by Service</div>
+                <MetricChart
+                  option={{
+                    type: "bar",
+                    series: [
+                      {
+                        name: "Avg $/video",
+                        data: Object.entries(costReport.services).map(
+                          ([, s]) => +s.avg_usd_per_video.toFixed(4)
+                        ),
+                        color: "var(--accent-cyan)",
+                      },
+                    ],
+                    labels: Object.keys(costReport.services).map((svc) =>
+                      svc === "sportzavod" ? "SportZavod" : "content-zavod"
+                    ),
+                    height: 180,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ color: "var(--text-muted)", fontSize: 12 }}>No cost data yet</div>
+      )}
+
       {/* ─── Generation Speed ─────────────────────────────────────────────────── */}
 
       <div className={styles.sectionDivider}>{t("analytics_gen_speed")}</div>
