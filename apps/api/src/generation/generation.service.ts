@@ -299,13 +299,24 @@ export class GenerationService {
     raw: Record<string, unknown>,
     service: "sportzavod" | "contentzavod"
   ): GenerationJob {
-    const status = this.normalizeStatus(raw.status);
     const isCz = service === "contentzavod";
+    const rawResults = Array.isArray(raw.results) ? (raw.results as unknown[]) : null;
+
+    // content-zavod: done with empty results = pipeline aborted (API error, no content found, etc.)
+    const baseStatus = this.normalizeStatus(raw.status);
+    const status =
+      isCz && baseStatus === "done" && rawResults !== null && rawResults.length === 0
+        ? "error"
+        : baseStatus;
 
     // content-zavod has no progress/total fields — treat each job as 1 video
     const total = typeof raw.total === "number" ? raw.total : isCz ? 1 : 0;
     const progress =
-      typeof raw.progress === "number" ? raw.progress : isCz && status === "done" ? 1 : 0;
+      typeof raw.progress === "number"
+        ? raw.progress
+        : isCz && status === "done" && (!rawResults || rawResults.length > 0)
+          ? 1
+          : 0;
 
     return {
       job_id: String(raw.job_id ?? raw.id ?? crypto.randomUUID()),
