@@ -346,10 +346,7 @@ export class GenerationService {
       latest_log: typeof raw.latest_log === "string" && raw.latest_log ? raw.latest_log : undefined,
       current_phase:
         typeof raw.current_phase === "string" && raw.current_phase ? raw.current_phase : undefined,
-      current_message:
-        typeof raw.current_message === "string" && raw.current_message
-          ? raw.current_message
-          : undefined,
+      current_message: this.resolveErrorMessage(raw, status),
       percent: this.jobEvents.resolvePercent(progress, total),
       started_at:
         typeof raw.started_at === "string" && raw.started_at
@@ -393,6 +390,39 @@ export class GenerationService {
     if (status === "stopped") return `${service} stopped`;
     if (status === "stopping") return `${service} stopping`;
     return `${service} · ${phase}`;
+  }
+
+  private resolveErrorMessage(
+    raw: Record<string, unknown>,
+    status: GenerationJob["status"]
+  ): string | undefined {
+    // Explicit error message from service
+    const explicit =
+      typeof raw.error_message === "string" && raw.error_message
+        ? raw.error_message
+        : typeof raw.error === "string" && raw.error
+          ? raw.error
+          : typeof raw.abort_reason === "string" && raw.abort_reason
+            ? raw.abort_reason
+            : null;
+    if (explicit) return explicit;
+
+    // Errors array (e.g. content-zavod returns errors: ["msg1", "msg2"])
+    if (Array.isArray(raw.errors) && raw.errors.length > 0) {
+      return (raw.errors as unknown[]).map((e) => String(e)).join("; ");
+    }
+
+    // When we force-errored empty-results job, use latest_log as fallback message
+    if (status === "error" && typeof raw.latest_log === "string" && raw.latest_log) {
+      return raw.latest_log;
+    }
+
+    // Normal current_message from service
+    if (typeof raw.current_message === "string" && raw.current_message) {
+      return raw.current_message;
+    }
+
+    return undefined;
   }
 
   private normalizeStatus(s: unknown): GenerationJob["status"] {
