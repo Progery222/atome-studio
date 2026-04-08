@@ -207,6 +207,10 @@ function VideoCard({ video, onSelect }: { video: VideoFile; onSelect: () => void
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type SortBy = "date_new" | "date_old" | "account";
+type FilterService = "all" | "sportzavod" | "contentzavod";
+type FilterStatus = "all" | "queued" | "published" | "rejected";
+
 export function VideosPage() {
   const videos = useFarmStore((s) => s.videos);
   const videosLoading = useFarmStore((s) => s.videosLoading);
@@ -215,20 +219,79 @@ export function VideosPage() {
   const lang = useLangStore((s) => s.lang);
   const [selectedVideo, setSelectedVideo] = useState<VideoFile | null>(null);
 
+  const [sortBy, setSortBy] = useState<SortBy>("date_new");
+  const [filterService, setFilterService] = useState<FilterService>("all");
+  const [filterAccount, setFilterAccount] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [search, setSearch] = useState<string>("");
+  const [groupByDate, setGroupByDate] = useState<boolean>(true);
+
   useEffect(() => {
     fetchVideos();
-  }, [fetchVideos]);
+  }, []);
 
-  // Group by date
+  // Unique account list for filter dropdown
+  const accountOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const v of videos) if (v.account_id) set.add(v.account_id);
+    return [...set].sort();
+  }, [videos]);
+
+  // Filter → search → sort pipeline
+  const processed = useMemo(() => {
+    let result = videos;
+
+    if (filterService !== "all") {
+      result = result.filter((v) => v.source_service === filterService);
+    }
+    if (filterAccount) {
+      result = result.filter((v) => v.account_id === filterAccount);
+    }
+    if (filterStatus !== "all") {
+      result = result.filter((v) => v.status === filterStatus);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter((v) => {
+        const haystack = [v.title, v.caption, v.description, v.hashtags?.join(" "), v.account_id]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+
+    if (sortBy === "date_new") {
+      result = [...result].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    } else if (sortBy === "date_old") {
+      result = [...result].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    } else {
+      // account: alpha by account_id, then newest first within
+      result = [...result].sort((a, b) => {
+        const cmp = a.account_id.localeCompare(b.account_id);
+        if (cmp !== 0) return cmp;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+    }
+
+    return result;
+  }, [videos, filterService, filterAccount, filterStatus, search, sortBy]);
+
+  // Group by date (only when groupByDate is on)
   const grouped = useMemo(() => {
+    if (!groupByDate) return null;
     const map = new Map<string, VideoFile[]>();
-    for (const v of videos) {
+    for (const v of processed) {
       const k = dateKey(v.created_at);
       if (!map.has(k)) map.set(k, []);
       map.get(k)?.push(v);
     }
-    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-  }, [videos]);
+    return [...map.entries()];
+  }, [processed, groupByDate]);
 
   return (
     <div className={styles.page}>
@@ -239,18 +302,95 @@ export function VideosPage() {
             {videosLoading
               ? t("videos_loading")
               : videos.length > 0
-                ? `${videos.length} ${t("videos_unit")}`
+                ? `${processed.length} / ${videos.length} ${t("videos_unit")}`
                 : t("videos_empty_sub")}
           </div>
         </div>
-        <button className={styles.syncBtn} onClick={fetchVideos}>
-          {t("videos_refresh")}
-        </button>
+
+        <div className={styles.headerControls}>
+          {/* Sort */}
+          <select
+            className={styles.filterSelect}
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
+          >
+            <option value="date_new">{t("videos_sort_date_new")}</option>
+            <option value="date_old">{t("videos_sort_date_old")}</option>
+            <option value="account">{t("videos_sort_account")}</option>
+          </select>
+
+          {/* Service filter */}
+          <select
+            className={styles.filterSelect}
+            value={filterService}
+            onChange={(e) => setFilterService(e.target.value as FilterService)}
+          >
+            <option value="all">
+              {t("videos_filter_service")}: {t("videos_filter_all")}
+            </option>
+            <option value="sportzavod">sportzavod</option>
+            <option value="contentzavod">contentzavod</option>
+          </select>
+
+          {/* Account filter */}
+          <select
+            className={styles.filterSelect}
+            value={filterAccount}
+            onChange={(e) => setFilterAccount(e.target.value)}
+          >
+            <option value="">
+              {t("videos_filter_account")}: {t("videos_filter_all")}
+            </option>
+            {accountOptions.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+
+          {/* Status filter */}
+          <select
+            className={styles.filterSelect}
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
+          >
+            <option value="all">
+              {t("videos_filter_status")}: {t("videos_filter_all")}
+            </option>
+            <option value="queued">queued</option>
+            <option value="published">published</option>
+            <option value="rejected">rejected</option>
+          </select>
+
+          {/* Search */}
+          <input
+            className={styles.searchInput}
+            type="text"
+            placeholder={t("videos_search")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          {/* Group by date toggle */}
+          <button
+            className={`${styles.groupToggle} ${groupByDate ? styles.groupToggleActive : ""}`}
+            onClick={() => setGroupByDate((v) => !v)}
+          >
+            {t("videos_group_by_date")}
+          </button>
+
+          {/* Refresh */}
+          <button className={styles.syncBtn} onClick={fetchVideos}>
+            {t("videos_refresh")}
+          </button>
+        </div>
       </header>
 
-      {videos.length === 0 && !videosLoading ? (
-        <div className={styles.empty}>{t("videos_empty_full")}</div>
-      ) : (
+      {processed.length === 0 && !videosLoading ? (
+        <div className={styles.empty}>
+          {videos.length === 0 ? t("videos_empty_full") : t("videos_empty_sub")}
+        </div>
+      ) : grouped ? (
         grouped.map(([key, group]) => (
           <div key={key} className={styles.group}>
             <div className={styles.groupDate}>
@@ -263,6 +403,12 @@ export function VideosPage() {
             </div>
           </div>
         ))
+      ) : (
+        <div className={styles.grid}>
+          {processed.map((v) => (
+            <VideoCard key={v.filename} video={v} onSelect={() => setSelectedVideo(v)} />
+          ))}
+        </div>
       )}
 
       {selectedVideo && <VideoModal video={selectedVideo} onClose={() => setSelectedVideo(null)} />}

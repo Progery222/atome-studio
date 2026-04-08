@@ -109,6 +109,7 @@ pages/
   Generate ← правая колонка (ЗАДАЧИ): компактная карточка джоба показывает статус текстом (gen_status_* ключи) с цветом jColor, рядом с job_id; ProgressScreen — полный просмотр джоба при клике: SVG-кольцо (`ProgressRing`) с анимацией (indeterminate когда `total=0` ИЛИ `progress=0` во время running — крутится пока не готово ни одно видео), процент в центре, статус-строка, стейдж = последняя строка `latest_log` (HTML-теги вырезаются, i18n: `gen_stage_label`/`gen_stage_running`), мета-данные (vpa, scope, cost)
   Clients ← таблица клиентов + inline форма создания (name, email, plan: basic/pro/enterprise, phones_limit); только super_admin
   Analytics ← 2 секции: основные KPI + графики; Performance секция с views/clicks/traffic/leaderboards (данные из analyticsExtra, demo-aware)
+  Videos ← toolbar в header: сортировка (date_new/date_old/account), фильтры (service/account/status), текстовый поиск (title+caption+description+hashtags+account_id), toggle группировки по дате (groupByDate); subtitle показывает N/total; все фильтры — локальный state + useMemo pipeline на фронте
 ```
 
 ---
