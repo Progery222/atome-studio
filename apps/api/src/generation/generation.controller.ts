@@ -41,6 +41,11 @@ export class GenerationController {
     return this.generation.getStats();
   }
 
+  @Get("jobs/:id/events")
+  getJobEvents(@Param("id") id: string) {
+    return this.generation.getJobEvents(id);
+  }
+
   @Get("jobs/:id")
   async getJob(@Param("id") id: string) {
     const job = await this.generation.getJob(id);

@@ -3,6 +3,7 @@ import type {
   ActivityEvent,
   FarmEvent,
   GenerationJob,
+  GenerationJobEvent,
   Phone,
   QueueTask,
   SportZavodTheme,
@@ -20,6 +21,7 @@ interface FarmState {
   sportzavodThemes: SportZavodTheme[];
   queue: QueueTask[];
   activeJobs: GenerationJob[];
+  jobEventsById: Record<string, GenerationJobEvent[]>;
   videos: VideoFile[];
   phonesLoading: boolean;
   accountsLoading: boolean;
@@ -37,6 +39,7 @@ interface FarmState {
   fetchSportzavodThemes: () => Promise<void>;
   fetchQueue: () => Promise<void>;
   fetchJobs: () => Promise<void>;
+  fetchJobEvents: (jobId: string) => Promise<void>;
   fetchVideos: () => Promise<void>;
   pausePhone: (id: string) => Promise<void>;
   resumePhone: (id: string) => Promise<void>;
@@ -290,6 +293,138 @@ const MOCK_JOBS: GenerationJob[] = [
   },
 ];
 
+function coerceEventJobStatus(event: FarmEvent): GenerationJob["status"] {
+  const raw = event.details?.status;
+  if (
+    raw === "running" ||
+    raw === "done" ||
+    raw === "error" ||
+    raw === "stopped" ||
+    raw === "stopping"
+  ) {
+    return raw;
+  }
+  if (event.event === "job_complete") return "done";
+  if (event.event === "job_error") return "error";
+  if (event.event === "job_stopped") return "stopped";
+  return "running";
+}
+
+function coerceJobEvent(event: FarmEvent): GenerationJobEvent | null {
+  if (
+    event.event !== "job_started" &&
+    event.event !== "job_complete" &&
+    event.event !== "job_stopped" &&
+    event.event !== "job_progress" &&
+    event.event !== "job_log" &&
+    event.event !== "job_error"
+  ) {
+    return null;
+  }
+
+  const jobId = typeof event.details?.job_id === "string" ? (event.details.job_id as string) : "";
+  const service = event.details?.service;
+  if (!jobId || (service !== "sportzavod" && service !== "contentzavod")) return null;
+
+  const progress =
+    typeof event.details?.progress === "number" ? (event.details.progress as number) : 0;
+  const total = typeof event.details?.total === "number" ? (event.details.total as number) : 0;
+  const percent =
+    typeof event.details?.percent === "number" ? (event.details.percent as number) : undefined;
+  const level =
+    event.details?.level === "warning" || event.details?.level === "error"
+      ? (event.details.level as "warning" | "error")
+      : "info";
+
+  return {
+    id: `${jobId}-${event.timestamp}-${event.event}`,
+    job_id: jobId,
+    service,
+    seq: Number.MAX_SAFE_INTEGER,
+    event_type: event.event,
+    phase:
+      typeof event.details?.phase === "string"
+        ? (event.details.phase as string)
+        : coerceEventJobStatus(event),
+    message:
+      typeof event.details?.message === "string" ? (event.details.message as string) : event.event,
+    status: coerceEventJobStatus(event),
+    progress,
+    total,
+    percent,
+    level,
+    created_at:
+      typeof event.details?.created_at === "string"
+        ? (event.details.created_at as string)
+        : event.timestamp,
+  };
+}
+
+function mergeJobSnapshot(
+  existing: GenerationJob | undefined,
+  incoming: GenerationJobEvent
+): GenerationJob {
+  const base: GenerationJob =
+    existing ??
+    ({
+      job_id: incoming.job_id,
+      service: incoming.service,
+      account_ids: [],
+      videos_per_account: 1,
+      status: incoming.status,
+      is_auto: false,
+      progress: incoming.progress,
+      total: incoming.total,
+      errors_count: incoming.status === "error" ? 1 : 0,
+      created_at: incoming.created_at,
+    } as GenerationJob);
+
+  return {
+    ...base,
+    status: incoming.status,
+    progress: incoming.progress,
+    total: incoming.total,
+    percent:
+      incoming.percent ??
+      (incoming.total > 0 ? Math.round((incoming.progress / incoming.total) * 100) : base.percent),
+    current_phase: incoming.phase,
+    current_message: incoming.message,
+    latest_log: incoming.message,
+    started_at: base.started_at ?? base.created_at ?? incoming.created_at,
+    updated_at: incoming.created_at,
+    errors_count: incoming.status === "error" ? Math.max(base.errors_count, 1) : base.errors_count,
+  };
+}
+
+function upsertActiveJob(jobs: GenerationJob[], incoming: GenerationJobEvent): GenerationJob[] {
+  const index = jobs.findIndex((job) => job.job_id === incoming.job_id);
+  if (index === -1) return [...jobs, mergeJobSnapshot(undefined, incoming)];
+  const next = [...jobs];
+  next[index] = mergeJobSnapshot(next[index], incoming);
+  return next;
+}
+
+function appendTimelineEvent(
+  current: Record<string, GenerationJobEvent[]>,
+  incoming: GenerationJobEvent
+): Record<string, GenerationJobEvent[]> {
+  const prev = current[incoming.job_id] ?? [];
+  if (
+    prev.some(
+      (event) =>
+        event.id === incoming.id ||
+        (event.created_at === incoming.created_at &&
+          event.event_type === incoming.event_type &&
+          event.phase === incoming.phase &&
+          event.message === incoming.message)
+    )
+  ) {
+    return current;
+  }
+  const next = [...prev, incoming].slice(-100);
+  return { ...current, [incoming.job_id]: next };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const useFarmStore = create<FarmState>((set, get) => ({
@@ -299,6 +434,7 @@ export const useFarmStore = create<FarmState>((set, get) => ({
   sportzavodThemes: [],
   queue: [],
   activeJobs: [],
+  jobEventsById: {},
   videos: [],
   phonesLoading: false,
   accountsLoading: false,
@@ -456,6 +592,19 @@ export const useFarmStore = create<FarmState>((set, get) => ({
     }
   },
 
+  fetchJobEvents: async (jobId) => {
+    try {
+      const res = await apiFetch(`/api/jobs/${jobId}/events`);
+      if (!res.ok) throw new Error();
+      const events = (await res.json()) as GenerationJobEvent[];
+      set((state) => ({
+        jobEventsById: { ...state.jobEventsById, [jobId]: events.slice(-100) },
+      }));
+    } catch (e) {
+      console.warn("fetchJobEvents failed", e);
+    }
+  },
+
   fetchVideos: async () => {
     set({ videosLoading: true });
     try {
@@ -520,7 +669,24 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       }),
     });
     const job = (await res.json()) as GenerationJob;
-    set((s) => ({ activeJobs: [...s.activeJobs, job] }));
+    set((s) => ({
+      activeJobs: upsertActiveJob(s.activeJobs, {
+        id: `${job.job_id}-local-start`,
+        job_id: job.job_id,
+        service: job.service,
+        seq: 0,
+        event_type: "job_started",
+        phase: job.current_phase ?? "queued",
+        message: job.current_message ?? "Generation queued",
+        status: job.status,
+        progress: job.progress,
+        total: job.total,
+        percent: job.percent,
+        level: "info",
+        created_at: job.updated_at ?? job.created_at,
+      }),
+      jobEventsById: { ...s.jobEventsById, [job.job_id]: s.jobEventsById[job.job_id] ?? [] },
+    }));
     return job;
   },
 
@@ -533,7 +699,24 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       body: JSON.stringify(body),
     });
     const job = (await res.json()) as GenerationJob;
-    set((s) => ({ activeJobs: [...s.activeJobs, job] }));
+    set((s) => ({
+      activeJobs: upsertActiveJob(s.activeJobs, {
+        id: `${job.job_id}-local-start`,
+        job_id: job.job_id,
+        service: job.service,
+        seq: 0,
+        event_type: "job_started",
+        phase: job.current_phase ?? "queued",
+        message: job.current_message ?? "Generation queued",
+        status: job.status,
+        progress: job.progress,
+        total: job.total,
+        percent: job.percent,
+        level: "info",
+        created_at: job.updated_at ?? job.created_at,
+      }),
+      jobEventsById: { ...s.jobEventsById, [job.job_id]: s.jobEventsById[job.job_id] ?? [] },
+    }));
     return job;
   },
 
@@ -580,6 +763,9 @@ export const useFarmStore = create<FarmState>((set, get) => ({
       const MESSAGE_MAP: Partial<Record<FarmEvent["event"], string>> = {
         job_started: `Job started · ${svcName}${event.details?.total ? ` · ${event.details.total as number} videos` : ""}`,
         job_complete: `Job complete · ${svcName} · ${event.details?.progress ?? 0}/${event.details?.total ?? 0} videos`,
+        job_progress: `${svcName} · ${event.details?.phase ?? "running"}`,
+        job_log: `${svcName} · ${event.details?.message ?? "log"}`,
+        job_error: `Job error · ${svcName}`,
         job_stopped: `Job stopped · ${svcName}`,
         service_online: `${svcName} came online`,
         service_offline: `${svcName} went offline`,
@@ -594,6 +780,7 @@ export const useFarmStore = create<FarmState>((set, get) => ({
         banned: "error",
         error: "error",
         failed: "error",
+        job_error: "error",
         service_offline: "warning",
         job_stopped: "warning",
       };
@@ -608,6 +795,14 @@ export const useFarmStore = create<FarmState>((set, get) => ({
         severity: SEVERITY_MAP[event.event] ?? "info",
       });
 
+      const jobEvent = coerceJobEvent(event);
+      if (jobEvent) {
+        set((state) => ({
+          activeJobs: upsertActiveJob(state.activeJobs, jobEvent),
+          jobEventsById: appendTimelineEvent(state.jobEventsById, jobEvent),
+        }));
+      }
+
       switch (event.event) {
         case "published":
           get().fetchQueue();
@@ -616,6 +811,10 @@ export const useFarmStore = create<FarmState>((set, get) => ({
         case "failed":
         case "error":
           get().fetchQueue();
+          break;
+        case "job_error":
+        case "job_progress":
+        case "job_log":
           break;
         case "job_complete":
           get().fetchJobs();

@@ -1,4 +1,4 @@
-import type { Account, GenerationJob, GenerationScope } from "@atome/shared";
+import type { Account, GenerationJob, GenerationJobEvent, GenerationScope } from "@atome/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useT } from "../../i18n";
@@ -7,6 +7,22 @@ import styles from "./GeneratePage.module.css";
 
 type Service = "sportzavod" | "contentzavod";
 type VideoCount = 1 | 2 | 3 | 5;
+
+function formatElapsed(iso?: string, nowMs = Date.now()): string {
+  if (!iso) return "—";
+  const started = Date.parse(iso);
+  if (Number.isNaN(started)) return "—";
+  const totalSec = Math.max(0, Math.floor((nowMs - started) / 1000));
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}m ${sec}s`;
+}
+
+function formatEventClock(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
 
 // ─── Progress Ring ────────────────────────────────────────────────────────────
 
@@ -59,20 +75,30 @@ function ProgressScreen({ job, onBack }: { job: GenerationJob; onBack: () => voi
   const t = useT();
   const accounts = useFarmStore((s) => s.sportzavodAccounts);
   const fetchJobs = useFarmStore((s) => s.fetchJobs);
+  const fetchJobEvents = useFarmStore((s) => s.fetchJobEvents);
+  const jobEventsById = useFarmStore((s) => s.jobEventsById);
   const activeJobs = useFarmStore((s) => s.activeJobs);
   const stopJob = useFarmStore((s) => s.stopJob);
   const navigate = useNavigate();
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const liveJob = activeJobs.find((j) => j.job_id === job.job_id) ?? job;
+  const timeline = jobEventsById[liveJob.job_id] ?? [];
 
   useEffect(() => {
     fetchJobs();
-    const id = setInterval(fetchJobs, 3_000);
+    fetchJobEvents(job.job_id);
+  }, [fetchJobs, fetchJobEvents, job.job_id]);
+
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [fetchJobs]);
+  }, []);
 
   const accountMap = new Map(accounts.map((a) => [a.account_id, a]));
-  const pct = liveJob.total > 0 ? Math.round((liveJob.progress / liveJob.total) * 100) : 0;
+  const pct =
+    liveJob.percent ??
+    (liveJob.total > 0 ? Math.round((liveJob.progress / liveJob.total) * 100) : 0);
 
   const statusColor =
     liveJob.status === "error"
@@ -148,16 +174,18 @@ function ProgressScreen({ job, onBack }: { job: GenerationJob; onBack: () => voi
         </div>
 
         {/* Stage / latest log */}
-        {liveJob.latest_log ? (
+        {liveJob.current_message || liveJob.latest_log ? (
           <div className={styles.stageBlock}>
             <span className={styles.stageLabel}>{t("gen_stage_label")}</span>
             <span className={styles.stageValue}>
-              {liveJob.latest_log
-                .replace(/<[^>]+>/g, "")
-                .trim()
-                .split("\n")
-                .filter(Boolean)
-                .pop()}
+              {liveJob.current_message ??
+                liveJob.latest_log
+                  ?.replace(/<[^>]+>/g, "")
+                  .trim()
+                  .split("\n")
+                  .filter(Boolean)
+                  .pop() ??
+                ""}
             </span>
           </div>
         ) : liveJob.status === "running" ? (
@@ -177,6 +205,10 @@ function ProgressScreen({ job, onBack }: { job: GenerationJob; onBack: () => voi
             <span className={styles.metaValue}>
               {liveJob.progress} / {liveJob.total}
             </span>
+          </div>
+          <div className={styles.metaCell}>
+            <span className={styles.metaLabel}>Elapsed</span>
+            <span className={styles.metaValue}>{formatElapsed(liveJob.started_at, nowMs)}</span>
           </div>
           {liveJob.errors_count > 0 && (
             <div className={styles.metaCell}>
@@ -226,6 +258,31 @@ function ProgressScreen({ job, onBack }: { job: GenerationJob; onBack: () => voi
             );
           })}
         </div>
+      </div>
+
+      <div className={styles.card}>
+        <div className={styles.cardTitleRow}>
+          <div className={styles.cardTitle}>Timeline</div>
+          <span className={styles.selBadge}>{timeline.length}</span>
+        </div>
+        {timeline.length === 0 ? (
+          <div className={styles.emptySmall}>Waiting for live events...</div>
+        ) : (
+          <div className={styles.timelineList}>
+            {timeline.map((event: GenerationJobEvent) => (
+              <div key={event.id} className={styles.timelineRow}>
+                <span className={styles.timelineTime}>{formatEventClock(event.created_at)}</span>
+                <div className={styles.timelineContent}>
+                  <div className={styles.timelinePhase}>{event.phase}</div>
+                  <div className={styles.timelineMessage}>{event.message}</div>
+                </div>
+                <span className={styles.timelinePct}>
+                  {typeof event.percent === "number" ? `${event.percent}%` : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -281,8 +338,6 @@ export function GeneratePage() {
 
   useEffect(() => {
     fetchJobs();
-    const id = setInterval(fetchJobs, 5_000);
-    return () => clearInterval(id);
   }, [fetchJobs]);
 
   useEffect(() => {
@@ -916,7 +971,8 @@ export function GeneratePage() {
                             : j.status === "stopped"
                               ? "rgba(251,191,36,0.3)"
                               : "rgba(239,68,68,0.5)";
-                    const jPct = j.total > 0 ? Math.round((j.progress / j.total) * 100) : 0;
+                    const jPct =
+                      j.percent ?? (j.total > 0 ? Math.round((j.progress / j.total) * 100) : 0);
                     return (
                       <div
                         key={j.job_id}
@@ -950,6 +1006,7 @@ export function GeneratePage() {
                           <span>
                             {j.progress}/{j.total}
                           </span>
+                          {j.current_phase && <span>{j.current_phase}</span>}
                           {j.errors_count > 0 && (
                             <span style={{ color: "#ef4444" }}>
                               {j.errors_count} {t("gen_errors_abbr")}

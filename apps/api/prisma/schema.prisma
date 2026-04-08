@@ -30,3 +30,24 @@ model GenerationJobLog {
   @@index([service, createdAt])
   @@index([status, createdAt])
 }
+
+model GenerationJobEvent {
+  id          String   @id @default(cuid())
+  jobId       String
+  service     String   // "sportzavod" | "contentzavod"
+  seq         Int
+  eventType   String   // "job_log" | "job_progress" | "job_error" | ...
+  phase       String
+  message     String
+  status      String
+  progress    Int      @default(0)
+  total       Int      @default(0)
+  percent     Int?
+  level       String   @default("info")
+  payloadJson Json?
+  createdAt   DateTime @default(now())
+
+  @@unique([jobId, seq])
+  @@index([jobId, createdAt])
+  @@index([service, createdAt])
+}

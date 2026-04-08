@@ -155,6 +155,34 @@ export interface GenerationJob {
   results?: { account_id: string; video_url: string }[];
   latest_log?: string;
   cost_usd?: number; // реальная стоимость пайплайна из сервиса-генератора
+  current_phase?: string;
+  current_message?: string;
+  percent?: number;
+  started_at?: string;
+  updated_at?: string;
+}
+
+export interface GenerationJobEvent {
+  id: string;
+  job_id: string;
+  service: "sportzavod" | "contentzavod";
+  seq: number;
+  event_type:
+    | "job_started"
+    | "job_complete"
+    | "job_stopped"
+    | "job_progress"
+    | "job_log"
+    | "job_error";
+  phase: string;
+  message: string;
+  status: GenerationJob["status"];
+  progress: number;
+  total: number;
+  percent?: number;
+  level: "info" | "warning" | "error";
+  created_at: string;
+  payload?: Record<string, unknown>;
 }
 
 // ─── SportZavod types ────────────────────────────────────────────────────────
@@ -184,6 +212,9 @@ export interface FarmEvent {
     | "failed"
     | "heartbeat"
     | "job_complete"
+    | "job_error"
+    | "job_log"
+    | "job_progress"
     | "job_started"
     | "job_stopped"
     | "service_online"
@@ -222,6 +253,9 @@ export interface ActivityEvent {
     | "banned"
     | "error"
     | "job_complete"
+    | "job_error"
+    | "job_log"
+    | "job_progress"
     | "job_started"
     | "job_stopped"
     | "heartbeat"

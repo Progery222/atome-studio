@@ -1,7 +1,7 @@
 import type { GenerationJob, GenerationStats } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
-import { EventsGateway } from "../events/events.gateway";
 import { PrismaService } from "../prisma/prisma.service";
+import { JobEventsService } from "./job-events.service";
 
 interface GenerateDto {
   service: "sportzavod" | "contentzavod";
@@ -17,8 +17,8 @@ export class GenerationService {
   private readonly contentzavodUrl = process.env.CONTENTZAVOD_URL ?? "http://localhost:8002";
 
   constructor(
-    private readonly events: EventsGateway,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly jobEvents: JobEventsService
   ) {}
 
   /** Maps job_id → service name for later routing */
@@ -79,23 +79,20 @@ export class GenerationService {
     const job = this.normalizeJob(raw, dto.service);
     this.jobServiceMap.set(job.job_id, dto.service);
     this.jobStartTimes.set(job.job_id, Date.now());
-
-    this.events.emit({
-      event: "job_started",
-      phone_id: "",
-      details: {
-        job_id: job.job_id,
-        service: job.service,
-        account_ids: job.account_ids,
-        videos_per_account: job.videos_per_account,
-        topic: job.topic,
-        total: job.total,
-      },
-      timestamp: new Date().toISOString(),
+    const initialEvent = await this.jobEvents.appendJobEvent({
+      jobId: job.job_id,
+      service: job.service,
+      eventType: "job_started",
+      phase: job.current_phase ?? "queued",
+      message: job.current_message ?? `Generation queued in ${job.service}`,
+      status: job.status,
+      progress: job.progress,
+      total: job.total,
+      percent: job.percent,
     });
 
     this.pollJobUntilDone(job.job_id);
-    return job;
+    return this.jobEvents.hydrateJob(job, initialEvent);
   }
 
   async getJob(id: string): Promise<GenerationJob | null> {
@@ -106,13 +103,14 @@ export class GenerationService {
         const found = await this.getJobFromService(id, svc);
         if (found) {
           this.jobServiceMap.set(id, svc);
-          return found;
+          return this.jobEvents.hydrateJob(found);
         }
       }
       return null;
     }
 
-    return this.getJobFromService(id, service);
+    const job = await this.getJobFromService(id, service);
+    return job ? this.jobEvents.hydrateJob(job) : null;
   }
 
   /** Fetch single job — falls back to list scan if service has no GET /jobs/:id */
@@ -155,7 +153,7 @@ export class GenerationService {
       }
     }
 
-    return jobs;
+    return this.jobEvents.hydrateJobs(jobs);
   }
 
   async stopJob(id: string): Promise<{ ok: boolean }> {
@@ -169,14 +167,6 @@ export class GenerationService {
 
     const base = this.baseUrlFor(service);
     const result = await this.post(`${base}/api/jobs/${id}/stop`, {});
-    if (result !== null) {
-      this.events.emit({
-        event: "job_stopped",
-        phone_id: "",
-        details: { job_id: id, service },
-        timestamp: new Date().toISOString(),
-      });
-    }
     return { ok: result !== null };
   }
 
@@ -196,21 +186,20 @@ export class GenerationService {
     const job = this.normalizeJob(raw, "sportzavod");
     this.jobServiceMap.set(job.job_id, "sportzavod");
     this.jobStartTimes.set(job.job_id, Date.now());
-
-    this.events.emit({
-      event: "job_started",
-      phone_id: "",
-      details: {
-        job_id: job.job_id,
-        service: "sportzavod",
-        is_auto: true,
-        total: job.total,
-      },
-      timestamp: new Date().toISOString(),
+    const initialEvent = await this.jobEvents.appendJobEvent({
+      jobId: job.job_id,
+      service: "sportzavod",
+      eventType: "job_started",
+      phase: job.current_phase ?? "queued",
+      message: job.current_message ?? "Auto-generation queued",
+      status: job.status,
+      progress: job.progress,
+      total: job.total,
+      percent: job.percent,
     });
 
     this.pollJobUntilDone(job.job_id);
-    return job;
+    return this.jobEvents.hydrateJob(job, initialEvent);
   }
 
   async stopAllJobs(): Promise<{ stopped_count: number }> {
@@ -221,8 +210,12 @@ export class GenerationService {
     return { stopped_count: result?.stopped_count ?? 0 };
   }
 
-  /** Poll a running job every 8 s, emit job_complete or error when it finishes */
-  private pollJobUntilDone(jobId: string, intervalMs = 8000, maxAttempts = 90) {
+  async getJobEvents(id: string) {
+    return this.jobEvents.listJobEvents(id, 100);
+  }
+
+  /** Poll a running job snapshot and persist meaningful timeline changes */
+  private pollJobUntilDone(jobId: string, intervalMs = 3000, maxAttempts = 600) {
     let attempts = 0;
     const timer = setInterval(async () => {
       attempts++;
@@ -231,30 +224,14 @@ export class GenerationService {
         clearInterval(timer);
         return;
       }
+      await this.syncJobSnapshot(job);
+
       if (job.status === "done" || job.status === "stopped" || job.status === "error") {
         clearInterval(timer);
         const startTime = this.jobStartTimes.get(jobId) ?? Date.now();
         this.jobStartTimes.delete(jobId);
         const durationSec = Math.max(0, Math.round((Date.now() - startTime) / 1000));
         this.saveJobLog(job, durationSec).catch(() => {});
-        this.events.emit({
-          event:
-            job.status === "done"
-              ? "job_complete"
-              : job.status === "stopped"
-                ? "job_stopped"
-                : "error",
-          phone_id: "",
-          details: {
-            job_id: job.job_id,
-            service: job.service,
-            progress: job.progress,
-            total: job.total,
-            errors_count: job.errors_count,
-            status: job.status,
-          },
-          timestamp: new Date().toISOString(),
-        });
       }
     }, intervalMs);
   }
@@ -272,6 +249,27 @@ export class GenerationService {
         costUsd,
         status: job.status,
       },
+    });
+  }
+
+  private async syncJobSnapshot(job: GenerationJob): Promise<void> {
+    const phase = job.current_phase ?? this.phaseFor(job);
+    const message =
+      job.current_message ??
+      job.latest_log ??
+      this.defaultMessageFor(job.service, phase, job.status);
+
+    await this.jobEvents.appendJobEvent({
+      jobId: job.job_id,
+      service: job.service,
+      eventType: this.eventTypeFor(job.status),
+      phase,
+      message,
+      status: job.status,
+      progress: job.progress,
+      total: job.total,
+      percent: job.percent,
+      level: job.status === "error" ? "error" : job.status === "stopped" ? "warning" : "info",
     });
   }
 
@@ -333,7 +331,58 @@ export class GenerationService {
         : undefined,
       cost_usd: typeof raw.cost_usd === "number" ? raw.cost_usd : 0,
       latest_log: typeof raw.latest_log === "string" && raw.latest_log ? raw.latest_log : undefined,
+      current_phase:
+        typeof raw.current_phase === "string" && raw.current_phase ? raw.current_phase : undefined,
+      current_message:
+        typeof raw.current_message === "string" && raw.current_message
+          ? raw.current_message
+          : undefined,
+      percent:
+        typeof raw.percent === "number"
+          ? raw.percent
+          : this.jobEvents.resolvePercent(progress, total),
+      started_at:
+        typeof raw.started_at === "string" && raw.started_at
+          ? raw.started_at
+          : raw.created_at != null
+            ? String(raw.created_at)
+            : new Date().toISOString(),
+      updated_at:
+        typeof raw.updated_at === "string" && raw.updated_at
+          ? raw.updated_at
+          : raw.created_at != null
+            ? String(raw.created_at)
+            : new Date().toISOString(),
     };
+  }
+
+  private eventTypeFor(
+    status: GenerationJob["status"]
+  ): "job_complete" | "job_stopped" | "job_error" | "job_progress" {
+    if (status === "done") return "job_complete";
+    if (status === "stopped") return "job_stopped";
+    if (status === "error") return "job_error";
+    return "job_progress";
+  }
+
+  private phaseFor(job: GenerationJob): string {
+    if (job.status === "done") return "done";
+    if (job.status === "error") return "error";
+    if (job.status === "stopped") return "stopped";
+    if (job.status === "stopping") return "stopping";
+    return "running";
+  }
+
+  private defaultMessageFor(
+    service: GenerationJob["service"],
+    phase: string,
+    status: GenerationJob["status"]
+  ): string {
+    if (status === "done") return `${service} completed`;
+    if (status === "error") return `${service} failed`;
+    if (status === "stopped") return `${service} stopped`;
+    if (status === "stopping") return `${service} stopping`;
+    return `${service} · ${phase}`;
   }
 
   private normalizeStatus(s: unknown): GenerationJob["status"] {

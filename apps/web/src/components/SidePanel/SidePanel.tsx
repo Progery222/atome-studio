@@ -1,4 +1,4 @@
-import type { Service } from "@atome/shared";
+import type { GenerationJob, Service } from "@atome/shared";
 import { useT } from "../../i18n";
 import { useFarmStore } from "../../stores/farm";
 import { useServicesStore } from "../../stores/services";
@@ -25,9 +25,17 @@ export function SidePanel() {
   const loading = useServicesStore((s) => s.loading);
   const wsConnected = useFarmStore((s) => s.wsConnected);
   const lastEvent = useFarmStore((s) => s.lastEvent);
+  const activeJobs = useFarmStore((s) => s.activeJobs);
   const t = useT();
 
   const selected = services.find((s) => s.id === selectedId) ?? null;
+  const liveJob =
+    activeJobs
+      .filter((job) => job.status === "running" || job.status === "stopping")
+      .sort(
+        (a, b) =>
+          Date.parse(b.updated_at ?? b.created_at) - Date.parse(a.updated_at ?? a.created_at)
+      )[0] ?? null;
 
   return (
     <aside className={styles.panel}>
@@ -76,6 +84,7 @@ export function SidePanel() {
           postsToday={farmStats.posts_today}
           activeJobs={farmStats.active_jobs}
           lastEvent={farmStats.last_event}
+          liveJob={liveJob}
         />
       )}
 
@@ -119,6 +128,7 @@ interface FarmStatsPanelProps {
   postsToday: number;
   activeJobs: number;
   lastEvent?: string;
+  liveJob: GenerationJob | null;
 }
 
 function FarmStatsPanel({
@@ -129,6 +139,7 @@ function FarmStatsPanel({
   postsToday,
   activeJobs,
   lastEvent,
+  liveJob,
 }: FarmStatsPanelProps) {
   const t = useT();
   return (
@@ -154,6 +165,25 @@ function FarmStatsPanel({
           <div className={styles.serviceName} style={{ fontSize: 9, marginTop: 3 }}>
             {lastEvent}
           </div>
+        </div>
+      )}
+      {liveJob && (
+        <div className={styles.statBox} style={{ marginTop: 7 }}>
+          <div className={styles.statLabel}>Active generation</div>
+          <div className={styles.serviceName} style={{ fontSize: 11, marginTop: 4 }}>
+            {liveJob.service} · {liveJob.percent ?? 0}%
+          </div>
+          <div className={styles.serviceTag} style={{ marginTop: 4, display: "inline-block" }}>
+            {liveJob.current_phase ?? liveJob.status}
+          </div>
+          {liveJob.current_message && (
+            <div
+              className={styles.serviceName}
+              style={{ fontSize: 9, marginTop: 5, lineHeight: 1.45 }}
+            >
+              {liveJob.current_message}
+            </div>
+          )}
         </div>
       )}
     </div>
