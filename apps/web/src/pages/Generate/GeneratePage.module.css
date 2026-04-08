@@ -709,23 +709,53 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
 }
 
 .jobItem {
   padding: 12px;
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s;
+  background: rgba(255, 255, 255, 0.015);
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .jobItem:hover {
   background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.jobItemHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.jobItemRing {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  flex-shrink: 0;
+}
+
+.jobItemRingCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jobItemContent {
+  min-width: 0;
+  flex: 1;
 }
 
 .jobItemTop {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 8px;
 }
@@ -745,32 +775,82 @@
 }
 
 .jobItemPct {
-  margin-left: auto;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
-.jobItemBar {
-  width: 100%;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 2px;
-  overflow: hidden;
+.jobStageCard {
   margin-bottom: 8px;
+  padding: 9px 10px;
+  background: rgba(0, 0, 0, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
 }
 
-.jobItemBarFill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.4s;
+.jobStageText {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  word-break: break-word;
 }
 
 .jobItemBottom {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   font-size: 11px;
+  color: var(--text-muted);
+}
+
+.jobTimelinePreview {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jobTimelineRow {
+  display: grid;
+  grid-template-columns: 58px 1fr 36px;
+  gap: 8px;
+  align-items: start;
+}
+
+.jobTimelineTime {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.jobTimelineBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jobTimelinePhase {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.jobTimelineMessage {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.jobTimelinePercent {
+  font-size: 10px;
+  text-align: right;
   color: var(--text-muted);
 }
 
@@ -1006,6 +1086,21 @@
   font-weight: 700;
   color: var(--text-primary);
   text-align: right;
+}
+
+@media (max-width: 768px) {
+  .jobList {
+    max-height: none;
+  }
+
+  .jobItemHead {
+    flex-direction: column;
+  }
+
+  .jobItemRing {
+    width: 54px;
+    height: 54px;
+  }
 }
 
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */

@@ -1,6 +1,5 @@
 import type { Account, GenerationJob, GenerationJobEvent, GenerationScope } from "@atome/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useT } from "../../i18n";
 import { useFarmStore } from "../../stores/farm";
 import styles from "./GeneratePage.module.css";
@@ -30,26 +29,37 @@ function ProgressRing({
   pct,
   color,
   indeterminate,
+  size = 88,
+  strokeWidth = 5,
 }: {
   pct: number;
   color: string;
   indeterminate: boolean;
+  size?: number;
+  strokeWidth?: number;
 }) {
-  const r = 36;
-  const cx = 44;
-  const circumference = 2 * Math.PI * r; // ~226
+  const cx = size / 2;
+  const r = Math.max(8, (size - strokeWidth - 10) / 2);
+  const circumference = 2 * Math.PI * r;
   const offset = indeterminate ? circumference * 0.72 : circumference * (1 - pct / 100);
 
   return (
-    <svg width="88" height="88" viewBox="0 0 88 88">
-      <circle cx={cx} cy={cx} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="5" />
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle
+        cx={cx}
+        cy={cx}
+        r={r}
+        fill="none"
+        stroke="rgba(255,255,255,0.05)"
+        strokeWidth={strokeWidth}
+      />
       <circle
         cx={cx}
         cy={cx}
         r={r}
         fill="none"
         stroke={color}
-        strokeWidth="5"
+        strokeWidth={strokeWidth}
         strokeLinecap="round"
         strokeDasharray={circumference}
         strokeDashoffset={offset}
@@ -69,223 +79,50 @@ function ProgressRing({
   );
 }
 
-// ─── Progress Screen ──────────────────────────────────────────────────────────
+function getJobStatusColor(job: GenerationJob): string {
+  if (job.status === "error") return "#ef4444";
+  if (job.status === "stopped") return "#fbbf24";
+  if (job.status === "done") return "#22c55e";
+  return "rgba(0,210,255,0.85)";
+}
 
-function ProgressScreen({ job, onBack }: { job: GenerationJob; onBack: () => void }) {
-  const t = useT();
-  const accounts = useFarmStore((s) => s.sportzavodAccounts);
-  const fetchJobs = useFarmStore((s) => s.fetchJobs);
-  const fetchJobEvents = useFarmStore((s) => s.fetchJobEvents);
-  const jobEventsById = useFarmStore((s) => s.jobEventsById);
-  const activeJobs = useFarmStore((s) => s.activeJobs);
-  const stopJob = useFarmStore((s) => s.stopJob);
-  const navigate = useNavigate();
-  const [nowMs, setNowMs] = useState(() => Date.now());
+function getJobStatusText(job: GenerationJob, t: ReturnType<typeof useT>): string {
+  if (job.status === "running") return t("gen_status_running");
+  if (job.status === "stopping") return t("gen_status_stopping");
+  if (job.status === "done") return t("gen_status_done");
+  if (job.status === "stopped") return t("gen_status_stopped");
+  return t("gen_status_error");
+}
 
-  const liveJob = activeJobs.find((j) => j.job_id === job.job_id) ?? job;
-  const timeline = jobEventsById[liveJob.job_id] ?? [];
-
-  useEffect(() => {
-    fetchJobs();
-    fetchJobEvents(job.job_id);
-  }, [fetchJobs, fetchJobEvents, job.job_id]);
-
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const accountMap = new Map(accounts.map((a) => [a.account_id, a]));
-  const pct =
-    liveJob.percent ??
-    (liveJob.total > 0 ? Math.round((liveJob.progress / liveJob.total) * 100) : 0);
-
-  const statusColor =
-    liveJob.status === "error"
-      ? "#ef4444"
-      : liveJob.status === "stopped"
-        ? "#fbbf24"
-        : liveJob.status === "done"
-          ? "#22c55e"
-          : "rgba(0,210,255,0.8)";
-
-  const statusText =
-    liveJob.status === "running"
-      ? t("gen_status_running")
-      : liveJob.status === "stopping"
-        ? t("gen_status_stopping")
-        : liveJob.status === "done"
-          ? t("gen_status_done")
-          : liveJob.status === "stopped"
-            ? t("gen_status_stopped")
-            : t("gen_status_error");
-
+function getJobStageText(job: GenerationJob, t: ReturnType<typeof useT>): string {
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <div className={styles.title}>
-            <button className={styles.backBtn} onClick={onBack}>
-              &larr;
-            </button>
-            {t("gen_task_prefix")} {liveJob.job_id.slice(0, 8)}
-          </div>
-          <div className={styles.subtitle}>
-            {liveJob.service}
-            {liveJob.is_auto && <span className={styles.tagAuto}>{t("gen_tag_auto")}</span>}
-          </div>
-        </div>
-        <div className={styles.headerActions}>
-          <button
-            className={styles.btnDanger}
-            onClick={() => stopJob(liveJob.job_id).catch((e) => alert(e.message))}
-            disabled={liveJob.status !== "running"}
-          >
-            {t("gen_stop_btn")}
-          </button>
-          <button className={styles.btnGhost} onClick={() => navigate("/queue")}>
-            {t("gen_queue_btn")}
-          </button>
-        </div>
-      </header>
-
-      {/* ── Big progress card ── */}
-      <div className={styles.card}>
-        {/* Ring */}
-        <div className={styles.ringWrapper}>
-          <ProgressRing
-            pct={pct}
-            color={statusColor}
-            indeterminate={liveJob.status === "running" && liveJob.total === 0}
-          />
-          <div className={styles.ringCenter}>
-            <span className={styles.ringPct} style={{ color: statusColor }}>
-              {liveJob.status === "running" && liveJob.total === 0 ? "—" : `${pct}%`}
-            </span>
-          </div>
-        </div>
-
-        {/* Status */}
-        <div className={styles.ringStatus}>
-          <span className={styles.progressDot} style={{ background: statusColor }} />
-          <span className={styles.progressStatusText} style={{ color: statusColor }}>
-            {statusText}
-          </span>
-        </div>
-
-        {/* Stage / latest log */}
-        {liveJob.current_message || liveJob.latest_log ? (
-          <div className={styles.stageBlock}>
-            <span className={styles.stageLabel}>{t("gen_stage_label")}</span>
-            <span className={styles.stageValue}>
-              {liveJob.current_message ??
-                liveJob.latest_log
-                  ?.replace(/<[^>]+>/g, "")
-                  .trim()
-                  .split("\n")
-                  .filter(Boolean)
-                  .pop() ??
-                ""}
-            </span>
-          </div>
-        ) : liveJob.status === "running" ? (
-          <div className={styles.stageBlock}>
-            <span className={styles.stageValue}>{t("gen_stage_running")}</span>
-          </div>
-        ) : null}
-
-        {/* Meta */}
-        <div className={styles.metaRow}>
-          <div className={styles.metaCell}>
-            <span className={styles.metaLabel}>{t("gen_meta_vpa")}</span>
-            <span className={styles.metaValue}>{liveJob.videos_per_account}</span>
-          </div>
-          <div className={styles.metaCell}>
-            <span className={styles.metaLabel}>{t("gen_meta_progress")}</span>
-            <span className={styles.metaValue}>
-              {liveJob.progress} / {liveJob.total}
-            </span>
-          </div>
-          <div className={styles.metaCell}>
-            <span className={styles.metaLabel}>Elapsed</span>
-            <span className={styles.metaValue}>{formatElapsed(liveJob.started_at, nowMs)}</span>
-          </div>
-          {liveJob.errors_count > 0 && (
-            <div className={styles.metaCell}>
-              <span className={styles.metaLabel}>{t("gen_meta_errors")}</span>
-              <span className={styles.metaValue} style={{ color: "#ef4444" }}>
-                {liveJob.errors_count}
-              </span>
-            </div>
-          )}
-          {liveJob.topic && (
-            <div className={styles.metaCell}>
-              <span className={styles.metaLabel}>{t("gen_meta_topic")}</span>
-              <span className={styles.metaValue}>{liveJob.topic}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Accounts in job ── */}
-      <div className={styles.card}>
-        <div className={styles.cardTitle}>
-          {t("gen_accounts_title")} ({liveJob.account_ids.length})
-        </div>
-        <div className={styles.progressAccountList}>
-          {liveJob.account_ids.map((id) => {
-            const acc = accountMap.get(id);
-            const result = liveJob.results?.find((r) => r.account_id === id);
-            return (
-              <div key={id} className={styles.progressAccountRow}>
-                <span
-                  className={styles.dot}
-                  style={{ background: result ? "#22c55e" : "rgba(255,255,255,0.1)" }}
-                />
-                <span className={styles.progressAccName}>{acc ? `@${acc.username}` : id}</span>
-                {acc?.niche && <span className={styles.progressAccNiche}>{acc.niche}</span>}
-                {result && (
-                  <a
-                    href={result.video_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={styles.videoLink}
-                  >
-                    video &nearr;
-                  </a>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className={styles.card}>
-        <div className={styles.cardTitleRow}>
-          <div className={styles.cardTitle}>Timeline</div>
-          <span className={styles.selBadge}>{timeline.length}</span>
-        </div>
-        {timeline.length === 0 ? (
-          <div className={styles.emptySmall}>Waiting for live events...</div>
-        ) : (
-          <div className={styles.timelineList}>
-            {timeline.map((event: GenerationJobEvent) => (
-              <div key={event.id} className={styles.timelineRow}>
-                <span className={styles.timelineTime}>{formatEventClock(event.created_at)}</span>
-                <div className={styles.timelineContent}>
-                  <div className={styles.timelinePhase}>{event.phase}</div>
-                  <div className={styles.timelineMessage}>{event.message}</div>
-                </div>
-                <span className={styles.timelinePct}>
-                  {typeof event.percent === "number" ? `${event.percent}%` : "—"}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    job.current_message ??
+    job.latest_log
+      ?.replace(/<[^>]+>/g, "")
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .pop() ??
+    (job.status === "running" ? t("gen_stage_running") : "—")
   );
+}
+
+function getJobDisplayPercent(job: GenerationJob): number {
+  const basePercent =
+    typeof job.percent === "number"
+      ? job.percent
+      : job.total > 0
+        ? Math.round((job.progress / job.total) * 100)
+        : 0;
+  if (job.status === "done") return 100;
+  if (
+    (job.status === "running" || job.status === "stopping") &&
+    job.total > 0 &&
+    job.progress < job.total
+  ) {
+    return Math.max(0, Math.min(99, basePercent));
+  }
+  return Math.max(0, Math.min(100, basePercent));
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -304,7 +141,9 @@ export function GeneratePage() {
   const startAutoGeneration = useFarmStore((s) => s.startAutoGeneration);
   const reloadFromSheets = useFarmStore((s) => s.reloadFromSheets);
   const activeJobs = useFarmStore((s) => s.activeJobs);
+  const jobEventsById = useFarmStore((s) => s.jobEventsById);
   const fetchJobs = useFarmStore((s) => s.fetchJobs);
+  const fetchJobEvents = useFarmStore((s) => s.fetchJobEvents);
   const stopJob = useFarmStore((s) => s.stopJob);
   const stopAllJobs = useFarmStore((s) => s.stopAllJobs);
 
@@ -316,7 +155,6 @@ export function GeneratePage() {
   const [nicheFilter, setNicheFilter] = useState<string | null>(null);
   const [nicheOpen, setNicheOpen] = useState(false);
   const [launching, setLaunching] = useState(false);
-  const [viewingJob, setViewingJob] = useState<GenerationJob | null>(null);
   const [reloading, setReloading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [scopeLabel, setScopeLabel] = useState("");
@@ -325,6 +163,7 @@ export function GeneratePage() {
   const [accountInput, setAccountInput] = useState("");
   const [accountError, setAccountError] = useState("");
   const [launchError, setLaunchError] = useState("");
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const nicheRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -348,6 +187,11 @@ export function GeneratePage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const activeAccounts = service === "sportzavod" ? sportzavodAccounts : accounts;
   const isLoading = service === "sportzavod" ? sportzavodAccountsLoading : accountsLoading;
   const readyAccounts = activeAccounts.filter((a) => a.heygen_avatar_id);
@@ -356,8 +200,33 @@ export function GeneratePage() {
     ? activeAccounts.filter((a) => a.niche === nicheFilter)
     : activeAccounts;
   const runningJobs = activeJobs.filter((j) => j.status === "running" || j.status === "stopping");
+  const visibleJobs = [...activeJobs]
+    .sort((a, b) => {
+      const rank = (job: GenerationJob) =>
+        job.status === "running"
+          ? 0
+          : job.status === "stopping"
+            ? 1
+            : job.status === "error"
+              ? 2
+              : job.status === "done"
+                ? 3
+                : 4;
+      const rankDiff = rank(a) - rank(b);
+      if (rankDiff !== 0) return rankDiff;
+      return Date.parse(b.updated_at ?? b.created_at) - Date.parse(a.updated_at ?? a.created_at);
+    })
+    .slice(0, 8);
   const withAvatar = activeAccounts.filter((a) => a.heygen_avatar_id).length;
   const withoutAvatar = activeAccounts.length - withAvatar;
+
+  useEffect(() => {
+    for (const job of visibleJobs) {
+      if (!(job.job_id in jobEventsById)) {
+        fetchJobEvents(job.job_id);
+      }
+    }
+  }, [visibleJobs, jobEventsById, fetchJobEvents]);
 
   const toggleAll = () => {
     const validVisible = visibleAccounts.filter((a) => a.heygen_avatar_id);
@@ -450,14 +319,13 @@ export function GeneratePage() {
     setLaunching(true);
     setLaunchError("");
     try {
-      const job = await startGeneration({
+      await startGeneration({
         service,
         account_ids:
           service === "contentzavod" && selectedIds.size === 0 ? ["default"] : [...selectedIds],
         videos_per_account: videosPerAcc,
         topic: service === "contentzavod" ? topic : undefined,
       });
-      setViewingJob(job);
       setShowConfirm(false);
     } catch (e: any) {
       setLaunchError(e.message || t("gen_status_error"));
@@ -469,8 +337,7 @@ export function GeneratePage() {
   const handleAutoMode = async () => {
     setLaunching(true);
     try {
-      const job = await startAutoGeneration(selectedIds.size > 0 ? [...selectedIds] : undefined);
-      if (job) setViewingJob(job);
+      await startAutoGeneration(selectedIds.size > 0 ? [...selectedIds] : undefined);
     } catch (e: any) {
       alert(e.message || "Failed to start auto generation");
     } finally {
@@ -492,9 +359,6 @@ export function GeneratePage() {
       setReloading(false);
     }
   };
-
-  // ── Progress screen ──
-  if (viewingJob) return <ProgressScreen job={viewingJob} onBack={() => setViewingJob(null)} />;
 
   // ── Confirmation overlay ──
   if (showConfirm) {
@@ -957,76 +821,93 @@ export function GeneratePage() {
               <div className={styles.emptySmall}>{t("gen_no_jobs")}</div>
             ) : (
               <div className={styles.jobList}>
-                {activeJobs
-                  .slice(-8)
-                  .reverse()
-                  .map((j) => {
-                    const jColor =
-                      j.status === "running"
-                        ? "#22c55e"
-                        : j.status === "stopping"
-                          ? "#fbbf24"
-                          : j.status === "done"
-                            ? "rgba(34,197,94,0.3)"
-                            : j.status === "stopped"
-                              ? "rgba(251,191,36,0.3)"
-                              : "rgba(239,68,68,0.5)";
-                    const jPct =
-                      j.percent ?? (j.total > 0 ? Math.round((j.progress / j.total) * 100) : 0);
-                    return (
-                      <div
-                        key={j.job_id}
-                        className={styles.jobItem}
-                        onClick={() => setViewingJob(j)}
-                      >
-                        <div className={styles.jobItemTop}>
-                          <span className={styles.dot} style={{ background: jColor }} />
-                          <span className={styles.jobItemId}>{j.job_id.slice(0, 8)}</span>
-                          {j.is_auto && <span className={styles.tagAuto}>{t("gen_tag_auto")}</span>}
-                          <span className={styles.jobItemStatus} style={{ color: jColor }}>
-                            {j.status === "running"
-                              ? t("gen_status_running")
-                              : j.status === "stopping"
-                                ? t("gen_status_stopping")
-                                : j.status === "done"
-                                  ? t("gen_status_done")
-                                  : j.status === "stopped"
-                                    ? t("gen_status_stopped")
-                                    : t("gen_status_error")}
-                          </span>
-                          <span className={styles.jobItemPct}>{jPct}%</span>
-                        </div>
-                        <div className={styles.jobItemBar}>
-                          <div
-                            className={styles.jobItemBarFill}
-                            style={{ width: `${jPct}%`, background: jColor }}
+                {visibleJobs.map((j) => {
+                  const jColor = getJobStatusColor(j);
+                  const jPct = getJobDisplayPercent(j);
+                  const timeline = (jobEventsById[j.job_id] ?? []).slice(-3);
+                  const indeterminate = j.status === "running" && j.total === 0;
+                  return (
+                    <div key={j.job_id} className={styles.jobItem}>
+                      <div className={styles.jobItemHead}>
+                        <div className={styles.jobItemRing}>
+                          <ProgressRing
+                            pct={jPct}
+                            color={jColor}
+                            indeterminate={indeterminate}
+                            size={58}
+                            strokeWidth={4}
                           />
-                        </div>
-                        <div className={styles.jobItemBottom}>
-                          <span>
-                            {j.progress}/{j.total}
-                          </span>
-                          {j.current_phase && <span>{j.current_phase}</span>}
-                          {j.errors_count > 0 && (
-                            <span style={{ color: "#ef4444" }}>
-                              {j.errors_count} {t("gen_errors_abbr")}
+                          <div className={styles.jobItemRingCenter}>
+                            <span className={styles.jobItemPct} style={{ color: jColor }}>
+                              {indeterminate ? "—" : `${jPct}%`}
                             </span>
-                          )}
-                          {j.status === "running" && (
-                            <button
-                              className={styles.btnDangerSmall}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                stopJob(j.job_id);
-                              }}
-                            >
-                              {t("gen_stop_job")}
-                            </button>
-                          )}
+                          </div>
+                        </div>
+
+                        <div className={styles.jobItemContent}>
+                          <div className={styles.jobItemTop}>
+                            <span className={styles.dot} style={{ background: jColor }} />
+                            <span className={styles.jobItemId}>{j.job_id.slice(0, 8)}</span>
+                            {j.is_auto && (
+                              <span className={styles.tagAuto}>{t("gen_tag_auto")}</span>
+                            )}
+                            <span className={styles.jobItemStatus} style={{ color: jColor }}>
+                              {getJobStatusText(j, t)}
+                            </span>
+                            {j.status === "running" && (
+                              <button
+                                className={styles.btnDangerSmall}
+                                onClick={() => {
+                                  stopJob(j.job_id).catch((e) => alert(e.message));
+                                }}
+                              >
+                                {t("gen_stop_job")}
+                              </button>
+                            )}
+                          </div>
+
+                          <div className={styles.jobStageCard}>
+                            <span className={styles.stageLabel}>{t("gen_stage_label")}</span>
+                            <span className={styles.jobStageText}>{getJobStageText(j, t)}</span>
+                          </div>
+
+                          <div className={styles.jobItemBottom}>
+                            <span>
+                              {j.progress}/{j.total}
+                            </span>
+                            {j.current_phase && <span>{j.current_phase}</span>}
+                            <span>{formatElapsed(j.started_at ?? j.created_at, nowMs)}</span>
+                            <span>{j.service}</span>
+                            {j.errors_count > 0 && (
+                              <span style={{ color: "#ef4444" }}>
+                                {j.errors_count} {t("gen_errors_abbr")}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    );
-                  })}
+
+                      {timeline.length > 0 && (
+                        <div className={styles.jobTimelinePreview}>
+                          {timeline.map((event: GenerationJobEvent) => (
+                            <div key={event.id} className={styles.jobTimelineRow}>
+                              <span className={styles.jobTimelineTime}>
+                                {formatEventClock(event.created_at)}
+                              </span>
+                              <div className={styles.jobTimelineBody}>
+                                <span className={styles.jobTimelinePhase}>{event.phase}</span>
+                                <span className={styles.jobTimelineMessage}>{event.message}</span>
+                              </div>
+                              <span className={styles.jobTimelinePercent}>
+                                {typeof event.percent === "number" ? `${event.percent}%` : ""}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
