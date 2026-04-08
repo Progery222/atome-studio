@@ -107,14 +107,26 @@ function getJobStageText(job: GenerationJob, t: ReturnType<typeof useT>): string
   );
 }
 
-function getJobDisplayPercent(job: GenerationJob): number {
+function getJobDisplayPercent(job: GenerationJob, nowMs = Date.now()): number {
+  if (job.status === "done") return 100;
+
+  // Time-based estimate when no sub-video progress yet (SportZavod renders one video at a time)
+  if (
+    (job.status === "running" || job.status === "stopping") &&
+    job.total > 0 &&
+    job.progress === 0
+  ) {
+    const startMs = job.started_at ? Date.parse(job.started_at) : nowMs;
+    const elapsedSec = Number.isNaN(startMs) ? 0 : Math.max(0, (nowMs - startMs) / 1000);
+    return Math.min(95, Math.floor(elapsedSec / 3)); // ~1% per 3 sec, cap at 95
+  }
+
   const basePercent =
     typeof job.percent === "number"
       ? job.percent
       : job.total > 0
         ? Math.round((job.progress / job.total) * 100)
         : 0;
-  if (job.status === "done") return 100;
   if (
     (job.status === "running" || job.status === "stopping") &&
     job.total > 0 &&
@@ -823,10 +835,9 @@ export function GeneratePage() {
               <div className={styles.jobList}>
                 {visibleJobs.map((j) => {
                   const jColor = getJobStatusColor(j);
-                  const jPct = getJobDisplayPercent(j);
+                  const jPct = getJobDisplayPercent(j, nowMs);
                   const timeline = (jobEventsById[j.job_id] ?? []).slice(-3);
-                  const indeterminate =
-                    j.status === "running" && (j.total === 0 || j.progress === 0);
+                  const indeterminate = j.status === "running" && j.total === 0;
                   return (
                     <div key={j.job_id} className={styles.jobItem}>
                       <div className={styles.jobItemHead}>
