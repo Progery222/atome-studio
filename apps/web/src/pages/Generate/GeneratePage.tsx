@@ -12,8 +12,11 @@ function formatElapsed(iso?: string, nowMs = Date.now()): string {
   const started = Date.parse(iso);
   if (Number.isNaN(started)) return "—";
   const totalSec = Math.max(0, Math.floor((nowMs - started) / 1000));
-  const min = Math.floor(totalSec / 60);
+  if (totalSec > 86400) return "—"; // >24h → started_at is stale/invalid
+  const hours = Math.floor(totalSec / 3600);
+  const min = Math.floor((totalSec % 3600) / 60);
   const sec = totalSec % 60;
+  if (hours > 0) return `${hours}h ${min}m`;
   return `${min}m ${sec}s`;
 }
 
