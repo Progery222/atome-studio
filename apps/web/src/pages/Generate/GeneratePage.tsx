@@ -965,9 +965,6 @@ export function GeneratePage() {
                                   {translatePhase(event.phase, t)}
                                 </span>
                               </div>
-                              <span className={styles.jobTimelinePercent}>
-                                {typeof event.percent === "number" ? `${event.percent}%` : ""}
-                              </span>
                             </div>
                           ))}
                         </div>
