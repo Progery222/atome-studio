@@ -86,6 +86,41 @@ function getJobStatusColor(job: GenerationJob): string {
   return "rgba(0,210,255,0.85)";
 }
 
+const PHASE_KEY_MAP: Record<string, string> = {
+  queued: "gen_phase_queued",
+  pending: "gen_phase_queued",
+  news_fetch: "gen_phase_news_fetch",
+  news: "gen_phase_news_fetch",
+  stage1_news_fetch: "gen_phase_news_fetch",
+  parsing: "gen_phase_parsing",
+  parse: "gen_phase_parsing",
+  stage2: "gen_phase_parsing",
+  script: "gen_phase_script",
+  script_writing: "gen_phase_script",
+  stage3: "gen_phase_script",
+  assets: "gen_phase_assets",
+  asset_search: "gen_phase_assets",
+  stage4: "gen_phase_assets",
+  video_plan: "gen_phase_video_plan",
+  stage5: "gen_phase_video_plan",
+  meta: "gen_phase_meta",
+  metadata: "gen_phase_meta",
+  stage6: "gen_phase_meta",
+  rendering: "gen_phase_rendering",
+  render: "gen_phase_rendering",
+  uploading: "gen_phase_uploading",
+  upload: "gen_phase_uploading",
+  done: "gen_phase_done",
+  completed: "gen_phase_done",
+};
+
+function translatePhase(phase: string, t: ReturnType<typeof useT>): string {
+  const key = PHASE_KEY_MAP[phase.toLowerCase()];
+  if (key) return t(key as Parameters<typeof t>[0]);
+  // Unknown phase: return as-is (already clean from sportzavod, etc.)
+  return phase;
+}
+
 function getJobStatusText(job: GenerationJob, t: ReturnType<typeof useT>): string {
   if (job.status === "running") return t("gen_status_running");
   if (job.status === "stopping") return t("gen_status_stopping");
@@ -95,16 +130,24 @@ function getJobStatusText(job: GenerationJob, t: ReturnType<typeof useT>): strin
 }
 
 function getJobStageText(job: GenerationJob, t: ReturnType<typeof useT>): string {
-  return (
-    job.current_message ??
-    job.latest_log
-      ?.replace(/<[^>]+>/g, "")
-      .trim()
-      .split("\n")
-      .filter(Boolean)
-      .pop() ??
-    (job.status === "running" ? t("gen_stage_running") : "—")
-  );
+  // For error jobs, show the error message directly
+  if (job.status === "error") {
+    return (
+      job.current_message ??
+      job.latest_log
+        ?.replace(/<[^>]+>/g, "")
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .pop() ??
+      t("gen_status_error")
+    );
+  }
+  // Prefer translated phase name over raw log messages
+  if (job.current_phase) return translatePhase(job.current_phase, t);
+  if (job.status === "running") return t("gen_stage_running");
+  if (job.status === "done") return t("gen_phase_done");
+  return "—";
 }
 
 function getJobDisplayPercent(job: GenerationJob, nowMs = Date.now()): number {
@@ -912,8 +955,9 @@ export function GeneratePage() {
                                 {formatEventClock(event.created_at)}
                               </span>
                               <div className={styles.jobTimelineBody}>
-                                <span className={styles.jobTimelinePhase}>{event.phase}</span>
-                                <span className={styles.jobTimelineMessage}>{event.message}</span>
+                                <span className={styles.jobTimelinePhase}>
+                                  {translatePhase(event.phase, t)}
+                                </span>
                               </div>
                               <span className={styles.jobTimelinePercent}>
                                 {typeof event.percent === "number" ? `${event.percent}%` : ""}
