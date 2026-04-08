@@ -120,6 +120,11 @@ const PHASE_KEY_MAP: Record<string, string> = {
   upload: "gen_phase_uploading",
   done: "gen_phase_done",
   completed: "gen_phase_done",
+  // content-zavod phases
+  search: "gen_phase_search",
+  relevance: "gen_phase_relevance",
+  prompt_saved: "gen_phase_prompt_saved",
+  postprocess: "gen_phase_postprocess",
 };
 
 function translatePhase(phase: string, t: ReturnType<typeof useT>): string {
@@ -170,8 +175,13 @@ function getJobDisplayPercent(job: GenerationJob, nowMs = Date.now()): number {
         : 0;
   }
 
-  // Time-based estimate when no sub-video progress yet (running only)
-  if (job.status === "running" && job.total > 0 && job.progress === 0) {
+  // Time-based estimate when no sub-video progress and no explicit percent (running only)
+  if (
+    job.status === "running" &&
+    job.total > 0 &&
+    job.progress === 0 &&
+    typeof job.percent !== "number"
+  ) {
     const startMs = job.started_at ? Date.parse(job.started_at) : nowMs;
     const elapsedSec = Number.isNaN(startMs) ? 0 : Math.max(0, (nowMs - startMs) / 1000);
     return Math.min(95, Math.floor(elapsedSec / 3)); // ~1% per 3 sec, cap at 95

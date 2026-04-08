@@ -1,4 +1,4 @@
-import type { GenerationJob, GenerationStats } from "@atome/shared";
+import type { GenerationCostReport, GenerationJob, GenerationStats } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { JobEventsService } from "./job-events.service";
@@ -334,6 +334,45 @@ export class GenerationService {
     return result;
   }
 
+  async getCostStats(): Promise<GenerationCostReport> {
+    const rows = await this.prisma.generationJobLog.groupBy({
+      by: ["service"],
+      where: { status: "done", costUsd: { gt: 0 } },
+      _sum: { costUsd: true, videosCount: true },
+      _count: { id: true },
+    });
+
+    const services: GenerationCostReport["services"] = {};
+    let totalCost = 0;
+    let totalVideos = 0;
+    let totalJobs = 0;
+
+    for (const row of rows) {
+      const cost = row._sum.costUsd ?? 0;
+      const videos = row._sum.videosCount ?? 0;
+      const jobs = row._count.id;
+      services[row.service] = {
+        total_usd: +cost.toFixed(4),
+        avg_usd_per_video: videos > 0 ? +(cost / videos).toFixed(4) : 0,
+        videos_count: videos,
+        jobs_count: jobs,
+      };
+      totalCost += cost;
+      totalVideos += videos;
+      totalJobs += jobs;
+    }
+
+    return {
+      services,
+      total: {
+        total_usd: +totalCost.toFixed(4),
+        avg_usd_per_video: totalVideos > 0 ? +(totalCost / totalVideos).toFixed(4) : 0,
+        videos_count: totalVideos,
+        jobs_count: totalJobs,
+      },
+    };
+  }
+
   private normalizeJob(
     raw: Record<string, unknown>,
     service: "sportzavod" | "contentzavod"
@@ -386,7 +425,12 @@ export class GenerationService {
       current_phase:
         typeof raw.current_phase === "string" && raw.current_phase ? raw.current_phase : undefined,
       current_message: this.resolveErrorMessage(raw, status),
-      percent: this.jobEvents.resolvePercent(progress, total),
+      // content-zavod provides real percent per phase (12/24/40...); SportZavod percent=99 is a marker, ignore it
+      percent: this.jobEvents.resolvePercent(
+        progress,
+        total,
+        isCz && typeof raw.percent === "number" ? raw.percent : undefined
+      ),
       started_at:
         typeof raw.started_at === "string" && raw.started_at
           ? raw.started_at
@@ -468,7 +512,8 @@ export class GenerationService {
     if (s === "running") return "running";
     if (s === "stopping") return "stopping";
     if (s === "stopped") return "stopped";
-    if (s === "done" || s === "completed" || s === "success" || s === "queued") return "done";
+    if (s === "done" || s === "completed" || s === "success") return "done";
+    if (s === "queued") return "running"; // content-zavod: queued = accepted, pipeline not yet done
     if (s === "pending") return "running"; // content-zavod: pending = just started
     if (s === "waiting_approval") return "running"; // content-zavod: ждёт апрув в Telegram
     if (s === "not_relevant") return "stopped"; // content-zavod: тема нерелевантна
