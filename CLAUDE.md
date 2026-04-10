@@ -20,7 +20,7 @@ TikTok content farm dashboard. Управляет фермой телефоно�
 - `.railwayignore` — исключает SportZavod/, content-zavod/, apps/StreamCut/, galaxy/, files/, node_modules/ из Railway upload.
 - `.github/workflows/deploy-api.yml` — деплой API при пуше в `apps/api/**` или `packages/shared/**`. Использует service ID `1ad14f0e-dd02-44ec-ac73-7418751678ab`.
 - `.github/workflows/deploy-web.yml` — деплой фронтенда при пуше в `apps/web/**` или `packages/shared/**`. Перезаписывает `railway.toml` на web Dockerfile перед деплоем. Использует service ID `c4612d57-2a39-471d-8a76-9de9bec3d693`.
-- `.github/workflows/deploy-streamcut.yml` — деплой StreamCut при пуше в `apps/StreamCut/**`. Деплоит backend и worker как отдельные Railway-сервисы. Service ID в GitHub Variables (`STREAMCUT_BACKEND_SERVICE_ID`, `STREAMCUT_WORKER_SERVICE_ID`).
+- StreamCut деплоится из своего репо `Progery222/StreamCut` (аналогично SportZavod/content-zavod). CI/CD настраивается в том репо.
 
 ---
 
