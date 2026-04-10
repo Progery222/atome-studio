@@ -3,6 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ContentZavodAdapter } from "./contentzavod/contentzavod.adapter";
 import { FarmAdapter } from "./farm/farm.adapter";
 import { SportZavodAdapter } from "./sportzavod/sportzavod.adapter";
+import { StreamCutAdapter } from "./streamcut/streamcut.adapter";
 
 /**
  * Aggregates data from all service adapters.
@@ -15,6 +16,7 @@ export class McpService {
   constructor(
     private readonly sportzavod: SportZavodAdapter,
     private readonly contentzavod: ContentZavodAdapter,
+    private readonly streamcut: StreamCutAdapter,
     private readonly farm: FarmAdapter
   ) {}
 
@@ -22,11 +24,12 @@ export class McpService {
     const results = await Promise.allSettled([
       this.sportzavod.fetchServices(),
       this.contentzavod.fetchServices(),
+      this.streamcut.fetchServices(),
       this.farm.fetchServices(),
     ]);
 
     const services: Service[] = [];
-    const names = ["SportZavod", "content-zavod", "Orchestrator"];
+    const names = ["SportZavod", "content-zavod", "StreamCut", "Orchestrator"];
 
     results.forEach((result, i) => {
       if (result.status === "fulfilled") {

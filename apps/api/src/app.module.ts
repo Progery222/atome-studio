@@ -12,6 +12,7 @@ import { MetricsModule } from "./metrics/metrics.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { QueueModule } from "./queue/queue.module";
 import { ServicesModule } from "./services/services.module";
+import { StreamCutModule } from "./streamcut/streamcut.module";
 import { VideosModule } from "./videos/videos.module";
 
 @Module({
@@ -26,6 +27,7 @@ import { VideosModule } from "./videos/videos.module";
     QueueModule,
     EventsModule,
     VideosModule,
+    StreamCutModule,
     ClientsModule,
     MetricsModule,
   ],

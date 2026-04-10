@@ -10,7 +10,7 @@ export interface Service {
   activeJobs?: number;
   /** RGB color — computed from status by adapter */
   col: [number, number, number];
-  /** Orbit index: 0=SportZavod, 1=content-zavod, 2=Orchestrator */
+  /** Orbit index: 0=SportZavod, 1=content-zavod, 2=Orchestrator, 3=StreamCut */
   oi: number;
   /** Initial angle on orbit (radians) */
   a: number;
@@ -44,6 +44,7 @@ export const ORBIT_CONFIGS: OrbitConfig[] = [
   { a: 380, b: 120, tilt: -0.1, rgb: "210,175,55" }, // 0 — SportZavod (golden)
   { a: 320, b: 150, tilt: 0.45, rgb: "180,150,255" }, // 1 — content-zavod (lavender)
   { a: 420, b: 100, tilt: 0.22, rgb: "150,130,230" }, // 2 — Orchestrator (purple)
+  { a: 460, b: 90, tilt: -0.35, rgb: "255,120,80" }, // 3 — StreamCut (coral)
 ];
 
 // ─── Farm stats (returned by GET /api/services/stats) ─────────────────────────
@@ -348,6 +349,53 @@ export interface ConversionPoint {
   views: number;
   link_clicks: number;
   conversion_rate: number;
+}
+
+// ─── StreamCut types ─────────────────────────────────────────────────────────
+
+export type StreamCutJobStatus =
+  | "pending"
+  | "downloading"
+  | "transcribing"
+  | "analyzing"
+  | "cutting"
+  | "rendering"
+  | "publishing"
+  | "done"
+  | "error";
+
+export interface StreamCutStep {
+  id: string;
+  label: string;
+  status: "pending" | "active" | "done" | "error";
+  detail?: string;
+}
+
+export interface StreamCutShort {
+  filename: string;
+  url: string;
+  title?: string;
+  duration?: number;
+  score?: number;
+}
+
+export interface StreamCutJob {
+  job_id: string;
+  status: StreamCutJobStatus;
+  message: string;
+  progress: number;
+  steps?: StreamCutStep[];
+  shorts?: StreamCutShort[];
+  error?: string;
+  source_url?: string;
+  created_at?: string;
+}
+
+export interface StreamCutVideoInfo {
+  title: string | null;
+  duration: number | null;
+  thumbnail: string | null;
+  uploader: string | null;
 }
 
 // ─── Client (super_admin — Phase 5) ───────────────────────────────────────────

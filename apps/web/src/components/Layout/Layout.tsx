@@ -5,6 +5,7 @@ import { useAuthStore } from "../../stores/auth";
 import { useFarmStore } from "../../stores/farm";
 import { type Lang, useLangStore } from "../../stores/lang";
 import { useMetricsStore } from "../../stores/metrics";
+import { useStreamCutStore } from "../../stores/streamcut";
 import styles from "./Layout.module.css";
 
 const LANGS: { code: Lang; label: string }[] = [
@@ -51,6 +52,11 @@ export function Layout() {
     return () => clearInterval(id);
   }, [fetchPhones, fetchQueue, connectWs]);
 
+  const streamcutJobs = useStreamCutStore((s) => s.jobs);
+  const streamcutActive = streamcutJobs.filter(
+    (j) => j.status !== "done" && j.status !== "error"
+  ).length;
+
   const phonesOnline = phones.filter((p) => p.status === "active").length;
   const queueActive = queue.filter(
     (q) => q.status === "scheduled" || q.status === "in_progress"
@@ -72,6 +78,11 @@ export function Layout() {
     { path: "/queue", label: t("nav_queue"), badge: queueActive > 0 ? queueActive : null },
     { path: "/videos", label: t("nav_videos"), badge: null },
     { path: "/analytics", label: t("nav_analytics"), badge: null },
+    {
+      path: "/streamcut",
+      label: t("nav_streamcut"),
+      badge: streamcutActive > 0 ? streamcutActive : null,
+    },
     ...(role === "super_admin" ? [{ path: "/clients", label: t("nav_clients"), badge: null }] : []),
     { path: "/settings", label: t("nav_settings"), badge: null },
   ];

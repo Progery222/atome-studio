@@ -2,11 +2,12 @@
 
 ## Контекст проекта
 
-TikTok content farm dashboard. Управляет фермой телефонов, генерацией видео (SportZavod + content-zavod) и публикацией через Orchestrator.
+TikTok content farm dashboard. Управляет фермой телефонов, генерацией видео (SportZavod + content-zavod), нарезкой видео на шортсы (StreamCut) и публикацией через Orchestrator.
 
 **Монорепо:**
 - `apps/web` — React 18 + TypeScript + Three.js + Zustand (порт 5173)
 - `apps/api` — NestJS + TypeScript (порт 3001)
+- `apps/StreamCut` — FastAPI + Celery + Redis (порт 8003) — AI-нарезка видео на шортсы
 - `packages/shared` — общие TypeScript типы
 
 ---
@@ -16,9 +17,10 @@ TikTok content farm dashboard. Управляет фермой телефоно�
 - `atomic_monitor.html` — автономный дашборд мониторинга (без сборки, открывается в браузере напрямую). Не часть монорепо, не трогать без нужды. 5 орбитальных колец (CF, PostHog, Postman, Cyan, Gold) с 3-слойным glow (широкое свечение + ядро + белый core) и спарклами на передних сегментах; центральная планета: белое горячее ядро, анимированные световые лучи, экваториальный пылевой диск (60 частиц), энергетическая турбулентность, экваториальные полосы; боковая панель метрик.
 - `apps/api/Dockerfile` — multi-stage Docker образ для деплоя API. Build context — корень монорепо (нужен для `packages/shared`). Билдит shared → api, запускает `node dist/main` на порту 3001.
 - `apps/web/Dockerfile` — multi-stage образ для фронтенда. Билдит Vite → nginx. `$PORT` и `$API_INTERNAL_URL` подставляются через `envsubst` в `nginx.conf` при старте.
-- `.railwayignore` — исключает SportZavod/, content-zavod/, galaxy/, files/, node_modules/ из Railway upload.
+- `.railwayignore` — исключает SportZavod/, content-zavod/, apps/StreamCut/, galaxy/, files/, node_modules/ из Railway upload.
 - `.github/workflows/deploy-api.yml` — деплой API при пуше в `apps/api/**` или `packages/shared/**`. Использует service ID `1ad14f0e-dd02-44ec-ac73-7418751678ab`.
 - `.github/workflows/deploy-web.yml` — деплой фронтенда при пуше в `apps/web/**` или `packages/shared/**`. Перезаписывает `railway.toml` на web Dockerfile перед деплоем. Использует service ID `c4612d57-2a39-471d-8a76-9de9bec3d693`.
+- `.github/workflows/deploy-streamcut.yml` — деплой StreamCut при пуше в `apps/StreamCut/**`. Деплоит backend и worker как отдельные Railway-сервисы. Service ID в GitHub Variables (`STREAMCUT_BACKEND_SERVICE_ID`, `STREAMCUT_WORKER_SERVICE_ID`).
 
 ---
 
@@ -31,10 +33,15 @@ TikTok content farm dashboard. Управляет фермой телефоно�
 | SportZavod | `SportZavod` | `sportzavod-production.up.railway.app` | репо `Progery222/SportZavod` |
 | content-zavod | `content-zavod` | — | репо `Progery222/content-zavod` |
 | MinIO | `minio` | `minio-production-553a.up.railway.app` | Railway template |
+| StreamCut Backend | TBD | — | `apps/StreamCut/backend/Dockerfile` |
+| StreamCut Worker | TBD | — | `apps/StreamCut/backend/Dockerfile` (command: celery) |
+| StreamCut Redis | TBD | — | Railway Redis plugin |
 
 **Ключевые переменные API (`atome-studio`):**
 - `SPORTZAVOD_URL=http://sportzavod.railway.internal:8000`
 - `CONTENTZAVOD_URL=http://content-zavod.railway.internal:8002`
+- `STREAMCUT_URL=http://streamcut-backend.railway.internal:8000`
+- `STREAMCUT_SERVICE_PASSWORD` — пароль сервис-аккаунта для авторизации в StreamCut
 - `MINIO_URL=http://minio.railway.internal:9000`, `MINIO_BUCKET=atome-videos`
 - `JWT_SECRET` — задан в Railway Variables
 - `DATABASE_URL` — Neon Postgres connection string (pooler URL с `sslmode=require`)
@@ -72,7 +79,7 @@ TikTok content farm dashboard. Управляет фермой телефоно�
 
 ### Backend (`apps/api/src/`)
 ```
-mcp/                    ← адаптеры к внешним сервисам (cloudflare, postman, posthog, sportzavod, farm, contentzavod)
+mcp/                    ← адаптеры к внешним сервисам (cloudflare, postman, posthog, sportzavod, farm, contentzavod, streamcut)
 services/               ← ServicesService (polling каждые 30с), ServicesController, GET /api/services/kpis; videos_today из GenerationJobLog (Postgres); cost_per_video = AVG(costUsd) WHERE costUsd > 0 из GenerationJobLog (реальная стоимость из content-zavod, не env)
 auth/                   ← JWT авторизация; пользователи в Neon Postgres через Prisma; роли: admin/editor/viewer
 prisma/                 ← PrismaService + PrismaModule (global); schema в apps/api/prisma/schema.prisma; таблицы: User (auth), GenerationJobLog (jobId, service, durationSec, videosCount, costUsd, status, createdAt)
@@ -81,6 +88,7 @@ events/                 ← EventsGateway (Socket.io WS мост к orchestrator
 videos/                 ← VideosService (S3 XML API к MinIO), GET /api/videos
 clients/                ← CRUD клиентов (super_admin only)
 metrics/                ← MetricsService, GET /api/metrics/history — читает из GenerationJobLog (Postgres), группирует по дням/часам; возвращает videos + jobs_completed из реальных данных; revenue/cost/accounts_active = 0 (нет источника)
+streamcut/              ← StreamCutModule — прокси к StreamCut (FastAPI); сервис-аккаунт авторизация; endpoints: GET /api/streamcut/video-info, POST /api/streamcut/jobs, GET /api/streamcut/jobs, GET /api/streamcut/jobs/:id, DELETE /api/streamcut/jobs/:id, GET /api/streamcut/footage-categories; поллит джобы каждые 5с и эмитит FarmEvent через EventsGateway
 ```
 
 ### Frontend (`apps/web/src/`)
@@ -89,6 +97,7 @@ stores/
   services.ts           ← главный store (Service[], metrics, tooltip); fetchServices пушит ActivityEvent при смене статуса сервиса
   farm.ts               ← Phone[], Account[], QueueTask[], WS events; sportzavodThemes: SportZavodTheme[]; fetchSportzavodThemes(); stopAllJobs(); fetchJobs пушит synthetic ActivityEvent (job progress/done/error) когда wsConnected=false; при пустом ответе API activeJobs=[] (не mock — mock только при сетевой ошибке И пустом списке)
   metrics.ts            ← kpis: HeroKPI, fetchKPIs(); demoMode toggle
+  streamcut.ts          ← StreamCut store: jobs, videoInfo, footageCategories; CRUD через apiFetch к /api/streamcut/*; поллинг каждые 5с
   analyticsExtra.ts     ← Performance Analytics store: accountStats, topVideos, trafficSources, conversionHistory, kpis (total_views/avg_views/link_clicks/conversion_rate), generationStats: GenerationStats, costReport: GenerationCostReport|null; fetchGenerationStats() → GET /api/jobs/stats; fetchCostStats() → GET /api/jobs/cost-stats; generateDemo(period) включает demo costReport; оба fetch вызываются каждые 30с
   activity.ts           ← кольцевой буфер ActivityEvent (max 50)
   auth.ts               ← useAuthStore — JWT token, user, login/logout
@@ -110,6 +119,7 @@ pages/
   Clients ← таблица клиентов + inline форма создания (name, email, plan: basic/pro/enterprise, phones_limit); только super_admin
   Analytics ← 3 секции: основные KPI + графики; Performance секция с views/clicks/traffic/leaderboards; **Cost Analytics** секция — KPI (total_spent/per-service/avg_per_video) + donut (cost by service) + bar (avg $/video by service); данные из analyticsExtra.costReport, demo-aware
   Videos ← toolbar в header: сортировка (date_new/date_old/account), фильтры (service/account/status), текстовый поиск (title+caption+description+hashtags+account_id), toggle группировки по дате (groupByDate); subtitle показывает N/total; все фильтры — локальный state + useMemo pipeline на фронте
+  StreamCut ← /streamcut — two-column layout: левая — ввод URL + опции (язык, max_shorts, caption_style, reframe_mode, music) + кнопка; правая — список джобов с прогрессом по шагам (download→transcribe→analyze→cut→render) + галерея шортсов при завершении
 ```
 
 ---
@@ -125,6 +135,8 @@ pages/
 | content-zavod | 8002 |
 | MinIO API | 9000 |
 | MinIO UI | 9001 |
+| StreamCut Backend (FastAPI) | 8003 (mapped from 8000) |
+| StreamCut Redis | 6379 |
 
 ---
 
@@ -163,6 +175,20 @@ GET  /api/jobs                        → список jobs
 GET  /api/jobs/:id                    → статус
 ```
 
+### Dashboard API → StreamCut `:8003`
+```
+GET  /health                          → статус
+GET  /jobs/active-count               → { count } (без авторизации, для MCP health check)
+POST /auth/register                   → регистрация сервис-аккаунта
+POST /auth/login                      → OAuth2PasswordRequestForm → { access_token }
+GET  /video-info?url=                 → { title, duration, thumbnail, uploader }
+POST /jobs                            → создать задачу нарезки (требует JWT)
+GET  /jobs                            → список задач текущего пользователя
+GET  /jobs/:id                        → статус задачи с шагами и шортсами
+DELETE /jobs/:id                      → удалить задачу
+GET  /footage/categories              → категории B-roll футажа
+```
+
 ---
 
 ## Модели данных (в `packages/shared/src/index.ts`)
@@ -183,6 +209,11 @@ GET  /api/jobs/:id                    → статус
 - `VideoAnalytics` — аналитика видео (video_id, title, account_id, views, likes, link_clicks, completion_rate, published_at)
 - `TrafficSource` — источник трафика (source, views, percentage)
 - `ConversionPoint` — точка воронки (ts, views, link_clicks, conversion_rate)
+- `StreamCutJobStatus` — статус задачи StreamCut (pending|downloading|transcribing|analyzing|cutting|rendering|publishing|done|error)
+- `StreamCutStep` — шаг пайплайна (id, label, status, detail)
+- `StreamCutShort` — готовый шортс (filename, url, title, duration, score)
+- `StreamCutJob` — задача нарезки (job_id, status, message, progress, steps[], shorts[], error, source_url)
+- `StreamCutVideoInfo` — метаданные видео (title, duration, thumbnail, uploader)
 
 ---
 

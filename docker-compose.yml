@@ -20,6 +20,8 @@ services:
       - SPORTZAVOD_URL=${SPORTZAVOD_URL:-http://sportzavod:8000}
       - CONTENTZAVOD_URL=${CONTENTZAVOD_URL:-http://contentzavod:8002}
       - ORCHESTRATOR_URL=${ORCHESTRATOR_URL:-http://orchestrator:8001}
+      - STREAMCUT_URL=${STREAMCUT_URL:-http://host.docker.internal:8003}
+      - STREAMCUT_SERVICE_PASSWORD=${STREAMCUT_SERVICE_PASSWORD:-atome-service-pw}
     restart: unless-stopped
 
   web:
