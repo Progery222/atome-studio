@@ -1,0 +1,288 @@
+.page {
+  padding: 24px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+}
+
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.statusDot.online {
+  background: #00ff88;
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+}
+
+.statusDot.offline {
+  background: #666;
+}
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+  padding-bottom: 80px; /* space for chat */
+}
+
+.phoneCard {
+  position: relative;
+  background: var(--bg-card, rgba(21, 21, 21, 0.6));
+  border: 1px solid var(--border-light, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-sm, 8px);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+  aspect-ratio: 9 / 20;
+}
+
+.phoneCard:hover {
+  border-color: var(--accent-cyan, #00d2ff);
+  transform: scale(1.02);
+}
+
+.phoneCard.focused {
+  border-color: var(--accent-pink, #ff0080);
+  box-shadow: var(--shadow-neon-pink, 0 0 12px rgba(255, 0, 128, 0.4));
+}
+
+.screenImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.screenPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  background: #111;
+}
+
+.cardOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.cardSerial {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: monospace;
+}
+
+.cardStatus {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 255, 136, 0.2);
+  color: #00ff88;
+}
+
+.cardStatus.paused {
+  background: rgba(255, 165, 0, 0.2);
+  color: orange;
+}
+
+.cardStatus.offline {
+  background: rgba(255, 255, 255, 0.1);
+  color: #666;
+}
+
+/* Focus overlay */
+.focusOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.focusContainer {
+  position: relative;
+  width: 360px;
+  height: 800px;
+  max-height: 90vh;
+}
+
+.focusScreen {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 2px solid var(--accent-cyan, #00d2ff);
+}
+
+.focusClose {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.focusClose:hover {
+  border-color: var(--accent-pink, #ff0080);
+}
+
+.focusSerial {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.focusActions {
+  position: absolute;
+  bottom: -50px;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.focusBtn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.focusBtn:hover {
+  border-color: var(--accent-cyan, #00d2ff);
+}
+
+/* LLM Chat */
+.chatBar {
+  position: fixed;
+  bottom: 0;
+  left: 220px;
+  right: 0;
+  padding: 12px 24px;
+  background: rgba(10, 10, 10, 0.95);
+  border-top: 1px solid var(--border-light, rgba(255, 255, 255, 0.08));
+  display: flex;
+  gap: 12px;
+  z-index: 100;
+}
+
+.chatInput {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: white;
+  font-size: 14px;
+  outline: none;
+}
+
+.chatInput:focus {
+  border-color: var(--accent-cyan, #00d2ff);
+}
+
+.chatInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.chatSend {
+  background: linear-gradient(135deg, var(--accent-pink, #ff0080), var(--accent-cyan, #00d2ff));
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.chatSend:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chatResponse {
+  position: fixed;
+  bottom: 60px;
+  left: 240px;
+  right: 20px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(21, 21, 21, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  white-space: pre-wrap;
+  z-index: 100;
+}
+
+@media (max-width: 768px) {
+  .chatBar {
+    left: 0;
+  }
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}

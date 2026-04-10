@@ -58,7 +58,8 @@ export function Layout() {
   const generatingNow = activeJobs.filter((j) => j.status === "running").length;
 
   const NAV_ITEMS = [
-    { path: "/phones", label: t("nav_phones"), badge: phones.length > 0 ? phonesOnline : null },
+    { path: "/phone-grid", label: "📺 Grid", badge: phones.length > 0 ? phonesOnline : null },
+    { path: "/phones", label: t("nav_phones"), badge: null },
     { path: "/accounts", label: t("nav_accounts"), badge: null },
     ...(role !== "viewer"
       ? [

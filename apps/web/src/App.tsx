@@ -10,6 +10,7 @@ import { GalaxyPage } from "./pages/Galaxy/GalaxyPage";
 import { GeneratePage } from "./pages/Generate/GeneratePage";
 import { LoginPage } from "./pages/Login/LoginPage";
 import { PhoneDetailPage } from "./pages/PhoneDetail/PhoneDetailPage";
+import { PhoneGridPage } from "./pages/PhoneGrid/PhoneGridPage";
 import { PhonesPage } from "./pages/Phones/PhonesPage";
 import { QueuePage } from "./pages/Queue/QueuePage";
 import { SettingsPage } from "./pages/Settings/SettingsPage";
@@ -28,6 +29,7 @@ export function App() {
         {/* Protected + Layout */}
         <Route element={<AuthGuard />}>
           <Route element={<Layout />}>
+            <Route path="/phone-grid" element={<PhoneGridPage />} />
             <Route path="/phones" element={<PhonesPage />} />
             <Route path="/phones/:id" element={<PhoneDetailPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
