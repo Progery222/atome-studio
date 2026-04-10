@@ -234,7 +234,7 @@ function JobCard({
 }: {
   job: StreamCutJob;
   onDelete: (id: string) => void;
-  t: (key: string) => string;
+  t: ReturnType<typeof useT>;
 }) {
   return (
     <div className={styles.jobCard}>
