@@ -14,6 +14,7 @@ import { PhoneGridPage } from "./pages/PhoneGrid/PhoneGridPage";
 import { PhonesPage } from "./pages/Phones/PhonesPage";
 import { QueuePage } from "./pages/Queue/QueuePage";
 import { SettingsPage } from "./pages/Settings/SettingsPage";
+
 import { VideosPage } from "./pages/Videos/VideosPage";
 
 export function App() {
@@ -38,7 +39,6 @@ export function App() {
             <Route path="/queue" element={<QueuePage />} />
             <Route path="/videos" element={<VideosPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
-
             <Route path="/settings" element={<SettingsPage />} />
 
             {/* Super admin only (FR-15.7) */}

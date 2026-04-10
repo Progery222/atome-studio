@@ -5,6 +5,7 @@ import { useAuthStore } from "../../stores/auth";
 import { useFarmStore } from "../../stores/farm";
 import { type Lang, useLangStore } from "../../stores/lang";
 import { useMetricsStore } from "../../stores/metrics";
+
 import styles from "./Layout.module.css";
 
 const LANGS: { code: Lang; label: string }[] = [

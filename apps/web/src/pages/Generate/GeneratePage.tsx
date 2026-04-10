@@ -1,10 +1,11 @@
-import type { Account, GenerationJob, GenerationScope } from "@atome/shared";
+import type { Account, GenerationJob, GenerationScope, StreamCutJob } from "@atome/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../../i18n";
 import { useFarmStore } from "../../stores/farm";
+import { useStreamCutStore } from "../../stores/streamcut";
 import styles from "./GeneratePage.module.css";
 
-type Service = "sportzavod" | "contentzavod";
+type Service = "sportzavod" | "contentzavod" | "streamcut";
 type VideoCount = 1 | 2 | 3 | 5;
 
 function formatElapsed(iso?: string, nowMs = Date.now()): string {
@@ -221,6 +222,20 @@ export function GeneratePage() {
   const stopJob = useFarmStore((s) => s.stopJob);
   const stopAllJobs = useFarmStore((s) => s.stopAllJobs);
 
+  // StreamCut
+  const scJobs = useStreamCutStore((s) => s.jobs);
+  const scJobsLoading = useStreamCutStore((s) => s.jobsLoading);
+  const scVideoInfo = useStreamCutStore((s) => s.videoInfo);
+  const scVideoInfoLoading = useStreamCutStore((s) => s.videoInfoLoading);
+  const scCreating = useStreamCutStore((s) => s.creating);
+  const scFetchJobs = useStreamCutStore((s) => s.fetchJobs);
+  const scCreateJob = useStreamCutStore((s) => s.createJob);
+  const scDeleteJob = useStreamCutStore((s) => s.deleteJob);
+  const scFetchVideoInfo = useStreamCutStore((s) => s.fetchVideoInfo);
+  const scClearVideoInfo = useStreamCutStore((s) => s.clearVideoInfo);
+  const scFootageCategories = useStreamCutStore((s) => s.footageCategories);
+  const scFetchFootageCategories = useStreamCutStore((s) => s.fetchFootageCategories);
+
   const [service, setService] = useState<Service>("sportzavod");
   const [scope, setScope] = useState<GenerationScope | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -238,7 +253,21 @@ export function GeneratePage() {
   const [accountError, setAccountError] = useState("");
   const [launchError, setLaunchError] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
+  // StreamCut form state
+  const [scUrl, setScUrl] = useState("");
+  const [scLanguage, setScLanguage] = useState("auto");
+  const [scMaxShorts, setScMaxShorts] = useState(5);
+  const [scCaptionStyle, setScCaptionStyle] = useState("karaoke");
+  const [scReframeMode, setScReframeMode] = useState("ai");
+  const [scAddMusic, setScAddMusic] = useState("auto");
+  const [scFootageLayout, setScFootageLayout] = useState("none");
+  const [scFootageCategory, setScFootageCategory] = useState("");
+  const [scCaptionPosition, setScCaptionPosition] = useState("auto");
+  const [scMinDuration, setScMinDuration] = useState(15);
+  const [scMaxDuration, setScMaxDuration] = useState(60);
+  const [scSrtText, setScSrtText] = useState("");
   const nicheRef = useRef<HTMLDivElement>(null);
+  const scPollRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
     if (service === "sportzavod") {
@@ -265,6 +294,16 @@ export function GeneratePage() {
     const id = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // StreamCut polling when selected
+  useEffect(() => {
+    if (service === "streamcut") {
+      scFetchJobs();
+      scFetchFootageCategories();
+      scPollRef.current = setInterval(() => scFetchJobs(), 5000);
+    }
+    return () => clearInterval(scPollRef.current);
+  }, [service]);
 
   const activeAccounts = service === "sportzavod" ? sportzavodAccounts : accounts;
   const isLoading = service === "sportzavod" ? sportzavodAccountsLoading : accountsLoading;
@@ -394,7 +433,7 @@ export function GeneratePage() {
     setLaunchError("");
     try {
       await startGeneration({
-        service,
+        service: service as "sportzavod" | "contentzavod",
         account_ids:
           service === "contentzavod" && selectedIds.size === 0 ? ["default"] : [...selectedIds],
         videos_per_account: videosPerAcc,
@@ -522,24 +561,31 @@ export function GeneratePage() {
           <div className={styles.card}>
             <div className={styles.cardTitle}>{t("gen_service_card")}</div>
             <div className={styles.serviceTabs}>
-              {(["sportzavod", "contentzavod"] as Service[]).map((svc) => (
-                <button
-                  key={svc}
-                  className={`${styles.serviceTab} ${service === svc ? styles.serviceTabActive : ""}`}
-                  onClick={() => {
-                    setService(svc);
-                    setSelectedIds(new Set());
-                    setNicheFilter(null);
-                    setScope(null);
-                  }}
-                >
-                  <span
-                    className={styles.serviceTabDot}
-                    style={{ background: svc === "sportzavod" ? "#d4af37" : "#b496ff" }}
-                  />
-                  {svc === "sportzavod" ? "SportZavod" : "content-zavod"}
-                </button>
-              ))}
+              {(["sportzavod", "contentzavod", "streamcut"] as Service[]).map((svc) => {
+                const label =
+                  svc === "sportzavod"
+                    ? "SportZavod"
+                    : svc === "contentzavod"
+                      ? "content-zavod"
+                      : "StreamCut";
+                const dot =
+                  svc === "sportzavod" ? "#d4af37" : svc === "contentzavod" ? "#b496ff" : "#00d2ff";
+                return (
+                  <button
+                    key={svc}
+                    className={`${styles.serviceTab} ${service === svc ? styles.serviceTabActive : ""}`}
+                    onClick={() => {
+                      setService(svc);
+                      setSelectedIds(new Set());
+                      setNicheFilter(null);
+                      setScope(null);
+                    }}
+                  >
+                    <span className={styles.serviceTabDot} style={{ background: dot }} />
+                    {label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Stats bar */}
@@ -722,37 +768,261 @@ export function GeneratePage() {
             </div>
           )}
 
-          {/* ── 3. Settings row ── */}
-          <div className={styles.settingsRow}>
-            <div className={styles.cardSmall}>
-              <div className={styles.cardTitle}>{t("gen_vpa_card")}</div>
-              <div className={styles.countGroup}>
-                {([1, 2, 3, 5] as VideoCount[]).map((n) => (
-                  <button
-                    key={n}
-                    className={`${styles.countBtn} ${videosPerAcc === n ? styles.countBtnActive : ""}`}
-                    onClick={() => setVideosPerAcc(n)}
+          {/* ── 3. Settings row (sportzavod / contentzavod only) ── */}
+          {service !== "streamcut" && (
+            <div className={styles.settingsRow}>
+              <div className={styles.cardSmall}>
+                <div className={styles.cardTitle}>{t("gen_vpa_card")}</div>
+                <div className={styles.countGroup}>
+                  {([1, 2, 3, 5] as VideoCount[]).map((n) => (
+                    <button
+                      key={n}
+                      className={`${styles.countBtn} ${videosPerAcc === n ? styles.countBtnActive : ""}`}
+                      onClick={() => setVideosPerAcc(n)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {service === "contentzavod" && (
+                <div className={styles.cardSmall} style={{ flex: 1 }}>
+                  <div className={styles.cardTitle}>{t("generate_topic")}</div>
+                  <input
+                    className={styles.input}
+                    placeholder={t("gen_topic_ph")}
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── 3b. StreamCut form ── */}
+          {service === "streamcut" && (
+            <div className={styles.card}>
+              <div className={styles.cardTitle}>StreamCut — {t("streamcut_subtitle")}</div>
+
+              {/* URL input */}
+              <div className={styles.scUrlRow}>
+                <input
+                  className={styles.scUrlInput}
+                  type="text"
+                  value={scUrl}
+                  onChange={(e) => setScUrl(e.target.value)}
+                  placeholder={t("gen_sc_url_ph")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && scUrl.trim()) scFetchVideoInfo(scUrl.trim());
+                  }}
+                />
+                <button
+                  type="button"
+                  className={styles.scInfoBtn}
+                  onClick={() => scUrl.trim() && scFetchVideoInfo(scUrl.trim())}
+                  disabled={scVideoInfoLoading || !scUrl.trim()}
+                >
+                  {scVideoInfoLoading ? "..." : t("gen_sc_fetch_info")}
+                </button>
+              </div>
+
+              {/* Video preview */}
+              {scVideoInfo && (
+                <div className={styles.scVideoPreview}>
+                  {scVideoInfo.thumbnail && (
+                    <img src={scVideoInfo.thumbnail} alt="" className={styles.scThumbnail} />
+                  )}
+                  <div className={styles.scVideoMeta}>
+                    <div className={styles.scVideoTitle}>{scVideoInfo.title || "—"}</div>
+                    <div className={styles.scVideoDuration}>
+                      {t("gen_sc_duration")}:{" "}
+                      {scVideoInfo.duration
+                        ? `${Math.floor(scVideoInfo.duration / 60)}:${String(Math.round(scVideoInfo.duration % 60)).padStart(2, "0")}`
+                        : "—"}
+                      {scVideoInfo.uploader && ` · ${scVideoInfo.uploader}`}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Options */}
+              <div className={styles.scOptions}>
+                {/* Row 1: Language, Max shorts, Captions, Reframe */}
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_language")}</label>
+                  <select value={scLanguage} onChange={(e) => setScLanguage(e.target.value)}>
+                    <option value="auto">Auto</option>
+                    <option value="ru">Russian</option>
+                    <option value="en">English</option>
+                    <option value="zh">Chinese</option>
+                    <option value="es">Spanish</option>
+                  </select>
+                </div>
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_max_shorts")}</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={15}
+                    value={scMaxShorts}
+                    onChange={(e) => setScMaxShorts(Number(e.target.value))}
+                  />
+                </div>
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_caption_style")}</label>
+                  <select
+                    value={scCaptionStyle}
+                    onChange={(e) => setScCaptionStyle(e.target.value)}
                   >
-                    {n}
-                  </button>
-                ))}
+                    {["default", "karaoke", "glow", "bold", "highlight", "minimal"].map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_reframe")}</label>
+                  <select value={scReframeMode} onChange={(e) => setScReframeMode(e.target.value)}>
+                    <option value="center">center</option>
+                    <option value="ai">AI-tracking</option>
+                  </select>
+                </div>
+
+                {/* Row 2: Music, Footage layout, Footage category, Caption position */}
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_music")}</label>
+                  <select value={scAddMusic} onChange={(e) => setScAddMusic(e.target.value)}>
+                    <option value="auto">{t("gen_sc_music_auto")}</option>
+                    <option value="none">none</option>
+                    <option value="upbeat">upbeat</option>
+                    <option value="calm">calm</option>
+                    <option value="motivation">motivation</option>
+                  </select>
+                </div>
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_footage_layout")}</label>
+                  <select
+                    value={scFootageLayout}
+                    onChange={(e) => setScFootageLayout(e.target.value)}
+                  >
+                    <option value="none">{t("gen_sc_footage_none")}</option>
+                    <option value="background">{t("gen_sc_footage_bg")}</option>
+                    <option value="footage_top">{t("gen_sc_footage_top")}</option>
+                    <option value="footage_bottom">{t("gen_sc_footage_bottom")}</option>
+                  </select>
+                </div>
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_footage_category")}</label>
+                  <select
+                    value={scFootageCategory}
+                    onChange={(e) => setScFootageCategory(e.target.value)}
+                    disabled={scFootageLayout === "none"}
+                  >
+                    <option value="">{t("gen_sc_footage_cat_any")}</option>
+                    {scFootageCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_caption_pos")}</label>
+                  <select
+                    value={scCaptionPosition}
+                    onChange={(e) => setScCaptionPosition(e.target.value)}
+                  >
+                    <option value="auto">{t("gen_sc_caption_pos_auto")}</option>
+                    <option value="fixed_bottom">{t("gen_sc_caption_pos_bottom")}</option>
+                  </select>
+                </div>
+
+                {/* Row 3: Min/Max duration */}
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_min_dur")}</label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={120}
+                    value={scMinDuration}
+                    onChange={(e) => setScMinDuration(Number(e.target.value))}
+                  />
+                </div>
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_max_dur")}</label>
+                  <input
+                    type="number"
+                    min={15}
+                    max={180}
+                    value={scMaxDuration}
+                    onChange={(e) => setScMaxDuration(Number(e.target.value))}
+                  />
+                </div>
+
+                {/* Row 4: SRT timecodes (full width) */}
+                <div className={`${styles.scField} ${styles.scFieldFull}`}>
+                  <label>{t("gen_sc_srt_label")}</label>
+                  <textarea
+                    className={styles.scTextarea}
+                    placeholder={t("gen_sc_srt_ph")}
+                    value={scSrtText}
+                    onChange={(e) => setScSrtText(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              {/* Launch */}
+              <div className={styles.cardFooter}>
+                <button
+                  className={styles.launchBtn}
+                  disabled={scCreating || !scUrl.trim()}
+                  onClick={async () => {
+                    if (!scUrl.trim()) return;
+                    const dto: Record<string, unknown> = {
+                      url: scUrl.trim(),
+                      language: scLanguage,
+                      max_shorts: scMaxShorts,
+                      caption_style: scCaptionStyle,
+                      reframe_mode: scReframeMode,
+                      add_music: scAddMusic,
+                      footage_layout: scFootageLayout,
+                      caption_position: scCaptionPosition,
+                      min_duration: scMinDuration,
+                      max_duration: scMaxDuration,
+                    };
+                    if (scFootageLayout !== "none" && scFootageCategory) {
+                      dto.footage_category = scFootageCategory;
+                    }
+                    if (scSrtText.trim()) {
+                      const timecodes = scSrtText
+                        .trim()
+                        .split("\n")
+                        .map((line) => {
+                          const [start, end, ...rest] = line.split(",");
+                          return {
+                            start: Number.parseFloat(start),
+                            end: Number.parseFloat(end),
+                            title: rest.join(",").trim() || undefined,
+                          };
+                        })
+                        .filter((tc) => !Number.isNaN(tc.start) && !Number.isNaN(tc.end));
+                      if (timecodes.length > 0) dto.srt_timecodes = timecodes;
+                    }
+                    await scCreateJob(dto);
+                    setScUrl("");
+                    scClearVideoInfo();
+                  }}
+                >
+                  {scCreating ? t("gen_sc_launching") : t("gen_sc_launch")}
+                </button>
               </div>
             </div>
-            {service === "contentzavod" && (
-              <div className={styles.cardSmall} style={{ flex: 1 }}>
-                <div className={styles.cardTitle}>{t("generate_topic")}</div>
-                <input
-                  className={styles.input}
-                  placeholder={t("gen_topic_ph")}
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
+          )}
 
           {/* ── 4. Account list (SportZavod) / Launch button (content-zavod) ── */}
-          {service === "contentzavod" ? (
+          {service === "contentzavod" && (
             <div className={styles.card}>
               <div className={styles.cardFooter}>
                 <button
@@ -767,7 +1037,8 @@ export function GeneratePage() {
                 </button>
               </div>
             </div>
-          ) : (
+          )}
+          {service === "sportzavod" && (
             <div className={styles.card}>
               <div className={styles.cardTitleRow}>
                 <div className={styles.cardTitle}>
@@ -877,109 +1148,214 @@ export function GeneratePage() {
 
         {/* ════════════ RIGHT COLUMN ════════════ */}
         <div className={styles.colSide}>
-          {/* ── Active Jobs ── */}
-          <div className={styles.card}>
-            <div className={styles.cardTitleRow}>
-              <div className={styles.cardTitle}>{t("gen_jobs_title")}</div>
-              {runningJobs.length > 1 && (
-                <button
-                  className={styles.btnDangerSmall}
-                  onClick={() => stopAllJobs().catch((e) => alert(e.message))}
-                >
-                  {t("gen_stop_all")}
-                </button>
+          {/* ── StreamCut Jobs ── */}
+          {service === "streamcut" ? (
+            <div className={styles.card}>
+              <div className={styles.cardTitleRow}>
+                <div className={styles.cardTitle}>{t("streamcut_jobs")}</div>
+              </div>
+              {scJobs.length === 0 && !scJobsLoading ? (
+                <div className={styles.emptySmall}>{t("gen_sc_no_jobs")}</div>
+              ) : (
+                <div className={styles.jobList}>
+                  {scJobs.map((job) => (
+                    <StreamCutJobCard key={job.job_id} job={job} onDelete={scDeleteJob} t={t} />
+                  ))}
+                </div>
               )}
             </div>
+          ) : (
+            /* ── Generation Jobs ── */
+            <div className={styles.card}>
+              <div className={styles.cardTitleRow}>
+                <div className={styles.cardTitle}>{t("gen_jobs_title")}</div>
+                {runningJobs.length > 1 && (
+                  <button
+                    className={styles.btnDangerSmall}
+                    onClick={() => stopAllJobs().catch((e) => alert(e.message))}
+                  >
+                    {t("gen_stop_all")}
+                  </button>
+                )}
+              </div>
 
-            {activeJobs.length === 0 ? (
-              <div className={styles.emptySmall}>{t("gen_no_jobs")}</div>
-            ) : (
-              <div className={styles.jobList}>
-                {visibleJobs.map((j) => {
-                  const jColor = getJobStatusColor(j);
-                  const jPct = getJobDisplayPercent(j, nowMs);
-                  const latestEvent = (jobEventsById[j.job_id] ?? []).at(-1);
-                  const indeterminate = j.status === "running" && j.total === 0;
-                  return (
-                    <div key={j.job_id} className={styles.jobItem}>
-                      <div className={styles.jobItemHead}>
-                        <div className={styles.jobItemRing}>
-                          <ProgressRing
-                            pct={jPct}
-                            color={jColor}
-                            indeterminate={indeterminate}
-                            size={58}
-                            strokeWidth={4}
-                          />
-                          <div className={styles.jobItemRingCenter}>
-                            <span className={styles.jobItemPct} style={{ color: jColor }}>
-                              {indeterminate ? "—" : `${jPct}%`}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className={styles.jobItemContent}>
-                          <div className={styles.jobItemTop}>
-                            <span className={styles.dot} style={{ background: jColor }} />
-                            <span className={styles.jobItemId}>{j.job_id.slice(0, 8)}</span>
-                            {j.is_auto && (
-                              <span className={styles.tagAuto}>{t("gen_tag_auto")}</span>
-                            )}
-                            <span className={styles.jobItemStatus} style={{ color: jColor }}>
-                              {getJobStatusText(j, t)}
-                            </span>
-                            {j.status === "running" && (
-                              <button
-                                className={styles.btnDangerSmall}
-                                onClick={() => {
-                                  stopJob(j.job_id).catch((e) => alert(e.message));
-                                }}
-                              >
-                                {t("gen_stop_job")}
-                              </button>
-                            )}
-                          </div>
-
-                          <div className={styles.jobItemBottom}>
-                            <span>
-                              {j.progress}/{j.total}
-                            </span>
-                            {j.current_phase && <span>{j.current_phase}</span>}
-                            {(j.status === "running" || j.status === "stopping") && (
-                              <span>{formatElapsed(j.started_at ?? j.created_at, nowMs)}</span>
-                            )}
-                            <span>{j.service}</span>
-                            {j.errors_count > 0 && (
-                              <span style={{ color: "#ef4444" }}>
-                                {j.errors_count} {t("gen_errors_abbr")}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {latestEvent && (
-                        <div className={styles.jobTimelinePreview}>
-                          <div className={styles.jobTimelineRow}>
-                            <span className={styles.jobTimelineTime}>
-                              {formatEventClock(latestEvent.created_at)}
-                            </span>
-                            <div className={styles.jobTimelineBody}>
-                              <span className={styles.jobTimelinePhase}>
-                                {translatePhase(latestEvent.phase, t)}
+              {activeJobs.length === 0 ? (
+                <div className={styles.emptySmall}>{t("gen_no_jobs")}</div>
+              ) : (
+                <div className={styles.jobList}>
+                  {visibleJobs.map((j) => {
+                    const jColor = getJobStatusColor(j);
+                    const jPct = getJobDisplayPercent(j, nowMs);
+                    const latestEvent = (jobEventsById[j.job_id] ?? []).at(-1);
+                    const indeterminate = j.status === "running" && j.total === 0;
+                    return (
+                      <div key={j.job_id} className={styles.jobItem}>
+                        <div className={styles.jobItemHead}>
+                          <div className={styles.jobItemRing}>
+                            <ProgressRing
+                              pct={jPct}
+                              color={jColor}
+                              indeterminate={indeterminate}
+                              size={58}
+                              strokeWidth={4}
+                            />
+                            <div className={styles.jobItemRingCenter}>
+                              <span className={styles.jobItemPct} style={{ color: jColor }}>
+                                {indeterminate ? "—" : `${jPct}%`}
                               </span>
                             </div>
                           </div>
+
+                          <div className={styles.jobItemContent}>
+                            <div className={styles.jobItemTop}>
+                              <span className={styles.dot} style={{ background: jColor }} />
+                              <span className={styles.jobItemId}>{j.job_id.slice(0, 8)}</span>
+                              {j.is_auto && (
+                                <span className={styles.tagAuto}>{t("gen_tag_auto")}</span>
+                              )}
+                              <span className={styles.jobItemStatus} style={{ color: jColor }}>
+                                {getJobStatusText(j, t)}
+                              </span>
+                              {j.status === "running" && (
+                                <button
+                                  className={styles.btnDangerSmall}
+                                  onClick={() => {
+                                    stopJob(j.job_id).catch((e) => alert(e.message));
+                                  }}
+                                >
+                                  {t("gen_stop_job")}
+                                </button>
+                              )}
+                            </div>
+
+                            <div className={styles.jobItemBottom}>
+                              <span>
+                                {j.progress}/{j.total}
+                              </span>
+                              {j.current_phase && <span>{j.current_phase}</span>}
+                              {(j.status === "running" || j.status === "stopping") && (
+                                <span>{formatElapsed(j.started_at ?? j.created_at, nowMs)}</span>
+                              )}
+                              <span>{j.service}</span>
+                              {j.errors_count > 0 && (
+                                <span style={{ color: "#ef4444" }}>
+                                  {j.errors_count} {t("gen_errors_abbr")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+
+                        {latestEvent && (
+                          <div className={styles.jobTimelinePreview}>
+                            <div className={styles.jobTimelineRow}>
+                              <span className={styles.jobTimelineTime}>
+                                {formatEventClock(latestEvent.created_at)}
+                              </span>
+                              <div className={styles.jobTimelineBody}>
+                                <span className={styles.jobTimelinePhase}>
+                                  {translatePhase(latestEvent.phase, t)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── StreamCut helpers ──────────────────────────────────────────────────────
+
+/** Convert StreamCut relative URL (/storage/jobId/file.mp4) to API proxy URL */
+function scProxyUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  // Already a full URL (MinIO/R2) — use as-is
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  // Relative /storage/jobId/file.mp4 → /api/streamcut/storage/jobId/file.mp4
+  const match = url.match(/^\/?storage\/(.+)$/);
+  if (match) return `/api/streamcut/storage/${match[1]}`;
+  return url;
+}
+
+// ─── StreamCut Job Card (for right column) ──────────────────────────────────
+
+function scStatusClass(status: string) {
+  if (status === "done") return styles.scJobStatusDone;
+  if (status === "error") return styles.scJobStatusError;
+  if (status === "pending") return styles.scJobStatusPending;
+  return styles.scJobStatusRunning;
+}
+
+function scStepDotClass(status: string) {
+  if (status === "done") return styles.scStepDotDone;
+  if (status === "error") return styles.scStepDotError;
+  if (status === "active") return styles.scStepDotActive;
+  return "";
+}
+
+function StreamCutJobCard({
+  job,
+  onDelete,
+  t,
+}: {
+  job: StreamCutJob;
+  onDelete: (id: string) => void;
+  t: ReturnType<typeof useT>;
+}) {
+  return (
+    <div className={styles.scJobItem}>
+      <div className={styles.scJobHeader}>
+        <span className={styles.scJobId}>{job.job_id.slice(0, 8)}</span>
+        <span className={`${styles.scJobStatus} ${scStatusClass(job.status)}`}>{job.status}</span>
+      </div>
+
+      <div className={styles.scProgressBar}>
+        <div className={styles.scProgressFill} style={{ width: `${job.progress}%` }} />
+      </div>
+
+      {job.steps && job.steps.length > 0 && (
+        <div className={styles.scSteps}>
+          {job.steps.map((step) => (
+            <div key={step.id} className={styles.scStep}>
+              <span className={`${styles.scStepDot} ${scStepDotClass(step.status)}`} />
+              <span>
+                {step.label}
+                {step.detail && ` — ${step.detail}`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {job.message && !job.error && <div className={styles.scJobMessage}>{job.message}</div>}
+      {job.error && <div className={styles.scJobError}>{job.error}</div>}
+
+      {job.shorts && job.shorts.length > 0 && (
+        <div className={styles.scJobMessage} style={{ color: "#22c55e" }}>
+          {job.shorts.length} {t("gen_sc_shorts_ready")}
+        </div>
+      )}
+
+      {(job.status === "done" || job.status === "error") && (
+        <div className={styles.scJobActions}>
+          <button
+            type="button"
+            className={styles.btnDangerSmall}
+            onClick={() => onDelete(job.job_id)}
+          >
+            {t("streamcut_delete")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

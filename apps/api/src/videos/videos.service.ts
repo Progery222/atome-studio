@@ -1,5 +1,6 @@
 import type { VideoFile } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
+import { StreamCutService } from "../streamcut/streamcut.service";
 
 /**
  * VideosService
@@ -8,6 +9,7 @@ import { Injectable, Logger } from "@nestjs/common";
  * For each video (.mp4) it fetches the companion JSON metadata:
  *   - SportZavod:    {same_path}.json  → { caption, title, description, hashtags }
  *   - content-zavod: {same_dir}/prompt.json → { script: { title, description, tags } }
+ *   - StreamCut:     done jobs → shorts → VideoFile
  */
 @Injectable()
 export class VideosService {
@@ -17,7 +19,17 @@ export class VideosService {
     process.env.MINIO_PUBLIC_URL ?? process.env.MINIO_URL ?? "http://localhost:9000";
   private readonly bucket = process.env.MINIO_BUCKET ?? "atome-videos";
 
+  constructor(private readonly streamcut: StreamCutService) {}
+
   async getVideos(): Promise<VideoFile[]> {
+    const [minioVideos, scVideos] = await Promise.all([
+      this.getMinioVideos(),
+      this.getStreamCutVideos(),
+    ]);
+    return [...minioVideos, ...scVideos];
+  }
+
+  private async getMinioVideos(): Promise<VideoFile[]> {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const url = `${this.minioUrl}/${this.bucket}/?list-type=2`;
@@ -42,6 +54,38 @@ export class VideosService {
       }
     }
     return [];
+  }
+
+  private async getStreamCutVideos(): Promise<VideoFile[]> {
+    try {
+      const jobs = await this.streamcut.listJobs();
+      const videos: VideoFile[] = [];
+      for (const job of jobs) {
+        if (job.status !== "done" || !job.shorts?.length) continue;
+        for (const s of job.shorts) {
+          const proxyUrl = s.url?.startsWith("/storage/")
+            ? `/api/streamcut/storage/${s.url.slice("/storage/".length)}`
+            : s.url;
+          videos.push({
+            filename: s.filename,
+            account_id: "streamcut",
+            tenant_id: "streamcut",
+            source_service: "streamcut",
+            url: proxyUrl ?? "",
+            thumbnail_url: "",
+            size_bytes: (s as any).file_size ?? 0,
+            created_at: (job as any).created_at ?? new Date().toISOString(),
+            status: "published",
+            title: s.title,
+            description: (s as any).description,
+          });
+        }
+      }
+      return videos;
+    } catch {
+      this.logger.warn("StreamCut unavailable for video listing");
+      return [];
+    }
   }
 
   private parseXml(xml: string): { videos: VideoFile[]; jsonKeys: Set<string> } {

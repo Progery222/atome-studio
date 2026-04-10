@@ -1219,3 +1219,412 @@
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
 }
+
+/* ─── StreamCut form ─────────────────────────────────────────────────────── */
+
+.scUrlRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.scUrlInput {
+  composes: input;
+  flex: 1;
+}
+
+.scInfoBtn {
+  composes: btnPrimary;
+  white-space: nowrap;
+}
+
+.scInfoBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.scVideoPreview {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.scThumbnail {
+  width: 120px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.scVideoMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.scVideoTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scVideoDuration {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.scOptions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.scFieldWide {
+  grid-column: span 2;
+}
+
+.scFieldFull {
+  grid-column: 1 / -1;
+}
+
+.scTextarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  outline: none;
+  resize: vertical;
+  transition: all 0.2s;
+}
+
+.scTextarea::placeholder {
+  color: var(--text-muted);
+}
+
+.scTextarea:focus {
+  border-color: rgba(0, 210, 255, 0.4);
+  background: rgba(0, 210, 255, 0.03);
+}
+
+.scField label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.scField select,
+.scField input {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  outline: none;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.scField select:focus,
+.scField input:focus {
+  border-color: rgba(0, 210, 255, 0.4);
+  background: rgba(0, 210, 255, 0.03);
+}
+
+.scField select option {
+  background: #1a1a2e;
+  color: var(--text-primary);
+}
+
+/* ─── StreamCut job card (right column) ──────────────────────────────────── */
+
+.scJobItem {
+  padding: 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.015);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.scJobItem:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.scJobHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.scJobId {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.scJobStatus {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.scJobStatusDone { color: #22c55e; }
+.scJobStatusError { color: #ef4444; }
+.scJobStatusPending { color: var(--text-muted); }
+.scJobStatusRunning { color: rgba(0, 210, 255, 0.85); }
+
+.scProgressBar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.scProgressFill {
+  height: 100%;
+  border-radius: 2px;
+  background: rgba(0, 210, 255, 0.6);
+  transition: width 0.4s ease;
+}
+
+.scSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.scStep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.scStepDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.scStepDotDone { background: #22c55e; }
+.scStepDotActive { background: rgba(0, 210, 255, 0.85); }
+.scStepDotError { background: #ef4444; }
+
+.scJobMessage {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.scJobError {
+  font-size: 11px;
+  color: #ef4444;
+  margin-bottom: 4px;
+}
+
+.scShortsList {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.scShortsTitle {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #22c55e;
+  margin-bottom: 6px;
+}
+
+.scShortCard {
+  margin-bottom: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.scShortHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+}
+
+.scShortName {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.scDownloadLink {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: rgba(0, 210, 255, 0.08);
+  color: rgba(0, 210, 255, 0.8);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+
+.scDownloadLink:hover {
+  background: rgba(0, 210, 255, 0.15);
+  color: rgba(0, 210, 255, 1);
+}
+
+.scVideoPlayer {
+  width: 100%;
+  max-height: 320px;
+  display: block;
+  background: #000;
+}
+
+/* ─── StreamCut results gallery (main column) ────────────────────────────── */
+
+.scGallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.scGalleryItem {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s;
+}
+
+.scGalleryItem:hover {
+  border-color: rgba(0, 210, 255, 0.25);
+}
+
+.scGalleryVideo {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  object-fit: contain;
+  background: #000;
+  display: block;
+}
+
+.scGalleryInfo {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scGalleryTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scGalleryMeta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.scGalleryDownload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(0, 210, 255, 0.08);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  color: rgba(0, 210, 255, 0.9);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.scGalleryDownload:hover {
+  background: rgba(0, 210, 255, 0.15);
+  border-color: rgba(0, 210, 255, 0.4);
+}
+
+@media (max-width: 768px) {
+  .scGallery {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .scGallery {
+    grid-template-columns: 1fr;
+  }
+}
+
+.scJobActions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 1100px) {
+  .scOptions {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .scOptions {
+    grid-template-columns: 1fr;
+  }
+
+  .scVideoPreview {
+    flex-direction: column;
+  }
+
+  .scThumbnail {
+    width: 100%;
+    height: auto;
+    max-height: 160px;
+  }
+}

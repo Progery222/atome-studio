@@ -4,6 +4,9 @@ dist/
 *.local
 .DS_Store
 
+# External service repos (cloned locally for dev, deployed from own repos)
+apps/StreamCut/
+
 # Claude Code internal files
 .claude/helpers/
 .claude/settings.json
