@@ -11,6 +11,7 @@ import {
   Res,
 } from "@nestjs/common";
 import type { Response } from "express";
+import { Public } from "../auth/public.decorator";
 import { StreamCutService } from "./streamcut.service";
 
 @Controller("streamcut")
@@ -56,6 +57,7 @@ export class StreamCutController {
     return { categories: await this.streamcut.getFootageCategories() };
   }
 
+  @Public()
   @Get("storage/:jobId/:filename")
   async proxyFile(
     @Param("jobId") jobId: string,
