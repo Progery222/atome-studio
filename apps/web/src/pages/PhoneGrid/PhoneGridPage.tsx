@@ -211,11 +211,17 @@ export function PhoneGridPage() {
               }`}
               onClick={() => focusDevice(serial)}
             >
-              {isLive && frame.thumbnail ? (
+              {orchestratorUrl ? (
                 <img
-                  src={frame.thumbnail}
+                  src={`${orchestratorUrl}/api/stream/${serial}`}
                   alt={serial}
                   className={styles.screenImage}
+                  loading="lazy"
+                  onError={(e) => {
+                    // Fallback to screenshot if MJPEG fails
+                    const img = e.target as HTMLImageElement
+                    img.src = `${orchestratorUrl}/api/screen/${serial}?thumb=1`
+                  }}
                 />
               ) : (
                 <div className={styles.screenPlaceholder}>
@@ -255,30 +261,15 @@ export function PhoneGridPage() {
               ✕ Close
             </button>
 
-            {screens[focusedSerial]?.thumbnail ? (
-              <img
-                ref={focusRef}
-                src={screens[focusedSerial].thumbnail}
-                alt={focusedSerial}
-                className={styles.focusScreen}
-                onMouseDown={handleMouseDown}
-                onMouseUp={handleMouseUp}
-                draggable={false}
-              />
-            ) : (
-              <div
-                className={styles.focusScreen}
-                style={{
-                  background: "#111",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#555",
-                }}
-              >
-                Loading...
-              </div>
-            )}
+            <img
+              ref={focusRef}
+              src={`${orchestratorUrl}/api/stream/${focusedSerial}`}
+              alt={focusedSerial}
+              className={styles.focusScreen}
+              onMouseDown={handleMouseDown}
+              onMouseUp={handleMouseUp}
+              draggable={false}
+            />
 
             <div className={styles.focusActions}>
               <button
