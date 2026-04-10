@@ -260,7 +260,7 @@ export function GeneratePage() {
   const [scCaptionStyle, setScCaptionStyle] = useState("karaoke");
   const [scReframeMode, setScReframeMode] = useState("ai");
   const [scAddMusic, setScAddMusic] = useState("auto");
-  const [scFootageLayout, setScFootageLayout] = useState("none");
+  const [scFootageLayout, setScFootageLayout] = useState("footage_bottom");
   const [scFootageCategory, setScFootageCategory] = useState("");
   const [scCaptionPosition, setScCaptionPosition] = useState("auto");
   const [scMinDuration, setScMinDuration] = useState(15);
