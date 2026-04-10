@@ -3,25 +3,20 @@ import { create } from "zustand"
 export interface ScreenFrame {
   serial: string
   ts: number
-  thumbnail?: string // base64 JPEG
-  blob?: Blob
+  thumbnail?: string // object URL for JPEG blob
 }
 
 interface PhoneGridState {
-  // Grid state
-  screens: Record<string, ScreenFrame> // serial → latest frame
+  screens: Record<string, ScreenFrame>
   focusedSerial: string | null
-  focusStream: "scrcpy" | "mjpeg" | null
-  gridWs: WebSocket | null
-  focusWs: WebSocket | null
-
-  // Config
   orchestratorUrl: string
+  polling: boolean
+  pollTimer: ReturnType<typeof setInterval> | null
+  focusPollTimer: ReturnType<typeof setInterval> | null
 
-  // Actions
   setOrchestratorUrl: (url: string) => void
-  connectGrid: () => void
-  disconnectGrid: () => void
+  startPolling: (serials: string[]) => void
+  stopPolling: () => void
   focusDevice: (serial: string) => void
   unfocusDevice: () => void
   sendInput: (serial: string, event: InputEvent) => Promise<void>
@@ -39,128 +34,130 @@ interface InputEvent {
   text?: string
 }
 
+async function fetchScreenshot(
+  url: string,
+  serial: string,
+  thumb: boolean
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${url}/api/screen/${serial}${thumb ? "?thumb=1" : ""}`,
+      { mode: "cors" }
+    )
+    if (!res.ok) return null
+    const blob = await res.blob()
+    if (blob.size < 100) return null
+    return URL.createObjectURL(blob)
+  } catch {
+    return null
+  }
+}
+
 export const usePhoneGridStore = create<PhoneGridState>((set, get) => ({
   screens: {},
   focusedSerial: null,
-  focusStream: null,
-  gridWs: null,
-  focusWs: null,
   orchestratorUrl: "",
+  polling: false,
+  pollTimer: null,
+  focusPollTimer: null,
 
-  setOrchestratorUrl: (url) => set({ orchestratorUrl: url }),
+  setOrchestratorUrl: (url) => {
+    localStorage.setItem("orchestratorUrl", url)
+    set({ orchestratorUrl: url })
+  },
 
-  connectGrid: () => {
-    const { orchestratorUrl, gridWs: existing } = get()
-    if (existing) return
+  startPolling: (serials) => {
+    const { orchestratorUrl, pollTimer: existing } = get()
+    if (!orchestratorUrl || existing) return
 
-    const wsUrl = orchestratorUrl.replace("https://", "wss://").replace("http://", "ws://")
-    const ws = new WebSocket(`${wsUrl}/ws/screens`)
+    const poll = async () => {
+      const { orchestratorUrl: url, focusedSerial } = get()
+      if (!url) return
 
-    let pendingSerial = ""
+      // Fetch thumbnails for all devices in parallel
+      const results = await Promise.allSettled(
+        serials.map(async (serial) => {
+          // Skip focused device (it has its own fast poll)
+          if (serial === focusedSerial) return null
+          const thumb = await fetchScreenshot(url, serial, true)
+          return thumb ? { serial, thumb } : null
+        })
+      )
 
-    ws.onmessage = (evt) => {
-      if (typeof evt.data === "string") {
-        // Text = header JSON
-        try {
-          const header = JSON.parse(evt.data)
-          pendingSerial = header.serial
-        } catch {}
-      } else {
-        // Binary = JPEG thumbnail
-        if (pendingSerial) {
-          const blob = new Blob([evt.data], { type: "image/jpeg" })
-          const url = URL.createObjectURL(blob)
-
-          set((state) => ({
-            screens: {
-              ...state.screens,
-              [pendingSerial]: {
-                serial: pendingSerial,
-                ts: Date.now(),
-                thumbnail: url,
-                blob: blob,
-              },
-            },
-          }))
-          pendingSerial = ""
+      const updates: Record<string, ScreenFrame> = {}
+      for (const r of results) {
+        if (r.status === "fulfilled" && r.value) {
+          const { serial, thumb } = r.value
+          // Revoke old URL to prevent memory leak
+          const old = get().screens[serial]?.thumbnail
+          if (old) URL.revokeObjectURL(old)
+          updates[serial] = { serial, ts: Date.now(), thumbnail: thumb }
         }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        set((s) => ({ screens: { ...s.screens, ...updates }, polling: true }))
       }
     }
 
-    ws.onclose = () => {
-      set({ gridWs: null })
-      // Reconnect in 3s
-      setTimeout(() => get().connectGrid(), 3000)
-    }
-
-    ws.onerror = () => ws.close()
-
-    set({ gridWs: ws })
+    // Initial poll
+    poll()
+    // Every 1.5s for thumbnails
+    const timer = setInterval(poll, 1500)
+    set({ pollTimer: timer, polling: true })
   },
 
-  disconnectGrid: () => {
-    const { gridWs } = get()
-    if (gridWs) {
-      gridWs.close()
-      set({ gridWs: null })
-    }
+  stopPolling: () => {
+    const { pollTimer, focusPollTimer } = get()
+    if (pollTimer) clearInterval(pollTimer)
+    if (focusPollTimer) clearInterval(focusPollTimer)
+    set({ pollTimer: null, focusPollTimer: null, polling: false })
   },
 
   focusDevice: (serial) => {
-    const { orchestratorUrl, focusWs: existing } = get()
+    const { orchestratorUrl, focusPollTimer: existing } = get()
+    if (existing) clearInterval(existing)
 
-    // Close previous focus
-    if (existing) existing.close()
-
-    const wsUrl = orchestratorUrl.replace("https://", "wss://").replace("http://", "ws://")
-    const ws = new WebSocket(`${wsUrl}/ws/screen/${serial}`)
-
-    ws.binaryType = "arraybuffer"
-
-    ws.onmessage = (evt) => {
-      if (typeof evt.data === "string") {
-        try {
-          const info = JSON.parse(evt.data)
-          if (info.type === "init") {
-            set({ focusStream: info.codec as any })
-          }
-        } catch {}
-      } else {
-        // Binary frame (MJPEG JPEG or H.264 NAL)
-        const { focusStream } = get()
-        if (focusStream === "mjpeg") {
-          const blob = new Blob([evt.data], { type: "image/jpeg" })
-          const url = URL.createObjectURL(blob)
-          set((state) => ({
-            screens: {
-              ...state.screens,
-              [serial]: { serial, ts: Date.now(), thumbnail: url, blob },
-            },
-          }))
-        }
-        // H.264: would need MSE decoder — for now use MJPEG fallback
+    // Fast poll for focused device (full quality, 5fps)
+    const poll = async () => {
+      const url = get().orchestratorUrl
+      if (!url) return
+      const img = await fetchScreenshot(url, serial, false)
+      if (img) {
+        const old = get().screens[serial]?.thumbnail
+        if (old) URL.revokeObjectURL(old)
+        set((s) => ({
+          screens: {
+            ...s.screens,
+            [serial]: { serial, ts: Date.now(), thumbnail: img },
+          },
+        }))
       }
     }
 
-    ws.onclose = () => set({ focusWs: null })
-    ws.onerror = () => ws.close()
-
-    set({ focusedSerial: serial, focusWs: ws })
+    poll()
+    const timer = setInterval(poll, 200) // 5fps full quality
+    set({ focusedSerial: serial, focusPollTimer: timer })
   },
 
   unfocusDevice: () => {
-    const { focusWs } = get()
-    if (focusWs) focusWs.close()
-    set({ focusedSerial: null, focusWs: null, focusStream: null })
+    const { focusPollTimer } = get()
+    if (focusPollTimer) clearInterval(focusPollTimer)
+    set({ focusedSerial: null, focusPollTimer: null })
   },
 
   sendInput: async (serial, event) => {
     const { orchestratorUrl } = get()
-    await fetch(`${orchestratorUrl}/api/devices/${serial}/input`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(event),
-    })
+    try {
+      await fetch(`${orchestratorUrl}/api/input/${serial}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(event),
+        mode: "cors",
+      })
+    } catch (e) {
+      console.warn("sendInput failed:", e)
+    }
   },
 
   sendLLMCommand: async (prompt) => {
@@ -169,6 +166,7 @@ export const usePhoneGridStore = create<PhoneGridState>((set, get) => ({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt }),
+      mode: "cors",
     })
     return res.json()
   },

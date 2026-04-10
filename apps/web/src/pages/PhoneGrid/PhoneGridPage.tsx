@@ -13,9 +13,10 @@ export function PhoneGridPage() {
     screens,
     focusedSerial,
     orchestratorUrl,
+    polling,
     setOrchestratorUrl,
-    connectGrid,
-    disconnectGrid,
+    startPolling,
+    stopPolling,
     focusDevice,
     unfocusDevice,
     sendInput,
@@ -25,36 +26,25 @@ export function PhoneGridPage() {
   const [chatInput, setChatInput] = useState("")
   const [chatResponse, setChatResponse] = useState("")
   const [chatLoading, setChatLoading] = useState(false)
+  const [urlInput, setUrlInput] = useState("")
   const focusRef = useRef<HTMLImageElement>(null)
 
-  // Init: detect orchestrator URL from environment or current page
+  // Load saved URL
   useEffect(() => {
     if (!orchestratorUrl) {
-      // Try to get from API
-      fetch("/api/services/stats")
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.last_event) {
-            // Stats came from orchestrator — use relative URL (proxied)
-            // Or use ORCHESTRATOR_URL env if available
-            const url =
-              (window as any).__ORCHESTRATOR_URL ||
-              localStorage.getItem("orchestratorUrl") ||
-              ""
-            if (url) setOrchestratorUrl(url)
-          }
-        })
-        .catch(() => {})
+      const saved = localStorage.getItem("orchestratorUrl")
+      if (saved) setOrchestratorUrl(saved)
     }
   }, [orchestratorUrl, setOrchestratorUrl])
 
-  // Connect grid WebSocket when orchestrator URL is set
+  // Start polling when we have URL + phones
   useEffect(() => {
-    if (orchestratorUrl) {
-      connectGrid()
-      return () => disconnectGrid()
+    if (orchestratorUrl && phones.length > 0) {
+      const serials = phones.map((p: any) => p.serial || p.phone_id)
+      startPolling(serials)
+      return () => stopPolling()
     }
-  }, [orchestratorUrl, connectGrid, disconnectGrid])
+  }, [orchestratorUrl, phones, startPolling, stopPolling])
 
   // Fetch phones periodically
   useEffect(() => {
@@ -63,45 +53,43 @@ export function PhoneGridPage() {
     return () => clearInterval(id)
   }, [fetchPhones])
 
-  // Handle click on phone screen (in focus mode) → send tap
+  // Handle click on focused screen → send tap
   const handleScreenClick = useCallback(
     (e: React.MouseEvent<HTMLImageElement>) => {
       if (!focusedSerial || !focusRef.current) return
-
       const rect = focusRef.current.getBoundingClientRect()
       const x = Math.round(((e.clientX - rect.left) / rect.width) * 720)
       const y = Math.round(((e.clientY - rect.top) / rect.height) * 1600)
-
       sendInput(focusedSerial, { type: "tap", x, y })
     },
     [focusedSerial, sendInput]
   )
 
-  // Handle swipe (mousedown → mousemove → mouseup)
+  // Swipe detection
   const swipeStart = useRef<{ x: number; y: number } | null>(null)
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
-    if (!focusRef.current) return
-    const rect = focusRef.current.getBoundingClientRect()
-    swipeStart.current = {
-      x: Math.round(((e.clientX - rect.left) / rect.width) * 720),
-      y: Math.round(((e.clientY - rect.top) / rect.height) * 1600),
-    }
-  }, [])
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLImageElement>) => {
+      if (!focusRef.current) return
+      const rect = focusRef.current.getBoundingClientRect()
+      swipeStart.current = {
+        x: Math.round(((e.clientX - rect.left) / rect.width) * 720),
+        y: Math.round(((e.clientY - rect.top) / rect.height) * 1600),
+      }
+    },
+    []
+  )
 
   const handleMouseUp = useCallback(
     (e: React.MouseEvent<HTMLImageElement>) => {
       if (!focusedSerial || !focusRef.current || !swipeStart.current) return
-
       const rect = focusRef.current.getBoundingClientRect()
       const x2 = Math.round(((e.clientX - rect.left) / rect.width) * 720)
       const y2 = Math.round(((e.clientY - rect.top) / rect.height) * 1600)
-
       const dx = Math.abs(x2 - swipeStart.current.x)
       const dy = Math.abs(y2 - swipeStart.current.y)
 
       if (dx > 20 || dy > 20) {
-        // Swipe
         sendInput(focusedSerial, {
           type: "swipe",
           x: swipeStart.current.x,
@@ -111,16 +99,14 @@ export function PhoneGridPage() {
           dur_ms: 200,
         })
       } else {
-        // Tap
         sendInput(focusedSerial, { type: "tap", x: x2, y: y2 })
       }
-
       swipeStart.current = null
     },
     [focusedSerial, sendInput]
   )
 
-  // Send LLM command
+  // LLM command
   const handleSendCommand = useCallback(async () => {
     if (!chatInput.trim() || chatLoading) return
     setChatLoading(true)
@@ -137,7 +123,6 @@ export function PhoneGridPage() {
     setChatInput("")
   }, [chatInput, chatLoading, sendLLMCommand])
 
-  // Quick actions for focused device
   const quickAction = useCallback(
     (key: string) => {
       if (!focusedSerial) return
@@ -146,55 +131,78 @@ export function PhoneGridPage() {
     [focusedSerial, sendInput]
   )
 
+  const streamingCount = Object.values(screens).filter(
+    (s) => s.ts > Date.now() - 5000
+  ).length
+
   return (
     <div className={styles.page}>
       {/* Header */}
       <header className={styles.header}>
         <div>
-          <h1 className={styles.title}>
-            {t("phone_grid_title" as any) || "Phone Grid"}
-          </h1>
+          <h1 className={styles.title}>Phone Grid</h1>
           <div className={styles.subtitle}>
-            {phones.length} devices • {Object.keys(screens).length} streaming
+            {phones.length} devices • {streamingCount} streaming
+            {polling && " • 🟢 live"}
           </div>
         </div>
         <div className={styles.controls}>
-          {!orchestratorUrl && (
-            <input
-              placeholder="Orchestrator URL"
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 6,
-                padding: "6px 12px",
-                color: "white",
-                fontSize: 12,
-                width: 280,
+          {!orchestratorUrl ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (urlInput.trim()) setOrchestratorUrl(urlInput.trim())
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  const url = (e.target as HTMLInputElement).value.trim()
-                  if (url) {
-                    setOrchestratorUrl(url)
-                    localStorage.setItem("orchestratorUrl", url)
-                  }
-                }
-              }}
-            />
+              style={{ display: "flex", gap: 8 }}
+            >
+              <input
+                placeholder="Orchestrator URL (https://...trycloudflare.com)"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                style={{
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 6,
+                  padding: "6px 12px",
+                  color: "white",
+                  fontSize: 12,
+                  width: 350,
+                }}
+              />
+              <button
+                type="submit"
+                style={{
+                  background: "var(--accent-cyan, #00d2ff)",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "6px 14px",
+                  color: "#000",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Connect
+              </button>
+            </form>
+          ) : (
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+              {orchestratorUrl.replace("https://", "").slice(0, 30)}...
+            </span>
           )}
           <span
             className={`${styles.statusDot} ${
-              Object.keys(screens).length > 0 ? styles.online : styles.offline
+              streamingCount > 0 ? styles.online : styles.offline
             }`}
           />
         </div>
       </header>
 
-      {/* Grid of phone screens */}
+      {/* Grid */}
       <div className={styles.grid}>
-        {phones.map((phone) => {
-          const frame = screens[phone.serial || phone.phone_id]
+        {phones.map((phone: any) => {
           const serial = phone.serial || phone.phone_id
+          const frame = screens[serial]
+          const isLive = frame && frame.ts > Date.now() - 5000
           return (
             <div
               key={serial}
@@ -203,7 +211,7 @@ export function PhoneGridPage() {
               }`}
               onClick={() => focusDevice(serial)}
             >
-              {frame?.thumbnail ? (
+              {isLive && frame.thumbnail ? (
                 <img
                   src={frame.thumbnail}
                   alt={serial}
@@ -233,11 +241,14 @@ export function PhoneGridPage() {
         })}
       </div>
 
-      {/* Focus overlay (full screen view of one device) */}
+      {/* Focus overlay */}
       {focusedSerial && (
-        <div className={styles.focusOverlay} onClick={(e) => {
-          if (e.target === e.currentTarget) unfocusDevice()
-        }}>
+        <div
+          className={styles.focusOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) unfocusDevice()
+          }}
+        >
           <div className={styles.focusContainer}>
             <span className={styles.focusSerial}>{focusedSerial}</span>
             <button className={styles.focusClose} onClick={unfocusDevice}>
@@ -250,7 +261,6 @@ export function PhoneGridPage() {
                 src={screens[focusedSerial].thumbnail}
                 alt={focusedSerial}
                 className={styles.focusScreen}
-                onClick={handleScreenClick}
                 onMouseDown={handleMouseDown}
                 onMouseUp={handleMouseUp}
                 draggable={false}
@@ -266,21 +276,33 @@ export function PhoneGridPage() {
                   color: "#555",
                 }}
               >
-                Connecting...
+                Loading...
               </div>
             )}
 
             <div className={styles.focusActions}>
-              <button className={styles.focusBtn} onClick={() => quickAction("back")}>
+              <button
+                className={styles.focusBtn}
+                onClick={() => quickAction("back")}
+              >
                 ← Back
               </button>
-              <button className={styles.focusBtn} onClick={() => quickAction("home")}>
+              <button
+                className={styles.focusBtn}
+                onClick={() => quickAction("home")}
+              >
                 ● Home
               </button>
-              <button className={styles.focusBtn} onClick={() => quickAction("recent")}>
+              <button
+                className={styles.focusBtn}
+                onClick={() => quickAction("recent")}
+              >
                 ▢ Recent
               </button>
-              <button className={styles.focusBtn} onClick={() => quickAction("power")}>
+              <button
+                className={styles.focusBtn}
+                onClick={() => quickAction("power")}
+              >
                 ⏻ Power
               </button>
             </div>
@@ -288,14 +310,11 @@ export function PhoneGridPage() {
         </div>
       )}
 
-      {/* LLM Chat bar */}
+      {/* LLM Chat */}
       <div className={styles.chatBar}>
         <input
           className={styles.chatInput}
-          placeholder={
-            t("phone_grid_chat_placeholder" as any) ||
-            "Command to Claude: 'post video on all active accounts' / 'pause device R83YA...'"
-          }
+          placeholder="Claude command: 'post video on active accounts' / 'pause all' / 'analyze engagement'..."
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           onKeyDown={(e) => {
@@ -311,15 +330,12 @@ export function PhoneGridPage() {
           onClick={handleSendCommand}
           disabled={chatLoading || !chatInput.trim()}
         >
-          {chatLoading ? "..." : t("phone_grid_send" as any) || "Send"}
+          {chatLoading ? "..." : "Send"}
         </button>
       </div>
 
-      {/* Chat response */}
       {chatResponse && (
-        <div className={styles.chatResponse}>
-          {chatResponse}
-        </div>
+        <div className={styles.chatResponse}>{chatResponse}</div>
       )}
     </div>
   )
