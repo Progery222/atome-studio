@@ -333,6 +333,11 @@ export function GeneratePage() {
   const withAvatar = activeAccounts.filter((a) => a.heygen_avatar_id).length;
   const withoutAvatar = activeAccounts.length - withAvatar;
 
+  // Flatten all shorts from completed StreamCut jobs
+  const scDoneShorts = scJobs
+    .filter((j) => j.status === "done" && j.shorts && j.shorts.length > 0)
+    .flatMap((j) => j.shorts!.map((s) => ({ jobId: j.job_id, short: s })));
+
   useEffect(() => {
     for (const job of visibleJobs) {
       if (!(job.job_id in jobEventsById)) {
@@ -1021,6 +1026,54 @@ export function GeneratePage() {
             </div>
           )}
 
+          {/* ── 3c. StreamCut results gallery ── */}
+          {service === "streamcut" && scDoneShorts.length > 0 && (
+            <div className={styles.card}>
+              <div className={styles.cardTitle}>
+                {t("gen_sc_shorts_ready")} ({scDoneShorts.length})
+              </div>
+              <div className={styles.scGallery}>
+                {scDoneShorts.map((item, i) => {
+                  const videoUrl = scProxyUrl(item.short.url);
+                  return (
+                    <div
+                      key={`${item.jobId}-${item.short.filename}`}
+                      className={styles.scGalleryItem}
+                    >
+                      {videoUrl && (
+                        <video
+                          className={styles.scGalleryVideo}
+                          src={videoUrl}
+                          controls
+                          preload="metadata"
+                        />
+                      )}
+                      <div className={styles.scGalleryInfo}>
+                        <span className={styles.scGalleryTitle}>
+                          {item.short.title || `Short ${i + 1}`}
+                        </span>
+                        <span className={styles.scGalleryMeta}>
+                          {item.short.duration
+                            ? `${Math.floor(item.short.duration / 60)}:${String(Math.round(item.short.duration % 60)).padStart(2, "0")}`
+                            : ""}
+                        </span>
+                        {videoUrl && (
+                          <a
+                            href={videoUrl}
+                            download={item.short.filename}
+                            className={styles.scGalleryDownload}
+                          >
+                            {t("streamcut_download")}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── 4. Account list (SportZavod) / Launch button (content-zavod) ── */}
           {service === "contentzavod" && (
             <div className={styles.card}>
@@ -1340,38 +1393,8 @@ function StreamCutJobCard({
       {job.error && <div className={styles.scJobError}>{job.error}</div>}
 
       {job.shorts && job.shorts.length > 0 && (
-        <div className={styles.scShortsList}>
-          <div className={styles.scShortsTitle}>
-            {job.shorts.length} {t("gen_sc_shorts_ready")}
-          </div>
-          {job.shorts.map((s, i) => {
-            const videoUrl = scProxyUrl(s.url);
-            return (
-              <div key={s.filename} className={styles.scShortCard}>
-                <div className={styles.scShortHeader}>
-                  <span className={styles.scShortName}>
-                    {s.title || `Short ${i + 1}`}
-                    {s.duration
-                      ? ` (${Math.floor(s.duration / 60)}:${String(Math.round(s.duration % 60)).padStart(2, "0")})`
-                      : ""}
-                  </span>
-                  {videoUrl && (
-                    <a href={videoUrl} download={s.filename} className={styles.scDownloadLink}>
-                      ↓
-                    </a>
-                  )}
-                </div>
-                {videoUrl && (
-                  <video
-                    className={styles.scVideoPlayer}
-                    src={videoUrl}
-                    controls
-                    preload="metadata"
-                  />
-                )}
-              </div>
-            );
-          })}
+        <div className={styles.scJobMessage} style={{ color: "#22c55e" }}>
+          {job.shorts.length} {t("gen_sc_shorts_ready")}
         </div>
       )}
 
