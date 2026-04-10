@@ -1284,9 +1284,41 @@
 
 .scOptions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.scFieldWide {
+  grid-column: span 2;
+}
+
+.scFieldFull {
+  grid-column: 1 / -1;
+}
+
+.scTextarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  outline: none;
+  resize: vertical;
+  transition: all 0.2s;
+}
+
+.scTextarea::placeholder {
+  color: var(--text-muted);
+}
+
+.scTextarea:focus {
+  border-color: rgba(0, 210, 255, 0.4);
+  background: rgba(0, 210, 255, 0.03);
 }
 
 .scField label {
@@ -1456,6 +1488,12 @@
   margin-top: 8px;
   display: flex;
   gap: 8px;
+}
+
+@media (max-width: 1100px) {
+  .scOptions {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 768px) {

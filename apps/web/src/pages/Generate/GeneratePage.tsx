@@ -233,6 +233,8 @@ export function GeneratePage() {
   const scDeleteJob = useStreamCutStore((s) => s.deleteJob);
   const scFetchVideoInfo = useStreamCutStore((s) => s.fetchVideoInfo);
   const scClearVideoInfo = useStreamCutStore((s) => s.clearVideoInfo);
+  const scFootageCategories = useStreamCutStore((s) => s.footageCategories);
+  const scFetchFootageCategories = useStreamCutStore((s) => s.fetchFootageCategories);
 
   const [service, setService] = useState<Service>("sportzavod");
   const [scope, setScope] = useState<GenerationScope | null>(null);
@@ -255,9 +257,15 @@ export function GeneratePage() {
   const [scUrl, setScUrl] = useState("");
   const [scLanguage, setScLanguage] = useState("auto");
   const [scMaxShorts, setScMaxShorts] = useState(5);
-  const [scCaptionStyle, setScCaptionStyle] = useState("default");
-  const [scReframeMode, setScReframeMode] = useState("center");
-  const [scAddMusic, setScAddMusic] = useState("none");
+  const [scCaptionStyle, setScCaptionStyle] = useState("karaoke");
+  const [scReframeMode, setScReframeMode] = useState("ai");
+  const [scAddMusic, setScAddMusic] = useState("auto");
+  const [scFootageLayout, setScFootageLayout] = useState("none");
+  const [scFootageCategory, setScFootageCategory] = useState("");
+  const [scCaptionPosition, setScCaptionPosition] = useState("auto");
+  const [scMinDuration, setScMinDuration] = useState(15);
+  const [scMaxDuration, setScMaxDuration] = useState(60);
+  const [scSrtText, setScSrtText] = useState("");
   const nicheRef = useRef<HTMLDivElement>(null);
   const scPollRef = useRef<ReturnType<typeof setInterval>>();
 
@@ -291,6 +299,7 @@ export function GeneratePage() {
   useEffect(() => {
     if (service === "streamcut") {
       scFetchJobs();
+      scFetchFootageCategories();
       scPollRef.current = setInterval(() => scFetchJobs(), 5000);
     }
     return () => clearInterval(scPollRef.current);
@@ -838,6 +847,7 @@ export function GeneratePage() {
 
               {/* Options */}
               <div className={styles.scOptions}>
+                {/* Row 1: Language, Max shorts, Captions, Reframe */}
                 <div className={styles.scField}>
                   <label>{t("gen_sc_language")}</label>
                   <select value={scLanguage} onChange={(e) => setScLanguage(e.target.value)}>
@@ -875,18 +885,91 @@ export function GeneratePage() {
                   <label>{t("gen_sc_reframe")}</label>
                   <select value={scReframeMode} onChange={(e) => setScReframeMode(e.target.value)}>
                     <option value="center">center</option>
-                    <option value="ai">ai</option>
+                    <option value="ai">AI-tracking</option>
                   </select>
                 </div>
+
+                {/* Row 2: Music, Footage layout, Footage category, Caption position */}
                 <div className={styles.scField}>
                   <label>{t("gen_sc_music")}</label>
                   <select value={scAddMusic} onChange={(e) => setScAddMusic(e.target.value)}>
-                    {["none", "upbeat", "calm", "motivation"].map((m) => (
-                      <option key={m} value={m}>
-                        {m}
+                    <option value="auto">{t("gen_sc_music_auto")}</option>
+                    <option value="none">none</option>
+                    <option value="upbeat">upbeat</option>
+                    <option value="calm">calm</option>
+                    <option value="motivation">motivation</option>
+                  </select>
+                </div>
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_footage_layout")}</label>
+                  <select
+                    value={scFootageLayout}
+                    onChange={(e) => setScFootageLayout(e.target.value)}
+                  >
+                    <option value="none">{t("gen_sc_footage_none")}</option>
+                    <option value="background">{t("gen_sc_footage_bg")}</option>
+                    <option value="footage_top">{t("gen_sc_footage_top")}</option>
+                    <option value="footage_bottom">{t("gen_sc_footage_bottom")}</option>
+                  </select>
+                </div>
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_footage_category")}</label>
+                  <select
+                    value={scFootageCategory}
+                    onChange={(e) => setScFootageCategory(e.target.value)}
+                    disabled={scFootageLayout === "none"}
+                  >
+                    <option value="">{t("gen_sc_footage_cat_any")}</option>
+                    {scFootageCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_caption_pos")}</label>
+                  <select
+                    value={scCaptionPosition}
+                    onChange={(e) => setScCaptionPosition(e.target.value)}
+                  >
+                    <option value="auto">{t("gen_sc_caption_pos_auto")}</option>
+                    <option value="fixed_bottom">{t("gen_sc_caption_pos_bottom")}</option>
+                  </select>
+                </div>
+
+                {/* Row 3: Min/Max duration */}
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_min_dur")}</label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={120}
+                    value={scMinDuration}
+                    onChange={(e) => setScMinDuration(Number(e.target.value))}
+                  />
+                </div>
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_max_dur")}</label>
+                  <input
+                    type="number"
+                    min={15}
+                    max={180}
+                    value={scMaxDuration}
+                    onChange={(e) => setScMaxDuration(Number(e.target.value))}
+                  />
+                </div>
+
+                {/* Row 4: SRT timecodes (full width) */}
+                <div className={`${styles.scField} ${styles.scFieldFull}`}>
+                  <label>{t("gen_sc_srt_label")}</label>
+                  <textarea
+                    className={styles.scTextarea}
+                    placeholder={t("gen_sc_srt_ph")}
+                    value={scSrtText}
+                    onChange={(e) => setScSrtText(e.target.value)}
+                    rows={3}
+                  />
                 </div>
               </div>
 
@@ -897,14 +980,37 @@ export function GeneratePage() {
                   disabled={scCreating || !scUrl.trim()}
                   onClick={async () => {
                     if (!scUrl.trim()) return;
-                    await scCreateJob({
+                    const dto: Record<string, unknown> = {
                       url: scUrl.trim(),
                       language: scLanguage,
                       max_shorts: scMaxShorts,
                       caption_style: scCaptionStyle,
                       reframe_mode: scReframeMode,
                       add_music: scAddMusic,
-                    });
+                      footage_layout: scFootageLayout,
+                      caption_position: scCaptionPosition,
+                      min_duration: scMinDuration,
+                      max_duration: scMaxDuration,
+                    };
+                    if (scFootageLayout !== "none" && scFootageCategory) {
+                      dto.footage_category = scFootageCategory;
+                    }
+                    if (scSrtText.trim()) {
+                      const timecodes = scSrtText
+                        .trim()
+                        .split("\n")
+                        .map((line) => {
+                          const [start, end, ...rest] = line.split(",");
+                          return {
+                            start: Number.parseFloat(start),
+                            end: Number.parseFloat(end),
+                            title: rest.join(",").trim() || undefined,
+                          };
+                        })
+                        .filter((tc) => !Number.isNaN(tc.start) && !Number.isNaN(tc.end));
+                      if (timecodes.length > 0) dto.srt_timecodes = timecodes;
+                    }
+                    await scCreateJob(dto);
                     setScUrl("");
                     scClearVideoInfo();
                   }}
