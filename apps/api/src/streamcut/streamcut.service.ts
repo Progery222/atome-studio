@@ -192,6 +192,22 @@ export class StreamCutService {
     return data?.categories ?? [];
   }
 
+  async proxyFile(path: string): Promise<{ stream: ReadableStream; contentType: string } | null> {
+    try {
+      const res = await fetch(`${this.baseUrl}/storage/${path}`, {
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!res.ok || !res.body) return null;
+      return {
+        stream: res.body as unknown as ReadableStream,
+        contentType: res.headers.get("content-type") ?? "video/mp4",
+      };
+    } catch {
+      this.logger.warn(`StreamCut file proxy failed: /storage/${path}`);
+      return null;
+    }
+  }
+
   // ── Job polling ────────────────────────────────────────────────────────────
 
   private async pollJobUntilDone(jobId: string) {

@@ -1,4 +1,16 @@
-import { Body, Controller, Delete, Get, HttpException, Param, Post, Query } from "@nestjs/common";
+import { Readable } from "node:stream";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpException,
+  Param,
+  Post,
+  Query,
+  Res,
+} from "@nestjs/common";
+import type { Response } from "express";
 import { StreamCutService } from "./streamcut.service";
 
 @Controller("streamcut")
@@ -42,5 +54,29 @@ export class StreamCutController {
   @Get("footage-categories")
   async getFootageCategories() {
     return { categories: await this.streamcut.getFootageCategories() };
+  }
+
+  @Get("storage/:jobId/:filename")
+  async proxyFile(
+    @Param("jobId") jobId: string,
+    @Param("filename") filename: string,
+    @Res() res: Response
+  ) {
+    const result = await this.streamcut.proxyFile(`${jobId}/${filename}`);
+    if (!result) throw new HttpException("File not found", 404);
+    res.setHeader("Content-Type", result.contentType);
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+    const reader = (result.stream as any).getReader();
+    const nodeStream = new Readable({
+      async read() {
+        const { done, value } = await reader.read();
+        if (done) {
+          this.push(null);
+          return;
+        }
+        this.push(Buffer.from(value));
+      },
+    });
+    nodeStream.pipe(res);
   }
 }

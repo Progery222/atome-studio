@@ -1273,6 +1273,19 @@ export function GeneratePage() {
   );
 }
 
+// ─── StreamCut helpers ──────────────────────────────────────────────────────
+
+/** Convert StreamCut relative URL (/storage/jobId/file.mp4) to API proxy URL */
+function scProxyUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  // Already a full URL (MinIO/R2) — use as-is
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  // Relative /storage/jobId/file.mp4 → /api/streamcut/storage/jobId/file.mp4
+  const match = url.match(/^\/?storage\/(.+)$/);
+  if (match) return `/api/streamcut/storage/${match[1]}`;
+  return url;
+}
+
 // ─── StreamCut Job Card (for right column) ──────────────────────────────────
 
 function scStatusClass(status: string) {
@@ -1331,26 +1344,34 @@ function StreamCutJobCard({
           <div className={styles.scShortsTitle}>
             {job.shorts.length} {t("gen_sc_shorts_ready")}
           </div>
-          {job.shorts.map((s, i) => (
-            <div key={s.filename} className={styles.scShortItem}>
-              <span>
-                {s.title || `Short ${i + 1}`}
-                {s.duration
-                  ? ` (${Math.floor(s.duration / 60)}:${String(Math.round(s.duration % 60)).padStart(2, "0")})`
-                  : ""}
-              </span>
-              {s.url && (
-                <a
-                  href={s.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.scShortLink}
-                >
-                  ▶
-                </a>
-              )}
-            </div>
-          ))}
+          {job.shorts.map((s, i) => {
+            const videoUrl = scProxyUrl(s.url);
+            return (
+              <div key={s.filename} className={styles.scShortCard}>
+                <div className={styles.scShortHeader}>
+                  <span className={styles.scShortName}>
+                    {s.title || `Short ${i + 1}`}
+                    {s.duration
+                      ? ` (${Math.floor(s.duration / 60)}:${String(Math.round(s.duration % 60)).padStart(2, "0")})`
+                      : ""}
+                  </span>
+                  {videoUrl && (
+                    <a href={videoUrl} download={s.filename} className={styles.scDownloadLink}>
+                      ↓
+                    </a>
+                  )}
+                </div>
+                {videoUrl && (
+                  <video
+                    className={styles.scVideoPlayer}
+                    src={videoUrl}
+                    controls
+                    preload="metadata"
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
