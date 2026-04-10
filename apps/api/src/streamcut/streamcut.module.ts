@@ -7,5 +7,6 @@ import { StreamCutService } from "./streamcut.service";
   imports: [EventsModule],
   providers: [StreamCutService],
   controllers: [StreamCutController],
+  exports: [StreamCutService],
 })
 export class StreamCutModule {}

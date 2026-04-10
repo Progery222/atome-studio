@@ -116,7 +116,7 @@ export interface QueueTask {
   caption: string;
   hashtags: string[];
   platform: "tiktok";
-  source_service: "sportzavod" | "contentzavod";
+  source_service: "sportzavod" | "contentzavod" | "streamcut";
   status: "scheduled" | "in_progress" | "published" | "failed";
   scheduled_at: string;
   executed_at?: string;
@@ -128,7 +128,7 @@ export interface VideoFile {
   filename: string;
   account_id: string;
   tenant_id: string;
-  source_service: "sportzavod" | "contentzavod";
+  source_service: "sportzavod" | "contentzavod" | "streamcut";
   url: string;
   thumbnail_url: string;
   size_bytes: number;

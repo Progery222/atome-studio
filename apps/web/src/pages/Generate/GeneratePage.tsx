@@ -333,11 +333,6 @@ export function GeneratePage() {
   const withAvatar = activeAccounts.filter((a) => a.heygen_avatar_id).length;
   const withoutAvatar = activeAccounts.length - withAvatar;
 
-  // Flatten all shorts from completed StreamCut jobs
-  const scDoneShorts = scJobs
-    .filter((j) => j.status === "done" && j.shorts && j.shorts.length > 0)
-    .flatMap((j) => j.shorts!.map((s) => ({ jobId: j.job_id, short: s })));
-
   useEffect(() => {
     for (const job of visibleJobs) {
       if (!(job.job_id in jobEventsById)) {
@@ -1022,54 +1017,6 @@ export function GeneratePage() {
                 >
                   {scCreating ? t("gen_sc_launching") : t("gen_sc_launch")}
                 </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── 3c. StreamCut results gallery ── */}
-          {service === "streamcut" && scDoneShorts.length > 0 && (
-            <div className={styles.card}>
-              <div className={styles.cardTitle}>
-                {t("gen_sc_shorts_ready")} ({scDoneShorts.length})
-              </div>
-              <div className={styles.scGallery}>
-                {scDoneShorts.map((item, i) => {
-                  const videoUrl = scProxyUrl(item.short.url);
-                  return (
-                    <div
-                      key={`${item.jobId}-${item.short.filename}`}
-                      className={styles.scGalleryItem}
-                    >
-                      {videoUrl && (
-                        <video
-                          className={styles.scGalleryVideo}
-                          src={videoUrl}
-                          controls
-                          preload="metadata"
-                        />
-                      )}
-                      <div className={styles.scGalleryInfo}>
-                        <span className={styles.scGalleryTitle}>
-                          {item.short.title || `Short ${i + 1}`}
-                        </span>
-                        <span className={styles.scGalleryMeta}>
-                          {item.short.duration
-                            ? `${Math.floor(item.short.duration / 60)}:${String(Math.round(item.short.duration % 60)).padStart(2, "0")}`
-                            : ""}
-                        </span>
-                        {videoUrl && (
-                          <a
-                            href={videoUrl}
-                            download={item.short.filename}
-                            className={styles.scGalleryDownload}
-                          >
-                            {t("streamcut_download")}
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           )}

@@ -128,9 +128,17 @@ function VideoCard({ video, onSelect }: { video: VideoFile; onSelect: () => void
         : "rgba(96,165,250,0.6)";
 
   const svcColor =
-    video.source_service === "sportzavod" ? "rgba(34,197,94,0.55)" : "rgba(56,189,248,0.55)";
+    video.source_service === "sportzavod"
+      ? "rgba(34,197,94,0.55)"
+      : video.source_service === "streamcut"
+        ? "rgba(0,210,255,0.55)"
+        : "rgba(56,189,248,0.55)";
   const svcBorder =
-    video.source_service === "sportzavod" ? "rgba(34,197,94,0.15)" : "rgba(56,189,248,0.15)";
+    video.source_service === "sportzavod"
+      ? "rgba(34,197,94,0.15)"
+      : video.source_service === "streamcut"
+        ? "rgba(0,210,255,0.15)"
+        : "rgba(56,189,248,0.15)";
 
   return (
     <div className={styles.card} onClick={onSelect} style={{ cursor: "pointer" }}>
@@ -208,7 +216,7 @@ function VideoCard({ video, onSelect }: { video: VideoFile; onSelect: () => void
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type SortBy = "date_new" | "date_old" | "account";
-type FilterService = "all" | "sportzavod" | "contentzavod";
+type FilterService = "all" | "sportzavod" | "contentzavod" | "streamcut";
 type FilterStatus = "all" | "queued" | "published" | "rejected";
 
 export function VideosPage() {
@@ -330,6 +338,7 @@ export function VideosPage() {
             </option>
             <option value="sportzavod">sportzavod</option>
             <option value="contentzavod">contentzavod</option>
+            <option value="streamcut">streamcut</option>
           </select>
 
           {/* Account filter */}
