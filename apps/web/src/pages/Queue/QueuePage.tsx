@@ -1,9 +1,29 @@
 import type { GenerationJob, QueueTask } from "@atome/shared";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LOCALE_MAP, useT } from "../../i18n";
 import { useFarmStore } from "../../stores/farm";
 import { useLangStore } from "../../stores/lang";
 import styles from "./QueuePage.module.css";
+
+/** Плавный счётчик процентов — каждую секунду +1% пока не догонит target */
+function SmoothPercent({ target, done }: { target: number; done: boolean }) {
+  const [display, setDisplay] = useState(0);
+  const ref = useRef<ReturnType<typeof setInterval>>();
+
+  useEffect(() => {
+    if (done) { setDisplay(100); return; }
+    if (ref.current) clearInterval(ref.current);
+    ref.current = setInterval(() => {
+      setDisplay((prev) => {
+        if (prev >= target) return prev;
+        return Math.min(prev + 1, target);
+      });
+    }, 1000);
+    return () => { if (ref.current) clearInterval(ref.current); };
+  }, [target, done]);
+
+  return <>{display}%</>;
+}
 
 type Filter = "all" | "in_progress" | "scheduled" | "published" | "failed";
 
@@ -182,7 +202,7 @@ export function QueuePage() {
                 </div>
               </div>
               <div style={{ fontSize: 15, fontWeight: 700, color: JOB_STATUS_COLOR[job.status] ?? "#888", minWidth: 40, textAlign: "right" }}>
-                {job.percent ?? 0}%
+                <SmoothPercent target={job.percent ?? 0} done={job.status === "done"} />
               </div>
               {job.status === "running" && (
                 <button
