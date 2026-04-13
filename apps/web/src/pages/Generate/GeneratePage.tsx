@@ -254,6 +254,12 @@ export function GeneratePage() {
   const [accountError, setAccountError] = useState("");
   const [launchError, setLaunchError] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
+  // agentMUSIC form state
+  const [amScenario, setAmScenario] = useState<"karaoke" | "streamer">("karaoke");
+  const [amStyle, setAmStyle] = useState("clean");
+  const [amOrientation, setAmOrientation] = useState<"portrait" | "landscape">("portrait");
+  const [amBgType, setAmBgType] = useState<"footage" | "animated">("footage");
+
   // StreamCut form state
   const [scUrl, setScUrl] = useState("");
   const [scLanguage, setScLanguage] = useState("auto");
@@ -440,7 +446,9 @@ export function GeneratePage() {
             : service === "agentmusic" ? ["telegram"]
             : [...selectedIds],
         videos_per_account: videosPerAcc,
-        topic: service === "contentzavod" || service === "agentmusic" ? topic : undefined,
+        topic: service === "contentzavod" ? topic
+          : service === "agentmusic" ? JSON.stringify({ scenario: amScenario, style: amStyle, orientation: amOrientation, bg_type: amBgType })
+          : undefined,
       });
       setShowConfirm(false);
     } catch (e: any) {
@@ -1044,25 +1052,98 @@ export function GeneratePage() {
             </div>
           )}
           {service === "agentmusic" && (
-            <div className={styles.card}>
-              <div className={styles.cardTitle}>agentMUSIC — Генерация видео</div>
-              <p style={{ color: "#999", fontSize: 13, margin: "8px 0 16px" }}>
-                Генерирует караоке и стример-видео из аудиотреков через Telegram-бота.
-                Управление через @agentMUSIC_bot — здесь отслеживание задач.
-              </p>
-              <div className={styles.cardFooter}>
-                <button
-                  className={styles.launchBtn}
-                  disabled={launching}
-                  onClick={() => {
-                    setScopeLabel("agentMUSIC");
-                    setShowConfirm(true);
-                  }}
-                >
-                  {launching ? t("gen_launching") : "Запустить генерацию"}
-                </button>
+            <>
+              {/* Сценарий */}
+              <div className={styles.card}>
+                <div className={styles.cardTitle}>Сценарий</div>
+                <div className={styles.serviceTabs}>
+                  {(["karaoke", "streamer"] as const).map((sc) => (
+                    <button
+                      key={sc}
+                      className={`${styles.serviceTab} ${amScenario === sc ? styles.serviceTabActive : ""}`}
+                      onClick={() => setAmScenario(sc)}
+                    >
+                      <span className={styles.serviceTabDot} style={{ background: sc === "karaoke" ? "#00c8dc" : "#ff7850" }} />
+                      {sc === "karaoke" ? "🎤 Караоке" : "🎮 Стример + Футаж"}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+
+              {/* Стиль (только караоке) */}
+              {amScenario === "karaoke" && (
+                <div className={styles.card}>
+                  <div className={styles.cardTitle}>Стиль текста</div>
+                  <div className={styles.serviceTabs}>
+                    {[
+                      { key: "glow", label: "💙 Glow", color: "#0096FF" },
+                      { key: "neon", label: "💜 Neon", color: "#FF00C8" },
+                      { key: "clean", label: "🤍 Clean", color: "#F5E6D0" },
+                      { key: "fire", label: "🔥 Fire", color: "#FFC832" },
+                    ].map((s) => (
+                      <button
+                        key={s.key}
+                        className={`${styles.serviceTab} ${amStyle === s.key ? styles.serviceTabActive : ""}`}
+                        onClick={() => setAmStyle(s.key)}
+                      >
+                        <span className={styles.serviceTabDot} style={{ background: s.color }} />
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Фон (только караоке) */}
+              {amScenario === "karaoke" && (
+                <div className={styles.card}>
+                  <div className={styles.cardTitle}>Фон</div>
+                  <div className={styles.serviceTabs}>
+                    {(["footage", "animated"] as const).map((bg) => (
+                      <button
+                        key={bg}
+                        className={`${styles.serviceTab} ${amBgType === bg ? styles.serviceTabActive : ""}`}
+                        onClick={() => setAmBgType(bg)}
+                      >
+                        {bg === "footage" ? "🎬 Видео-футаж" : "✨ Анимированный"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Ориентация */}
+              <div className={styles.card}>
+                <div className={styles.cardTitle}>Ориентация</div>
+                <div className={styles.serviceTabs}>
+                  {(["portrait", "landscape"] as const).map((o) => (
+                    <button
+                      key={o}
+                      className={`${styles.serviceTab} ${amOrientation === o ? styles.serviceTabActive : ""}`}
+                      onClick={() => setAmOrientation(o)}
+                    >
+                      {o === "portrait" ? "📱 Портрет (1080×1920)" : "🖥 Альбом (1920×1080)"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Запуск */}
+              <div className={styles.card}>
+                <div className={styles.cardFooter}>
+                  <button
+                    className={styles.launchBtn}
+                    disabled={launching}
+                    onClick={() => {
+                      setScopeLabel(`agentMUSIC · ${amScenario} · ${amStyle} · ${amOrientation}`);
+                      setShowConfirm(true);
+                    }}
+                  >
+                    {launching ? t("gen_launching") : `Запустить ${amScenario === "karaoke" ? "караоке" : "стример"}`}
+                  </button>
+                </div>
+              </div>
+            </>
           )}
           {service === "sportzavod" && (
             <div className={styles.card}>
