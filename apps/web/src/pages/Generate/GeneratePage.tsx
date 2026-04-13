@@ -5,7 +5,7 @@ import { useFarmStore } from "../../stores/farm";
 import { useStreamCutStore } from "../../stores/streamcut";
 import styles from "./GeneratePage.module.css";
 
-type Service = "sportzavod" | "contentzavod" | "streamcut";
+type Service = "sportzavod" | "contentzavod" | "streamcut" | "agentmusic";
 type VideoCount = 1 | 2 | 3 | 5;
 
 function formatElapsed(iso?: string, nowMs = Date.now()): string {
@@ -433,11 +433,13 @@ export function GeneratePage() {
     setLaunchError("");
     try {
       await startGeneration({
-        service: service as "sportzavod" | "contentzavod",
+        service: service as "sportzavod" | "contentzavod" | "agentmusic",
         account_ids:
-          service === "contentzavod" && selectedIds.size === 0 ? ["default"] : [...selectedIds],
+          service === "contentzavod" && selectedIds.size === 0 ? ["default"]
+            : service === "agentmusic" ? ["telegram"]
+            : [...selectedIds],
         videos_per_account: videosPerAcc,
-        topic: service === "contentzavod" ? topic : undefined,
+        topic: service === "contentzavod" || service === "agentmusic" ? topic : undefined,
       });
       setShowConfirm(false);
     } catch (e: any) {
@@ -561,15 +563,17 @@ export function GeneratePage() {
           <div className={styles.card}>
             <div className={styles.cardTitle}>{t("gen_service_card")}</div>
             <div className={styles.serviceTabs}>
-              {(["sportzavod", "contentzavod", "streamcut"] as Service[]).map((svc) => {
+              {(["sportzavod", "contentzavod", "streamcut", "agentmusic"] as Service[]).map((svc) => {
                 const label =
                   svc === "sportzavod"
                     ? "SportZavod"
                     : svc === "contentzavod"
                       ? "content-zavod"
-                      : "StreamCut";
+                      : svc === "agentmusic"
+                        ? "agentMUSIC"
+                        : "StreamCut";
                 const dot =
-                  svc === "sportzavod" ? "#d4af37" : svc === "contentzavod" ? "#b496ff" : "#00d2ff";
+                  svc === "sportzavod" ? "#d4af37" : svc === "contentzavod" ? "#b496ff" : svc === "agentmusic" ? "#00c8dc" : "#00d2ff";
                 return (
                   <button
                     key={svc}
@@ -1034,6 +1038,27 @@ export function GeneratePage() {
                   }}
                 >
                   {launching ? t("gen_launching") : t("gen_launch_btn")}
+                </button>
+              </div>
+            </div>
+          )}
+          {service === "agentmusic" && (
+            <div className={styles.card}>
+              <div className={styles.cardTitle}>agentMUSIC — Генерация видео</div>
+              <p style={{ color: "#999", fontSize: 13, margin: "8px 0 16px" }}>
+                Генерирует караоке и стример-видео из аудиотреков через Telegram-бота.
+                Управление через @agentMUSIC_bot — здесь отслеживание задач.
+              </p>
+              <div className={styles.cardFooter}>
+                <button
+                  className={styles.launchBtn}
+                  disabled={launching}
+                  onClick={() => {
+                    setScopeLabel("agentMUSIC");
+                    setShowConfirm(true);
+                  }}
+                >
+                  {launching ? t("gen_launching") : "Запустить генерацию"}
                 </button>
               </div>
             </div>

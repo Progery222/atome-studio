@@ -324,7 +324,7 @@ function coerceJobEvent(event: FarmEvent): GenerationJobEvent | null {
 
   const jobId = typeof event.details?.job_id === "string" ? (event.details.job_id as string) : "";
   const service = event.details?.service;
-  if (!jobId || (service !== "sportzavod" && service !== "contentzavod")) return null;
+  if (!jobId || (service !== "sportzavod" && service !== "contentzavod" && service !== "agentmusic")) return null;
 
   const progress =
     typeof event.details?.progress === "number" ? (event.details.progress as number) : 0;
@@ -528,7 +528,7 @@ export const useFarmStore = create<FarmState>((set, get) => ({
         const activity = useActivityStore.getState();
         for (const job of jobs) {
           const prev = prevJobs.find((j) => j.job_id === job.job_id);
-          const svcName = job.service === "sportzavod" ? "SportZavod" : "content-zavod";
+          const svcName = job.service === "sportzavod" ? "SportZavod" : job.service === "agentmusic" ? "agentMUSIC" : "content-zavod";
           if (!prev && (job.status === "running" || job.status === "done")) {
             activity.push({
               id: `poll-job-start-${job.job_id}`,

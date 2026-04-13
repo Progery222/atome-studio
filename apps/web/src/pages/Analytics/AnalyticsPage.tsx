@@ -117,10 +117,11 @@ export function AnalyticsPage() {
   ];
 
   const nicheSeries: ChartSeries[] = [
-    { name: "Sport", data: [35], color: "var(--accent-cyan)" },
-    { name: "Content", data: [28], color: "var(--accent-pink)" },
-    { name: "News", data: [22], color: "var(--accent-amber)" },
-    { name: "Other", data: [15], color: "var(--color-success)" },
+    { name: "Sport", data: [30], color: "var(--accent-cyan)" },
+    { name: "Content", data: [25], color: "var(--accent-pink)" },
+    { name: "Music", data: [20], color: "#00c8dc" },
+    { name: "News", data: [15], color: "var(--accent-amber)" },
+    { name: "Other", data: [10], color: "var(--color-success)" },
   ];
 
   const kpiCards = [
@@ -357,12 +358,12 @@ export function AnalyticsPage() {
               <div key={svc} className={styles.kpiCard}>
                 <span
                   className={styles.kpiValue}
-                  style={{ color: svc === "sportzavod" ? "#d4af37" : "#b496ff" }}
+                  style={{ color: svc === "sportzavod" ? "#d4af37" : svc === "agentmusic" ? "#00c8dc" : "#b496ff" }}
                 >
                   ${stats.total_usd.toFixed(2)}
                 </span>
                 <span className={styles.kpiLabel}>
-                  {svc === "sportzavod" ? "SportZavod" : "content-zavod"}
+                  {svc === "sportzavod" ? "SportZavod" : svc === "agentmusic" ? "agentMUSIC" : "content-zavod"}
                 </span>
                 <span className={styles.kpiSub}>{stats.jobs_count} jobs</span>
               </div>
@@ -385,9 +386,9 @@ export function AnalyticsPage() {
                     option={{
                       type: "donut",
                       series: Object.entries(costReport.services).map(([svc, stats]) => ({
-                        name: svc === "sportzavod" ? "SportZavod" : "content-zavod",
+                        name: svc === "sportzavod" ? "SportZavod" : svc === "agentmusic" ? "agentMUSIC" : "content-zavod",
                         data: [+stats.total_usd.toFixed(4)],
-                        color: svc === "sportzavod" ? "#d4af37" : "#b496ff",
+                        color: svc === "sportzavod" ? "#d4af37" : svc === "agentmusic" ? "#00c8dc" : "#b496ff",
                       })),
                       height: 180,
                     }}
@@ -436,12 +437,12 @@ export function AnalyticsPage() {
             <div key={svc} className={styles.kpiCard}>
               <span
                 className={styles.kpiValue}
-                style={{ color: svc === "sportzavod" ? "#d4af37" : "#b496ff" }}
+                style={{ color: svc === "sportzavod" ? "#d4af37" : svc === "agentmusic" ? "#00c8dc" : "#b496ff" }}
               >
                 {fmtSec(stats.avg_sec)}
               </span>
               <span className={styles.kpiLabel}>
-                {svc === "sportzavod" ? "SportZavod" : "content-zavod"}
+                {svc === "sportzavod" ? "SportZavod" : svc === "agentmusic" ? "agentMUSIC" : "content-zavod"}
               </span>
               <span className={styles.kpiSub}>
                 {stats.count} {t("analytics_gen_jobs")}
