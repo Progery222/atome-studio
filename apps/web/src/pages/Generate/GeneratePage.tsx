@@ -2,6 +2,7 @@
 import type { Account, GenerationJob, GenerationScope, StreamCutJob } from "@atome/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../../i18n";
+import { apiFetch } from "../../lib/api";
 import { useFarmStore } from "../../stores/farm";
 import { useStreamCutStore } from "../../stores/streamcut";
 import styles from "./GeneratePage.module.css";
@@ -1115,7 +1116,7 @@ export function GeneratePage() {
                       onClick={() => setAmScenario(sc)}
                     >
                       <span className={styles.serviceTabDot} style={{ background: sc === "karaoke" ? "#00c8dc" : "#ff7850" }} />
-                      {sc === "karaoke" ? "🎤 Караоке" : "🎮 Стример + Футаж"}
+                      {sc === "karaoke" ? "Караоке" : "Стример + Футаж"}
                     </button>
                   ))}
                 </div>
@@ -1144,13 +1145,13 @@ export function GeneratePage() {
                 </div>
                 <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#999", fontSize: 13 }}>
                   <input type="file" accept="audio/*" onChange={amHandleUpload} style={{ display: "none" }} />
-                  📁 Или загрузить файл
+                  Или загрузить файл
                 </label>
                 {amTracks.length > 0 && (
                   <div style={{ marginTop: 12, maxHeight: 150, overflowY: "auto" }}>
                     {amTracks.slice(0, 20).map((tr) => (
                       <div key={tr.id} style={{ padding: "6px 0", borderBottom: "1px solid #222", fontSize: 13, color: "#ccc" }}>
-                        🎵 {tr.artist ? `${tr.artist} — ` : ""}{tr.title}
+                        {tr.artist ? `${tr.artist} — ` : ""}{tr.title}
                         <span style={{ color: "#666", marginLeft: 8 }}>{tr.duration ? `${Math.round(tr.duration)}s` : ""}</span>
                       </div>
                     ))}
@@ -1170,7 +1171,7 @@ export function GeneratePage() {
                         onClick={() => setAmSelectedChorus(amSelectedChorus === ch.id ? null : ch.id)}
                         style={{ display: "block", width: "100%", textAlign: "left", marginBottom: 4 }}
                       >
-                        🎤 {ch.name}
+                        {ch.name}
                         <span style={{ color: "#666", fontSize: 11, marginLeft: 8 }}>{ch.variant}</span>
                       </button>
                     ))}
@@ -1189,7 +1190,7 @@ export function GeneratePage() {
                         className={`${styles.serviceTab} ${amBgType === bg ? styles.serviceTabActive : ""}`}
                         onClick={() => setAmBgType(bg)}
                       >
-                        {bg === "footage" ? "🎬 Видео-футаж" : "✨ Анимированный"}
+                        {bg === "footage" ? "Видео-футаж" : "Анимированный"}
                       </button>
                     ))}
                   </div>
@@ -1222,7 +1223,7 @@ export function GeneratePage() {
                       className={`${styles.serviceTab} ${amOrientation === o ? styles.serviceTabActive : ""}`}
                       onClick={() => setAmOrientation(o)}
                     >
-                      {o === "portrait" ? "📱 Портрет (1080×1920)" : "🖥 Альбом (1920×1080)"}
+                      {o === "portrait" ? "Портрет (1080x1920)" : "Альбом (1920x1080)"}
                     </button>
                   ))}
                 </div>
