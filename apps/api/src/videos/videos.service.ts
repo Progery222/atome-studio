@@ -106,7 +106,11 @@ export class VideosService {
         continue;
       }
 
-      const service = key.includes("sportzavod") ? "sportzavod" : "contentzavod";
+      const service = key.includes("agentmusic")
+        ? "agentmusic"
+        : key.includes("sportzavod")
+          ? "sportzavod"
+          : "contentzavod";
 
       videos.push({
         filename: key,
