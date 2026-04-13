@@ -1,5 +1,6 @@
 import { EMPTY_FARM_STATS, type FarmStats, type Service } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
+import { AgentMusicAdapter } from "./agentmusic/agentmusic.adapter";
 import { ContentZavodAdapter } from "./contentzavod/contentzavod.adapter";
 import { FarmAdapter } from "./farm/farm.adapter";
 import { SportZavodAdapter } from "./sportzavod/sportzavod.adapter";
@@ -17,7 +18,8 @@ export class McpService {
     private readonly sportzavod: SportZavodAdapter,
     private readonly contentzavod: ContentZavodAdapter,
     private readonly streamcut: StreamCutAdapter,
-    private readonly farm: FarmAdapter
+    private readonly farm: FarmAdapter,
+    private readonly agentmusic: AgentMusicAdapter
   ) {}
 
   async fetchAllServices(): Promise<Service[]> {
@@ -26,10 +28,11 @@ export class McpService {
       this.contentzavod.fetchServices(),
       this.streamcut.fetchServices(),
       this.farm.fetchServices(),
+      this.agentmusic.fetchServices(),
     ]);
 
     const services: Service[] = [];
-    const names = ["SportZavod", "content-zavod", "StreamCut", "Orchestrator"];
+    const names = ["SportZavod", "content-zavod", "StreamCut", "Orchestrator", "agentMUSIC"];
 
     results.forEach((result, i) => {
       if (result.status === "fulfilled") {

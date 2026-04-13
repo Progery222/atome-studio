@@ -10,7 +10,7 @@ export interface Service {
   activeJobs?: number;
   /** RGB color — computed from status by adapter */
   col: [number, number, number];
-  /** Orbit index: 0=SportZavod, 1=content-zavod, 2=Orchestrator, 3=StreamCut */
+  /** Orbit index: 0=SportZavod, 1=content-zavod, 2=Orchestrator, 3=StreamCut, 4=agentMUSIC */
   oi: number;
   /** Initial angle on orbit (radians) */
   a: number;
@@ -45,6 +45,7 @@ export const ORBIT_CONFIGS: OrbitConfig[] = [
   { a: 320, b: 150, tilt: 0.45, rgb: "180,150,255" }, // 1 — content-zavod (lavender)
   { a: 420, b: 100, tilt: 0.22, rgb: "150,130,230" }, // 2 — Orchestrator (purple)
   { a: 460, b: 90, tilt: -0.35, rgb: "255,120,80" }, // 3 — StreamCut (coral)
+  { a: 340, b: 130, tilt: -0.25, rgb: "0,200,220" }, // 4 — agentMUSIC (cyan)
 ];
 
 // ─── Farm stats (returned by GET /api/services/stats) ─────────────────────────
@@ -116,7 +117,7 @@ export interface QueueTask {
   caption: string;
   hashtags: string[];
   platform: "tiktok";
-  source_service: "sportzavod" | "contentzavod" | "streamcut";
+  source_service: "sportzavod" | "contentzavod" | "streamcut" | "agentmusic";
   status: "scheduled" | "in_progress" | "published" | "failed";
   scheduled_at: string;
   executed_at?: string;
@@ -128,7 +129,7 @@ export interface VideoFile {
   filename: string;
   account_id: string;
   tenant_id: string;
-  source_service: "sportzavod" | "contentzavod" | "streamcut";
+  source_service: "sportzavod" | "contentzavod" | "streamcut" | "agentmusic";
   url: string;
   thumbnail_url: string;
   size_bytes: number;
@@ -143,7 +144,7 @@ export interface VideoFile {
 
 export interface GenerationJob {
   job_id: string;
-  service: "sportzavod" | "contentzavod";
+  service: "sportzavod" | "contentzavod" | "agentmusic";
   account_ids: string[];
   topic?: string;
   videos_per_account: number;

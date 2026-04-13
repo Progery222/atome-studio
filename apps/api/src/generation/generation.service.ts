@@ -3,8 +3,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { JobEventsService } from "./job-events.service";
 
+type ServiceName = "sportzavod" | "contentzavod" | "agentmusic";
+
 interface GenerateDto {
-  service: "sportzavod" | "contentzavod";
+  service: ServiceName;
   account_ids: string[];
   videos_per_account: number;
   topic?: string;
@@ -15,6 +17,7 @@ export class GenerationService {
   private readonly logger = new Logger(GenerationService.name);
   private readonly sportzavodUrl = process.env.SPORTZAVOD_URL ?? "http://localhost:8000";
   private readonly contentzavodUrl = process.env.CONTENTZAVOD_URL ?? "http://localhost:8002";
+  private readonly agentmusicUrl = process.env.AGENTMUSIC_URL ?? "http://localhost:8080";
 
   constructor(
     private readonly prisma: PrismaService,
@@ -22,12 +25,13 @@ export class GenerationService {
   ) {}
 
   /** Maps job_id → service name for later routing */
-  private readonly jobServiceMap = new Map<string, "sportzavod" | "contentzavod">();
+  private readonly jobServiceMap = new Map<string, ServiceName>();
 
   /** Maps job_id → start timestamp (ms) for accurate duration tracking */
   private readonly jobStartTimes = new Map<string, number>();
 
-  private baseUrlFor(service: "sportzavod" | "contentzavod"): string {
+  private baseUrlFor(service: ServiceName): string {
+    if (service === "agentmusic") return this.agentmusicUrl;
     return service === "sportzavod" ? this.sportzavodUrl : this.contentzavodUrl;
   }
 
@@ -98,8 +102,8 @@ export class GenerationService {
   async getJob(id: string): Promise<GenerationJob | null> {
     const service = this.jobServiceMap.get(id);
     if (!service) {
-      // Try both services if mapping is unknown (e.g. after restart)
-      for (const svc of ["sportzavod", "contentzavod"] as const) {
+      // Try all services if mapping is unknown (e.g. after restart)
+      for (const svc of ["sportzavod", "contentzavod", "agentmusic"] as const) {
         const found = await this.getJobFromService(id, svc);
         if (found) {
           this.jobServiceMap.set(id, svc);
@@ -116,7 +120,7 @@ export class GenerationService {
   /** Fetch single job — falls back to list scan if service has no GET /jobs/:id */
   private async getJobFromService(
     id: string,
-    service: "sportzavod" | "contentzavod"
+    service: ServiceName
   ): Promise<GenerationJob | null> {
     const base = this.baseUrlFor(service);
     const raw = await this.get<Record<string, unknown>>(`${base}/api/jobs/${id}`);
@@ -130,26 +134,27 @@ export class GenerationService {
   }
 
   async getAllJobs(): Promise<GenerationJob[]> {
-    const [szJobs, czJobs] = await Promise.allSettled([
+    const [szJobs, czJobs, amJobs] = await Promise.allSettled([
       this.get<Record<string, unknown>[]>(`${this.sportzavodUrl}/api/jobs`),
       this.get<Record<string, unknown>[]>(`${this.contentzavodUrl}/api/jobs`),
+      this.get<Record<string, unknown>[]>(`${this.agentmusicUrl}/api/jobs`),
     ]);
 
     const jobs: GenerationJob[] = [];
 
-    if (szJobs.status === "fulfilled" && szJobs.value) {
-      for (const raw of szJobs.value) {
-        const job = this.normalizeJob(raw, "sportzavod");
-        this.jobServiceMap.set(job.job_id, "sportzavod");
-        jobs.push(job);
-      }
-    }
+    const sources: [PromiseSettledResult<Record<string, unknown>[] | null>, ServiceName][] = [
+      [szJobs, "sportzavod"],
+      [czJobs, "contentzavod"],
+      [amJobs, "agentmusic"],
+    ];
 
-    if (czJobs.status === "fulfilled" && czJobs.value) {
-      for (const raw of czJobs.value) {
-        const job = this.normalizeJob(raw, "contentzavod");
-        this.jobServiceMap.set(job.job_id, "contentzavod");
-        jobs.push(job);
+    for (const [result, service] of sources) {
+      if (result.status === "fulfilled" && result.value) {
+        for (const raw of result.value) {
+          const job = this.normalizeJob(raw, service);
+          this.jobServiceMap.set(job.job_id, service);
+          jobs.push(job);
+        }
       }
     }
 
@@ -375,9 +380,10 @@ export class GenerationService {
 
   private normalizeJob(
     raw: Record<string, unknown>,
-    service: "sportzavod" | "contentzavod"
+    service: ServiceName
   ): GenerationJob {
     const isCz = service === "contentzavod";
+    const isAm = service === "agentmusic";
     const rawResults = Array.isArray(raw.results) ? (raw.results as unknown[]) : null;
 
     // content-zavod: done with empty results = pipeline aborted (API error, no content found, etc.)
@@ -425,11 +431,11 @@ export class GenerationService {
       current_phase:
         typeof raw.current_phase === "string" && raw.current_phase ? raw.current_phase : undefined,
       current_message: this.resolveErrorMessage(raw, status),
-      // content-zavod provides real percent per phase (12/24/40...); SportZavod percent=99 is a marker, ignore it
+      // content-zavod & agentmusic provide real percent; SportZavod percent=99 is a marker, ignore it
       percent: this.jobEvents.resolvePercent(
         progress,
         total,
-        isCz && typeof raw.percent === "number" ? raw.percent : undefined
+        (isCz || isAm) && typeof raw.percent === "number" ? raw.percent : undefined
       ),
       started_at:
         typeof raw.started_at === "string" && raw.started_at

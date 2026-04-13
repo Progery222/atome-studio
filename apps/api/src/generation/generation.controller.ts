@@ -2,7 +2,7 @@ import { Body, Controller, Get, NotFoundException, Param, Post } from "@nestjs/c
 import { GenerationService } from "./generation.service";
 
 interface GenerateDto {
-  service: "sportzavod" | "contentzavod";
+  service: "sportzavod" | "contentzavod" | "agentmusic";
   account_ids: string[];
   videos_per_account: number;
   topic?: string;
