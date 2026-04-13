@@ -167,7 +167,7 @@ export interface GenerationJob {
 export interface GenerationJobEvent {
   id: string;
   job_id: string;
-  service: "sportzavod" | "contentzavod";
+  service: "sportzavod" | "contentzavod" | "agentmusic";
   seq: number;
   event_type:
     | "job_started"

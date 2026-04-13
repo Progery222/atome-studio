@@ -9,7 +9,7 @@ type JobEventLevel = GenerationJobEvent["level"];
 
 interface AppendJobEventInput {
   jobId: string;
-  service: "sportzavod" | "contentzavod";
+  service: "sportzavod" | "contentzavod" | "agentmusic";
   eventType: JobEventType;
   phase: string;
   message: string;

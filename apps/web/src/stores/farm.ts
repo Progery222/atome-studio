@@ -47,7 +47,7 @@ interface FarmState {
   updateAccount: (id: string, data: Partial<Account>) => Promise<Account | null>;
   reloadFromSheets: () => Promise<boolean>;
   startGeneration: (data: {
-    service: "sportzavod" | "contentzavod";
+    service: "sportzavod" | "contentzavod" | "agentmusic";
     account_ids: string[];
     videos_per_account: number;
     topic?: string;
