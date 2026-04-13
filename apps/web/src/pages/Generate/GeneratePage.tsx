@@ -265,6 +265,7 @@ export function GeneratePage() {
   const [amChoruses, setAmChoruses] = useState<Array<{ id: string; name: string; track_id: string; variant: string }>>([]);
   const [amSelectedChorus, setAmSelectedChorus] = useState<string | null>(null);
   const [amTracksLoading, setAmTracksLoading] = useState(false);
+  const [amProcessingTrack, setAmProcessingTrack] = useState<string | null>(null);
 
   const amLoadData = useCallback(async () => {
     setAmTracksLoading(true);
@@ -308,6 +309,15 @@ export function GeneratePage() {
     } catch {}
     setAmTracksLoading(false);
     e.target.value = "";
+  }, [amLoadData]);
+
+  const amProcessTrack = useCallback(async (trackId: string) => {
+    setAmProcessingTrack(trackId);
+    try {
+      const res = await apiFetch(`/api/agentmusic/tracks/${trackId}/process`, { method: "POST" });
+      if (res.ok) await amLoadData();
+    } catch {}
+    setAmProcessingTrack(null);
   }, [amLoadData]);
 
   // StreamCut form state
@@ -1148,11 +1158,21 @@ export function GeneratePage() {
                   Или загрузить файл
                 </label>
                 {amTracks.length > 0 && (
-                  <div style={{ marginTop: 12, maxHeight: 150, overflowY: "auto" }}>
+                  <div style={{ marginTop: 12, maxHeight: 200, overflowY: "auto" }}>
                     {amTracks.slice(0, 20).map((tr) => (
-                      <div key={tr.id} style={{ padding: "6px 0", borderBottom: "1px solid #222", fontSize: 13, color: "#ccc" }}>
-                        {tr.artist ? `${tr.artist} — ` : ""}{tr.title}
-                        <span style={{ color: "#666", marginLeft: 8 }}>{tr.duration ? `${Math.round(tr.duration)}s` : ""}</span>
+                      <div key={tr.id} style={{ padding: "8px 0", borderBottom: "1px solid #222", fontSize: 13, color: "#ccc", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span>
+                          {tr.artist ? `${tr.artist} — ` : ""}{tr.title}
+                          <span style={{ color: "#666", marginLeft: 8 }}>{tr.duration ? `${Math.round(tr.duration)}s` : ""}</span>
+                        </span>
+                        <button
+                          className={styles.launchBtn}
+                          disabled={amProcessingTrack === tr.id}
+                          onClick={() => amProcessTrack(tr.id)}
+                          style={{ padding: "4px 12px", fontSize: 11, marginLeft: 8, minWidth: 100 }}
+                        >
+                          {amProcessingTrack === tr.id ? "Обработка..." : "Обработать"}
+                        </button>
                       </div>
                     ))}
                   </div>

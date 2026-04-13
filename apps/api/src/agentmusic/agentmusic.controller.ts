@@ -2,9 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
-  Req,
-  Res,
   UploadedFile,
   UseInterceptors,
 } from "@nestjs/common";
@@ -57,5 +56,14 @@ export class AgentMusicController {
       signal: AbortSignal.timeout(60000),
     });
     return res.json();
+  }
+
+  @Post("tracks/:id/process")
+  async processTrack(@Param("id") id: string) {
+    return proxy(`/api/tracks/${id}/process`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(120000),
+    } as RequestInit);
   }
 }
