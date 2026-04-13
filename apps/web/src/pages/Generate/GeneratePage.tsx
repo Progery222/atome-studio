@@ -258,6 +258,56 @@ export function GeneratePage() {
   const [amScenario, setAmScenario] = useState<"karaoke" | "streamer">("karaoke");
   const [amOrientation, setAmOrientation] = useState<"portrait" | "landscape">("portrait");
   const [amBgType, setAmBgType] = useState<"footage" | "animated">("footage");
+  const [amSpotifyUrl, setAmSpotifyUrl] = useState("");
+  const [amSpotifyLoading, setAmSpotifyLoading] = useState(false);
+  const [amTracks, setAmTracks] = useState<Array<{ id: string; title: string; artist: string; duration: number }>>([]);
+  const [amChoruses, setAmChoruses] = useState<Array<{ id: string; name: string; track_id: string; variant: string }>>([]);
+  const [amSelectedChorus, setAmSelectedChorus] = useState<string | null>(null);
+  const [amTracksLoading, setAmTracksLoading] = useState(false);
+
+  const amLoadData = useCallback(async () => {
+    setAmTracksLoading(true);
+    try {
+      const [trRes, chRes] = await Promise.all([
+        apiFetch("/api/agentmusic/tracks"),
+        apiFetch("/api/agentmusic/choruses"),
+      ]);
+      if (trRes.ok) setAmTracks(await trRes.json());
+      if (chRes.ok) setAmChoruses(await chRes.json());
+    } catch {}
+    setAmTracksLoading(false);
+  }, []);
+
+  const amHandleSpotify = useCallback(async () => {
+    if (!amSpotifyUrl.trim() || amSpotifyLoading) return;
+    setAmSpotifyLoading(true);
+    try {
+      const res = await apiFetch("/api/agentmusic/spotify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: amSpotifyUrl }),
+      });
+      if (res.ok) {
+        setAmSpotifyUrl("");
+        await amLoadData();
+      }
+    } catch {}
+    setAmSpotifyLoading(false);
+  }, [amSpotifyUrl, amSpotifyLoading, amLoadData]);
+
+  const amHandleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAmTracksLoading(true);
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const res = await apiFetch("/api/agentmusic/upload", { method: "POST", body: form });
+      if (res.ok) await amLoadData();
+    } catch {}
+    setAmTracksLoading(false);
+    e.target.value = "";
+  }, [amLoadData]);
 
   // StreamCut form state
   const [scUrl, setScUrl] = useState("");
@@ -279,10 +329,12 @@ export function GeneratePage() {
     if (service === "sportzavod") {
       fetchSportzavodAccounts();
       fetchSportzavodThemes();
+    } else if (service === "agentmusic") {
+      amLoadData();
     } else {
       fetchAccounts();
     }
-  }, [service, fetchAccounts, fetchSportzavodAccounts, fetchSportzavodThemes]);
+  }, [service, fetchAccounts, fetchSportzavodAccounts, fetchSportzavodThemes, amLoadData]);
 
   useEffect(() => {
     fetchJobs();
@@ -1068,6 +1120,63 @@ export function GeneratePage() {
                   ))}
                 </div>
               </div>
+
+              {/* Трек: загрузка или Spotify */}
+              <div className={styles.card}>
+                <div className={styles.cardTitle}>Трек {amTracksLoading && <span className={styles.loading}> загрузка...</span>}</div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  <input
+                    className={styles.input}
+                    placeholder="Spotify ссылка (трек или артист)..."
+                    value={amSpotifyUrl}
+                    onChange={(e) => setAmSpotifyUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && amHandleSpotify()}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    className={styles.launchBtn}
+                    disabled={!amSpotifyUrl.trim() || amSpotifyLoading}
+                    onClick={amHandleSpotify}
+                    style={{ padding: "8px 16px", fontSize: 13 }}
+                  >
+                    {amSpotifyLoading ? "..." : "Загрузить"}
+                  </button>
+                </div>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#999", fontSize: 13 }}>
+                  <input type="file" accept="audio/*" onChange={amHandleUpload} style={{ display: "none" }} />
+                  📁 Или загрузить файл
+                </label>
+                {amTracks.length > 0 && (
+                  <div style={{ marginTop: 12, maxHeight: 150, overflowY: "auto" }}>
+                    {amTracks.slice(0, 20).map((tr) => (
+                      <div key={tr.id} style={{ padding: "6px 0", borderBottom: "1px solid #222", fontSize: 13, color: "#ccc" }}>
+                        🎵 {tr.artist ? `${tr.artist} — ` : ""}{tr.title}
+                        <span style={{ color: "#666", marginLeft: 8 }}>{tr.duration ? `${Math.round(tr.duration)}s` : ""}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Выбор припева */}
+              {amChoruses.length > 0 && (
+                <div className={styles.card}>
+                  <div className={styles.cardTitle}>Припев ({amChoruses.length})</div>
+                  <div style={{ maxHeight: 200, overflowY: "auto" }}>
+                    {amChoruses.map((ch) => (
+                      <button
+                        key={ch.id}
+                        className={`${styles.serviceTab} ${amSelectedChorus === ch.id ? styles.serviceTabActive : ""}`}
+                        onClick={() => setAmSelectedChorus(amSelectedChorus === ch.id ? null : ch.id)}
+                        style={{ display: "block", width: "100%", textAlign: "left", marginBottom: 4 }}
+                      >
+                        🎤 {ch.name}
+                        <span style={{ color: "#666", fontSize: 11, marginLeft: 8 }}>{ch.variant}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Фон (только караоке) */}
               {amScenario === "karaoke" && (

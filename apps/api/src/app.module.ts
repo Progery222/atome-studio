@@ -14,6 +14,7 @@ import { QueueModule } from "./queue/queue.module";
 import { ServicesModule } from "./services/services.module";
 import { StreamCutModule } from "./streamcut/streamcut.module";
 import { VideosModule } from "./videos/videos.module";
+import { AgentMusicModule } from "./agentmusic/agentmusic.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { VideosModule } from "./videos/videos.module";
     StreamCutModule,
     ClientsModule,
     MetricsModule,
+    AgentMusicModule,
   ],
   providers: [
     // Apply JWT guard to every route globally; use @Public() to opt out
