@@ -257,7 +257,6 @@ export function GeneratePage() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   // agentMUSIC form state
   const [amScenario, setAmScenario] = useState<"karaoke" | "streamer">("karaoke");
-  const [amOrientation, setAmOrientation] = useState<"portrait" | "landscape">("portrait");
   const [amBgType, setAmBgType] = useState<"footage" | "animated">("footage");
   const [amSpotifyUrl, setAmSpotifyUrl] = useState("");
   const [amSpotifyLoading, setAmSpotifyLoading] = useState(false);
@@ -509,7 +508,7 @@ export function GeneratePage() {
             : [...selectedIds],
         videos_per_account: videosPerAcc,
         topic: service === "contentzavod" ? topic
-          : service === "agentmusic" ? JSON.stringify({ scenario: amScenario, orientation: amOrientation, bg_type: amBgType })
+          : service === "agentmusic" ? JSON.stringify({ scenario: amScenario, orientation: "portrait", bg_type: amBgType })
           : undefined,
       });
       setShowConfirm(false);
@@ -1233,22 +1232,6 @@ export function GeneratePage() {
                 </div>
               </div>
 
-              {/* Ориентация */}
-              <div className={styles.card}>
-                <div className={styles.cardTitle}>Ориентация</div>
-                <div className={styles.serviceTabs}>
-                  {(["portrait", "landscape"] as const).map((o) => (
-                    <button
-                      key={o}
-                      className={`${styles.serviceTab} ${amOrientation === o ? styles.serviceTabActive : ""}`}
-                      onClick={() => setAmOrientation(o)}
-                    >
-                      {o === "portrait" ? "Портрет (1080x1920)" : "Альбом (1920x1080)"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Запуск */}
               <div className={styles.card}>
                 <div className={styles.cardFooter}>
@@ -1256,7 +1239,7 @@ export function GeneratePage() {
                     className={styles.launchBtn}
                     disabled={launching}
                     onClick={() => {
-                      setScopeLabel(`agentMUSIC · ${amScenario} · ${amOrientation}`);
+                      setScopeLabel(`agentMUSIC · ${amScenario}`);
                       setShowConfirm(true);
                     }}
                   >
