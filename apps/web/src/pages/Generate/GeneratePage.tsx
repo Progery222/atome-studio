@@ -1,3 +1,4 @@
+// agentMUSIC integration v2
 import type { Account, GenerationJob, GenerationScope, StreamCutJob } from "@atome/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../../i18n";
