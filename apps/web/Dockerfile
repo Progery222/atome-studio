@@ -11,6 +11,8 @@ RUN npm install
 COPY packages/shared/ ./packages/shared/
 COPY apps/web/ ./apps/web/
 
+# Cache-bust: Railway may cache Docker layers aggressively
+ARG CACHEBUST=1
 RUN npm run build --workspace=apps/web
 
 # ── Serve stage ───────────────────────────────────────────────────────────────
