@@ -256,7 +256,6 @@ export function GeneratePage() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   // agentMUSIC form state
   const [amScenario, setAmScenario] = useState<"karaoke" | "streamer">("karaoke");
-  const [amStyle, setAmStyle] = useState("clean");
   const [amOrientation, setAmOrientation] = useState<"portrait" | "landscape">("portrait");
   const [amBgType, setAmBgType] = useState<"footage" | "animated">("footage");
 
@@ -447,7 +446,7 @@ export function GeneratePage() {
             : [...selectedIds],
         videos_per_account: videosPerAcc,
         topic: service === "contentzavod" ? topic
-          : service === "agentmusic" ? JSON.stringify({ scenario: amScenario, style: amStyle, orientation: amOrientation, bg_type: amBgType })
+          : service === "agentmusic" ? JSON.stringify({ scenario: amScenario, orientation: amOrientation, bg_type: amBgType })
           : undefined,
       });
       setShowConfirm(false);
@@ -1070,30 +1069,6 @@ export function GeneratePage() {
                 </div>
               </div>
 
-              {/* Стиль (только караоке) */}
-              {amScenario === "karaoke" && (
-                <div className={styles.card}>
-                  <div className={styles.cardTitle}>Стиль текста</div>
-                  <div className={styles.serviceTabs}>
-                    {[
-                      { key: "glow", label: "💙 Glow", color: "#0096FF" },
-                      { key: "neon", label: "💜 Neon", color: "#FF00C8" },
-                      { key: "clean", label: "🤍 Clean", color: "#F5E6D0" },
-                      { key: "fire", label: "🔥 Fire", color: "#FFC832" },
-                    ].map((s) => (
-                      <button
-                        key={s.key}
-                        className={`${styles.serviceTab} ${amStyle === s.key ? styles.serviceTabActive : ""}`}
-                        onClick={() => setAmStyle(s.key)}
-                      >
-                        <span className={styles.serviceTabDot} style={{ background: s.color }} />
-                        {s.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Фон (только караоке) */}
               {amScenario === "karaoke" && (
                 <div className={styles.card}>
@@ -1135,7 +1110,7 @@ export function GeneratePage() {
                     className={styles.launchBtn}
                     disabled={launching}
                     onClick={() => {
-                      setScopeLabel(`agentMUSIC · ${amScenario} · ${amStyle} · ${amOrientation}`);
+                      setScopeLabel(`agentMUSIC · ${amScenario} · ${amOrientation}`);
                       setShowConfirm(true);
                     }}
                   >
