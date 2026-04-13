@@ -7,7 +7,7 @@ import { useStreamCutStore } from "../../stores/streamcut";
 import styles from "./GeneratePage.module.css";
 
 type Service = "sportzavod" | "contentzavod" | "streamcut" | "agentmusic";
-type VideoCount = 1 | 2 | 3 | 5;
+type VideoCount = 1 | 2 | 3 | 5 | 10;
 
 function formatElapsed(iso?: string, nowMs = Date.now()): string {
   if (!iso) return "—";
@@ -1086,6 +1086,22 @@ export function GeneratePage() {
                   </div>
                 </div>
               )}
+
+              {/* Количество видео */}
+              <div className={styles.card}>
+                <div className={styles.cardTitle}>Количество видео</div>
+                <div className={styles.countGroup}>
+                  {([1, 2, 3, 5, 10] as number[]).map((n) => (
+                    <button
+                      key={n}
+                      className={`${styles.countBtn} ${videosPerAcc === n ? styles.countBtnActive : ""}`}
+                      onClick={() => setVideosPerAcc(n as VideoCount)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* Ориентация */}
               <div className={styles.card}>
