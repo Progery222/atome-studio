@@ -181,6 +181,18 @@ export class VideosService {
       video.description = this.str(data.description);
       video.caption = this.str(data.caption);
       video.hashtags = this.strArr(data.hashtags);
+    } else if (video.source_service === "agentmusic") {
+      // agentmusic: flat JSON with title, description, hashtags
+      video.title = this.str(data.title);
+      video.description = this.str(data.description);
+      video.hashtags = this.strArr(data.hashtags);
+
+      const parts: string[] = [];
+      if (video.title) parts.push(video.title);
+      if (video.description) parts.push(video.description);
+      if (video.hashtags?.length)
+        parts.push(video.hashtags.map((t) => `#${t.replace(/^#/, "")}`).join(" "));
+      if (parts.length) video.caption = parts.join("\n\n");
     } else {
       // content-zavod prompt.json
       const script = (data.script ?? {}) as Record<string, unknown>;
@@ -188,7 +200,6 @@ export class VideosService {
       video.description = this.str(script.description);
       video.hashtags = this.strArr(script.tags);
 
-      // Assemble full caption like Telegram: title + description + hashtags
       const parts: string[] = [];
       if (video.title) parts.push(video.title);
       if (video.description) parts.push(video.description);
