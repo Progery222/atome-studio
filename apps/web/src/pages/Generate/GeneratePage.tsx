@@ -1229,19 +1229,55 @@ export function GeneratePage() {
               {/* Выбор припева */}
               {amChoruses.length > 0 && (
                 <div className={styles.card}>
-                  <div className={styles.cardTitle}>Припев ({amChoruses.length})</div>
-                  <div style={{ maxHeight: 200, overflowY: "auto" }}>
-                    {amChoruses.map((ch) => (
-                      <button
-                        key={ch.id}
-                        className={`${styles.serviceTab} ${amSelectedChorus === ch.id ? styles.serviceTabActive : ""}`}
-                        onClick={() => setAmSelectedChorus(amSelectedChorus === ch.id ? null : ch.id)}
-                        style={{ display: "block", width: "100%", textAlign: "left", marginBottom: 4 }}
-                      >
-                        {ch.name}
-                        <span style={{ color: "#666", fontSize: 11, marginLeft: 8 }}>{ch.variant}</span>
-                      </button>
-                    ))}
+                  <div className={styles.cardTitleRow}>
+                    <div className={styles.cardTitle}>Припевы ({amChoruses.length})</div>
+                    {amSelectedChorus && (
+                      <span style={{ color: "#00c8dc", fontSize: 12, cursor: "pointer" }} onClick={() => setAmSelectedChorus(null)}>
+                        Сбросить
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                    {amChoruses.map((ch) => {
+                      const active = amSelectedChorus === ch.id;
+                      return (
+                        <div
+                          key={ch.id}
+                          onClick={() => setAmSelectedChorus(active ? null : ch.id)}
+                          style={{
+                            padding: "10px 12px",
+                            marginBottom: 4,
+                            borderRadius: 6,
+                            cursor: "pointer",
+                            border: active ? "1px solid #00c8dc" : "1px solid #222",
+                            background: active ? "rgba(0,200,220,0.08)" : "transparent",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 18, height: 18, borderRadius: "50%",
+                              border: active ? "2px solid #00c8dc" : "2px solid #444",
+                              background: active ? "#00c8dc" : "transparent",
+                              flexShrink: 0,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}
+                          >
+                            {active && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#000" }} />}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ color: active ? "#fff" : "#ccc", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {ch.name}
+                            </div>
+                            <div style={{ color: "#666", fontSize: 11, marginTop: 2 }}>
+                              {ch.variant}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
