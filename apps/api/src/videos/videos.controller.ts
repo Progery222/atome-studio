@@ -1,4 +1,5 @@
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, Param, Res, Header } from "@nestjs/common";
+import type { Response } from "express";
 import { VideosService } from "./videos.service";
 
 @Controller()
@@ -8,5 +9,19 @@ export class VideosController {
   @Get("videos")
   getVideos() {
     return this.videos.getVideos();
+  }
+
+  @Get("videos/proxy/:key(*)")
+  @Header("Cache-Control", "public, max-age=86400")
+  async proxyVideo(@Param("key") key: string, @Res() res: Response) {
+    const stream = await this.videos.streamVideo(key);
+    if (!stream) {
+      res.status(404).json({ error: "Video not found" });
+      return;
+    }
+    res.setHeader("Content-Type", "video/mp4");
+    if (stream.size) res.setHeader("Content-Length", stream.size.toString());
+    res.setHeader("Accept-Ranges", "bytes");
+    stream.body.pipe(res);
   }
 }

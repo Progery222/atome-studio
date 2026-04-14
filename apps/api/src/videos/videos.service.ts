@@ -117,7 +117,7 @@ export class VideosService {
         account_id: this.inferAccountId(key),
         tenant_id: this.inferTenantId(key),
         source_service: service,
-        url: `${this.minioPublicUrl}/${this.bucket}/${this.encodeKey(key)}`,
+        url: `/api/videos/proxy/${this.encodeKey(key)}`,
         thumbnail_url: "",
         size_bytes: parseInt(sizeStr, 10) || 0,
         created_at: lastMod,
@@ -242,5 +242,21 @@ export class VideosService {
   private inferTenantId(key: string): string {
     const parts = key.split("/");
     return parts.length >= 1 ? parts[0] : "";
+  }
+
+  async streamVideo(key: string): Promise<{ body: NodeJS.ReadableStream; size?: number } | null> {
+    try {
+      const url = `${this.minioUrl}/${this.bucket}/${key}`;
+      const res = await fetch(url);
+      if (!res.ok || !res.body) return null;
+      const size = parseInt(res.headers.get("content-length") ?? "0", 10) || undefined;
+      const { Readable } = await import("stream");
+      // @ts-expect-error - Response.body is a ReadableStream, convert to Node stream
+      const nodeStream = Readable.fromWeb(res.body);
+      return { body: nodeStream, size };
+    } catch (e) {
+      this.logger.warn(`streamVideo failed for ${key}: ${e}`);
+      return null;
+    }
   }
 }
