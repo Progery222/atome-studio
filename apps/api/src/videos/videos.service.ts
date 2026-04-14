@@ -166,7 +166,7 @@ export class VideosService {
    */
   private resolveJsonKey(video: VideoFile): string | null {
     const key = video.filename;
-    if (video.source_service === "sportzavod") {
+    if (video.source_service === "sportzavod" || video.source_service === "agentmusic") {
       return key.replace(/\.mp4$/i, ".json");
     }
     // content-zavod: {account_id}/{date}/{topic_slug}/{title_slug}.mp4
