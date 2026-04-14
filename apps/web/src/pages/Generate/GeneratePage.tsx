@@ -258,66 +258,71 @@ export function GeneratePage() {
   // agentMUSIC form state
   const [amScenario, setAmScenario] = useState<"karaoke" | "streamer">("karaoke");
   const [amBgType, setAmBgType] = useState<"footage" | "animated">("footage");
-  const [amSpotifyUrl, setAmSpotifyUrl] = useState("");
-  const [amSpotifyLoading, setAmSpotifyLoading] = useState(false);
-  const [amTracks, setAmTracks] = useState<Array<{ id: string; title: string; artist: string; duration: number }>>([]);
+  // MinIO tracks
+  interface MinioTrack { key: string; artist: string; title: string; size_bytes: number; processed: boolean; }
+  const [amMinioTracks, setAmMinioTracks] = useState<MinioTrack[]>([]);
   const [amChoruses, setAmChoruses] = useState<Array<{ id: string; name: string; track_id: string; variant: string }>>([]);
   const [amSelectedChorus, setAmSelectedChorus] = useState<string | null>(null);
   const [amTracksLoading, setAmTracksLoading] = useState(false);
-  const [amProcessingTrack, setAmProcessingTrack] = useState<string | null>(null);
+  const [amSelectedKeys, setAmSelectedKeys] = useState<Set<string>>(new Set());
+  const [amProcessingKey, setAmProcessingKey] = useState<string | null>(null);
+  const [amBatchProcessing, setAmBatchProcessing] = useState(false);
 
   const amLoadData = useCallback(async () => {
     setAmTracksLoading(true);
     try {
       const [trRes, chRes] = await Promise.all([
-        apiFetch("/api/agentmusic/tracks"),
+        apiFetch("/api/agentmusic/tracks/minio"),
         apiFetch("/api/agentmusic/choruses"),
       ]);
-      if (trRes.ok) setAmTracks(await trRes.json());
+      if (trRes.ok) setAmMinioTracks(await trRes.json());
       if (chRes.ok) setAmChoruses(await chRes.json());
     } catch {}
     setAmTracksLoading(false);
   }, []);
 
-  const amHandleSpotify = useCallback(async () => {
-    if (!amSpotifyUrl.trim() || amSpotifyLoading) return;
-    setAmSpotifyLoading(true);
+  const amImportTrack = useCallback(async (key: string) => {
+    setAmProcessingKey(key);
     try {
-      const res = await apiFetch("/api/agentmusic/spotify", {
+      const res = await apiFetch("/api/agentmusic/tracks/minio/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: amSpotifyUrl }),
+        body: JSON.stringify({ key }),
       });
-      if (res.ok) {
-        setAmSpotifyUrl("");
-        await amLoadData();
-      }
-    } catch {}
-    setAmSpotifyLoading(false);
-  }, [amSpotifyUrl, amSpotifyLoading, amLoadData]);
-
-  const amHandleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setAmTracksLoading(true);
-    const form = new FormData();
-    form.append("file", file);
-    try {
-      const res = await apiFetch("/api/agentmusic/upload", { method: "POST", body: form });
       if (res.ok) await amLoadData();
     } catch {}
-    setAmTracksLoading(false);
-    e.target.value = "";
+    setAmProcessingKey(null);
   }, [amLoadData]);
 
-  const amProcessTrack = useCallback(async (trackId: string) => {
-    setAmProcessingTrack(trackId);
+  const amImportBatch = useCallback(async () => {
+    const keys = amSelectedKeys.size > 0
+      ? [...amSelectedKeys]
+      : amMinioTracks.filter((t) => !t.processed).map((t) => t.key);
+    if (keys.length === 0) return;
+    setAmBatchProcessing(true);
     try {
-      const res = await apiFetch(`/api/agentmusic/tracks/${trackId}/process`, { method: "POST" });
+      const res = await apiFetch("/api/agentmusic/tracks/minio/import-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keys }),
+      });
       if (res.ok) await amLoadData();
     } catch {}
-    setAmProcessingTrack(null);
-  }, [amLoadData]);
+    setAmBatchProcessing(false);
+    setAmSelectedKeys(new Set());
+  }, [amSelectedKeys, amMinioTracks, amLoadData]);
+
+  const amToggleKey = useCallback((key: string) => {
+    setAmSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const amSelectAll = useCallback(() => {
+    setAmSelectedKeys(new Set(amMinioTracks.map((t) => t.key)));
+  }, [amMinioTracks]);
 
   // StreamCut form state
   const [scUrl, setScUrl] = useState("");
@@ -1131,51 +1136,94 @@ export function GeneratePage() {
                 </div>
               </div>
 
-              {/* Трек: загрузка или Spotify */}
+              {/* База треков из MinIO */}
               <div className={styles.card}>
-                <div className={styles.cardTitle}>Трек {amTracksLoading && <span className={styles.loading}> загрузка...</span>}</div>
+                <div className={styles.cardTitleRow}>
+                  <div className={styles.cardTitle}>
+                    База треков (MinIO) {amTracksLoading && <span className={styles.loading}> загрузка...</span>}
+                  </div>
+                  <span style={{ color: "#666", fontSize: 12 }}>
+                    {amSelectedKeys.size > 0 ? `${amSelectedKeys.size} выбрано` : `${amMinioTracks.length} треков`}
+                  </span>
+                </div>
+
+                {/* Кнопки управления */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                  <input
-                    className={styles.input}
-                    placeholder="Spotify ссылка (трек или артист)..."
-                    value={amSpotifyUrl}
-                    onChange={(e) => setAmSpotifyUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && amHandleSpotify()}
-                    style={{ flex: 1 }}
-                  />
                   <button
                     className={styles.launchBtn}
-                    disabled={!amSpotifyUrl.trim() || amSpotifyLoading}
-                    onClick={amHandleSpotify}
-                    style={{ padding: "8px 16px", fontSize: 13 }}
+                    onClick={amSelectAll}
+                    style={{ padding: "6px 14px", fontSize: 12 }}
                   >
-                    {amSpotifyLoading ? "..." : "Загрузить"}
+                    Выбрать все
+                  </button>
+                  <button
+                    className={styles.launchBtn}
+                    onClick={() => setAmSelectedKeys(new Set())}
+                    style={{ padding: "6px 14px", fontSize: 12 }}
+                    disabled={amSelectedKeys.size === 0}
+                  >
+                    Снять выбор
+                  </button>
+                  <button
+                    className={styles.launchBtn}
+                    disabled={amBatchProcessing}
+                    onClick={amImportBatch}
+                    style={{ padding: "6px 14px", fontSize: 12, marginLeft: "auto" }}
+                  >
+                    {amBatchProcessing
+                      ? "Обработка..."
+                      : amSelectedKeys.size > 0
+                        ? `Обработать выбранные (${amSelectedKeys.size})`
+                        : "Обработать все необработанные"}
                   </button>
                 </div>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#999", fontSize: 13 }}>
-                  <input type="file" accept="audio/*" onChange={amHandleUpload} style={{ display: "none" }} />
-                  Или загрузить файл
-                </label>
-                {amTracks.length > 0 && (
-                  <div style={{ marginTop: 12, maxHeight: 200, overflowY: "auto" }}>
-                    {amTracks.slice(0, 20).map((tr) => (
-                      <div key={tr.id} style={{ padding: "8px 0", borderBottom: "1px solid #222", fontSize: 13, color: "#ccc", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span>
-                          {tr.artist ? `${tr.artist} — ` : ""}{tr.title}
-                          <span style={{ color: "#666", marginLeft: 8 }}>{tr.duration ? `${Math.round(tr.duration)}s` : ""}</span>
+
+                {/* Список треков */}
+                {amMinioTracks.length > 0 ? (
+                  <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                    {amMinioTracks.map((tr) => (
+                      <div
+                        key={tr.key}
+                        style={{
+                          padding: "8px 0",
+                          borderBottom: "1px solid #222",
+                          fontSize: 13,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          opacity: tr.processed ? 0.6 : 1,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={amSelectedKeys.has(tr.key)}
+                          onChange={() => amToggleKey(tr.key)}
+                          style={{ accentColor: "#00c8dc" }}
+                        />
+                        <span style={{ flex: 1, color: "#ccc" }}>
+                          <span style={{ color: "#00c8dc" }}>{tr.artist}</span>
+                          {" — "}{tr.title}
                         </span>
-                        <button
-                          className={styles.launchBtn}
-                          disabled={amProcessingTrack === tr.id}
-                          onClick={() => amProcessTrack(tr.id)}
-                          style={{ padding: "4px 12px", fontSize: 11, marginLeft: 8, minWidth: 100 }}
-                        >
-                          {amProcessingTrack === tr.id ? "Обработка..." : "Обработать"}
-                        </button>
+                        {tr.processed ? (
+                          <span style={{ color: "#22c55e", fontSize: 11 }}>READY</span>
+                        ) : (
+                          <button
+                            className={styles.launchBtn}
+                            disabled={amProcessingKey === tr.key}
+                            onClick={() => amImportTrack(tr.key)}
+                            style={{ padding: "3px 10px", fontSize: 11, minWidth: 90 }}
+                          >
+                            {amProcessingKey === tr.key ? "..." : "Обработать"}
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
-                )}
+                ) : !amTracksLoading ? (
+                  <div style={{ color: "#666", fontSize: 13, padding: 16, textAlign: "center" }}>
+                    Загрузите треки в MinIO бакет music-tracks/ (артист/трек.mp3)
+                  </div>
+                ) : null}
               </div>
 
               {/* Выбор припева */}
