@@ -261,7 +261,7 @@ export function GeneratePage() {
   // MinIO tracks
   interface MinioTrack { key: string; artist: string; title: string; size_bytes: number; processed: boolean; }
   const [amMinioTracks, setAmMinioTracks] = useState<MinioTrack[]>([]);
-  const [amChoruses, setAmChoruses] = useState<Array<{ id: string; name: string; track_id: string; variant: string }>>([]);
+  const [amChoruses, setAmChoruses] = useState<Array<{ id: string; name: string; artist?: string; track_id: string; variant: string }>>([]);
   const [amSelectedChorus, setAmSelectedChorus] = useState<string | null>(null);
   const [amTracksLoading, setAmTracksLoading] = useState(false);
   const [amSelectedKeys, setAmSelectedKeys] = useState<Set<string>>(new Set());
