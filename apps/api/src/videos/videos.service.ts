@@ -244,19 +244,7 @@ export class VideosService {
     return parts.length >= 1 ? parts[0] : "";
   }
 
-  async streamVideo(key: string): Promise<{ body: NodeJS.ReadableStream; size?: number } | null> {
-    try {
-      const url = `${this.minioUrl}/${this.bucket}/${key}`;
-      const res = await fetch(url);
-      if (!res.ok || !res.body) return null;
-      const size = parseInt(res.headers.get("content-length") ?? "0", 10) || undefined;
-      const { Readable } = await import("stream");
-      // @ts-expect-error - Response.body is a ReadableStream, convert to Node stream
-      const nodeStream = Readable.fromWeb(res.body);
-      return { body: nodeStream, size };
-    } catch (e) {
-      this.logger.warn(`streamVideo failed for ${key}: ${e}`);
-      return null;
-    }
+  getVideoUrl(key: string): string {
+    return `${this.minioUrl}/${this.bucket}/${key}`;
   }
 }
