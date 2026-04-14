@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Res, Header } from "@nestjs/common";
 import type { Response } from "express";
+import { Public } from "../auth/public.decorator";
 import { VideosService } from "./videos.service";
 
 @Controller()
@@ -11,6 +12,7 @@ export class VideosController {
     return this.videos.getVideos();
   }
 
+  @Public()
   @Get("videos/proxy/:key(*)")
   @Header("Cache-Control", "public, max-age=86400")
   async proxyVideo(@Param("key") key: string, @Res() res: Response) {
