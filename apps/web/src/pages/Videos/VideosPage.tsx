@@ -151,7 +151,7 @@ function VideoCard({ video, onSelect }: { video: VideoFile; onSelect: () => void
         {video.thumbnail_url ? (
           <img src={video.thumbnail_url} alt={video.filename} className={styles.thumb} />
         ) : (
-          <video src={`${video.url}#t=0.5`} className={styles.thumb} preload="metadata" muted playsInline />
+          <video src={`${video.url}#t=0.5`} className={styles.thumb} preload="auto" muted playsInline crossOrigin="anonymous" />
         )}
         <div className={styles.playOverlay}>▶</div>
         <span
