@@ -177,7 +177,11 @@ export class VideosService {
   /** Map raw JSON from MinIO into VideoFile metadata fields */
   private applyMeta(video: VideoFile, data: Record<string, unknown>): void {
     // Если JSON-метаданные найдены — видео обработано
-    video.status = this.str(data.status) ?? "published";
+    const rawStatus = this.str(data.status);
+    video.status =
+      rawStatus === "queued" || rawStatus === "published" || rawStatus === "rejected"
+        ? rawStatus
+        : "published";
 
     if (video.source_service === "sportzavod") {
       video.title = this.str(data.title);
