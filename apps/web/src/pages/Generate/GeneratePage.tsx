@@ -1231,45 +1231,47 @@ export function GeneratePage() {
               {amChoruses.length > 0 && (() => {
                 const selected = amChoruses.find((c) => c.id === amSelectedChorus);
                 return (
-                  <div className={styles.card} style={{ position: "relative" }}>
+                  <div className={styles.card}>
                     <div className={styles.cardTitle}>Припев</div>
                     <button
                       className={styles.input}
-                      onClick={() => setAmChorusOpen?.(!amChorusOpen)}
+                      onClick={() => setAmChorusOpen(!amChorusOpen)}
                       style={{
                         width: "100%", textAlign: "left", cursor: "pointer",
                         color: selected ? "#fff" : "#666", display: "flex",
                         justifyContent: "space-between", alignItems: "center",
+                        background: "#0a0a0a", border: "1px solid #333", borderRadius: 6,
+                        padding: "10px 14px",
                       }}
                     >
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {selected ? selected.name : "Выберите припев..."}
                       </span>
-                      <span style={{ color: "#666", fontSize: 11 }}>{amChorusOpen ? "\u25B2" : "\u25BC"}</span>
+                      <span style={{ color: "#555", fontSize: 10, marginLeft: 8 }}>{amChorusOpen ? "\u25B2" : "\u25BC"}</span>
                     </button>
                     {amChorusOpen && (
                       <div style={{
-                        position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50,
-                        background: "#111", border: "1px solid #333", borderRadius: 8,
-                        maxHeight: 300, overflowY: "auto", marginTop: 4,
-                        boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+                        background: "#0d0d0d", border: "1px solid #333", borderRadius: 6,
+                        maxHeight: 250, overflowY: "auto", marginTop: 6,
                       }}>
-                        {amChoruses.map((ch) => (
-                          <div
-                            key={ch.id}
-                            onClick={() => { setAmSelectedChorus(ch.id); setAmChorusOpen?.(false); }}
-                            style={{
-                              padding: "10px 14px", cursor: "pointer",
-                              borderBottom: "1px solid #222",
-                              background: ch.id === amSelectedChorus ? "rgba(0,200,220,0.1)" : "transparent",
-                            }}
-                            onMouseEnter={(e) => { (e.target as HTMLElement).style.background = "rgba(0,200,220,0.06)"; }}
-                            onMouseLeave={(e) => { (e.target as HTMLElement).style.background = ch.id === amSelectedChorus ? "rgba(0,200,220,0.1)" : "transparent"; }}
-                          >
-                            <div style={{ color: "#ccc", fontSize: 13 }}>{ch.name}</div>
-                            <div style={{ color: "#666", fontSize: 11, marginTop: 2 }}>{ch.variant}</div>
-                          </div>
-                        ))}
+                        {amChoruses.map((ch) => {
+                          const isActive = ch.id === amSelectedChorus;
+                          return (
+                            <div
+                              key={ch.id}
+                              onClick={() => { setAmSelectedChorus(ch.id); setAmChorusOpen(false); }}
+                              style={{
+                                padding: "10px 14px", cursor: "pointer",
+                                borderBottom: "1px solid #1a1a1a",
+                                background: isActive ? "rgba(0,200,220,0.1)" : "transparent",
+                                borderLeft: isActive ? "3px solid #00c8dc" : "3px solid transparent",
+                              }}
+                            >
+                              <div style={{ color: isActive ? "#fff" : "#bbb", fontSize: 13 }}>{ch.name}</div>
+                              <div style={{ color: "#555", fontSize: 11, marginTop: 2 }}>{ch.variant}</div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
