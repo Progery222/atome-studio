@@ -2,8 +2,9 @@ import { EMPTY_FARM_STATS, type FarmStats, type Service, STATUS_COLORS } from "@
 import { Injectable, Logger } from "@nestjs/common";
 
 /**
- * Farm Adapter (Orchestrator)
- * Checks Orchestrator health at :8001 and fetches farm stats.
+ * Farm Adapter (farm-relay)
+ * Checks relay health at /health and fetches farm stats via /api/devices.
+ * Relay API: GET /health → {ok,nodes,streams}, GET /api/devices → [{serial,model,status}]
  * Orbit index: 2 | Color: green (online) / red (offline)
  */
 @Injectable()
@@ -15,11 +16,12 @@ export class FarmAdapter {
     let status: Service["status"] = "offline";
 
     try {
-      const res = await fetch(`${this.baseUrl}/api/status`, {
+      const res = await fetch(`${this.baseUrl}/health`, {
         signal: AbortSignal.timeout(3000),
       });
       if (res.ok) {
-        status = "online";
+        const data = (await res.json()) as { ok?: boolean };
+        status = data.ok ? "online" : "degraded";
       } else {
         status = "degraded";
       }
@@ -36,33 +38,37 @@ export class FarmAdapter {
         oi: 2,
         a: Math.PI / 2,
         spd: 0.002,
-        activeJobs: 0, // Orchestrator handles queues, not 'jobs' in the same sense, or we could map active_jobs to it
+        activeJobs: 0,
       },
     ];
   }
 
   async fetchFarmStats(): Promise<FarmStats> {
     try {
-      const [statusRes, metricsRes] = await Promise.allSettled([
-        fetch(`${this.baseUrl}/api/status`, { signal: AbortSignal.timeout(3000) }),
-        fetch(`${this.baseUrl}/api/metrics`, { signal: AbortSignal.timeout(3000) }),
+      const [healthRes, devicesRes] = await Promise.allSettled([
+        fetch(`${this.baseUrl}/health`, { signal: AbortSignal.timeout(3000) }),
+        fetch(`${this.baseUrl}/api/devices`, { signal: AbortSignal.timeout(3000) }),
       ]);
 
       const stats: FarmStats = { ...EMPTY_FARM_STATS };
 
-      if (statusRes.status === "fulfilled" && statusRes.value.ok) {
-        const data = (await statusRes.value.json()) as Partial<FarmStats>;
-        stats.phones_online = data.phones_online ?? 0;
-        stats.phones_total = data.phones_total ?? 0;
+      if (healthRes.status === "fulfilled" && healthRes.value.ok) {
+        const data = (await healthRes.value.json()) as {
+          ok?: boolean;
+          nodes?: number;
+          streams?: number;
+        };
+        stats.phones_total = data.nodes ?? 0;
       }
 
-      if (metricsRes.status === "fulfilled" && metricsRes.value.ok) {
-        const data = (await metricsRes.value.json()) as Partial<FarmStats>;
-        stats.accounts_active = data.accounts_active ?? 0;
-        stats.accounts_total = data.accounts_total ?? 0;
-        stats.posts_today = data.posts_today ?? 0;
-        stats.active_jobs = data.active_jobs ?? 0;
-        stats.last_event = data.last_event;
+      if (devicesRes.status === "fulfilled" && devicesRes.value.ok) {
+        const devices = (await devicesRes.value.json()) as Array<{ status?: string }>;
+        if (Array.isArray(devices)) {
+          stats.phones_total = devices.length;
+          stats.phones_online = devices.filter(
+            (d) => d.status === "active" || d.status === "online"
+          ).length;
+        }
       }
 
       return stats;

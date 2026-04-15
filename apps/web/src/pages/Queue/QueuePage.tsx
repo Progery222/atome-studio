@@ -1,29 +1,9 @@
-import type { GenerationJob, QueueTask } from "@atome/shared";
-import { useEffect, useRef, useState } from "react";
+import type { QueueTask } from "@atome/shared";
+import { useEffect, useState } from "react";
 import { LOCALE_MAP, useT } from "../../i18n";
 import { useFarmStore } from "../../stores/farm";
 import { useLangStore } from "../../stores/lang";
 import styles from "./QueuePage.module.css";
-
-/** Плавный счётчик процентов — каждую секунду +1% пока не догонит target */
-function SmoothPercent({ target, done }: { target: number; done: boolean }) {
-  const [display, setDisplay] = useState(0);
-  const ref = useRef<ReturnType<typeof setInterval>>();
-
-  useEffect(() => {
-    if (done) { setDisplay(100); return; }
-    if (ref.current) clearInterval(ref.current);
-    ref.current = setInterval(() => {
-      setDisplay((prev) => {
-        if (prev >= target) return prev;
-        return Math.min(prev + 1, target);
-      });
-    }, 1000);
-    return () => { if (ref.current) clearInterval(ref.current); };
-  }, [target, done]);
-
-  return <>{display}%</>;
-}
 
 type Filter = "all" | "in_progress" | "scheduled" | "published" | "failed";
 
@@ -76,34 +56,12 @@ function Countdown({ task }: { task: QueueTask }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-function formatJobElapsed(job: GenerationJob): string {
-  const started = job.started_at ?? job.created_at;
-  if (!started) return "";
-  const ms = Date.now() - new Date(started).getTime();
-  if (ms < 0 || Number.isNaN(ms)) return "";
-  const sec = Math.floor(ms / 1000);
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
-}
-
-const JOB_STATUS_COLOR: Record<string, string> = {
-  running: "#00c8dc",
-  done: "#22c55e",
-  error: "#ef4444",
-  stopped: "#888",
-};
-
 export function QueuePage() {
   const queue = useFarmStore((s) => s.queue);
   const queueLoading = useFarmStore((s) => s.queueLoading);
   const fetchQueue = useFarmStore((s) => s.fetchQueue);
-  const activeJobs = useFarmStore((s) => s.activeJobs);
-  const fetchJobs = useFarmStore((s) => s.fetchJobs);
-  const stopJob = useFarmStore((s) => s.stopJob);
   const t = useT();
   const lang = useLangStore((s) => s.lang);
-  const agentmusicJobs = activeJobs.filter((j) => j.service === "agentmusic");
 
   const FILTER_LABELS: Record<Filter, string> = {
     all: t("queue_all"),
@@ -117,10 +75,9 @@ export function QueuePage() {
 
   useEffect(() => {
     fetchQueue();
-    fetchJobs();
-    const id = setInterval(() => { fetchQueue(); fetchJobs(); }, 5_000);
+    const id = setInterval(fetchQueue, 5_000);
     return () => clearInterval(id);
-  }, [fetchQueue, fetchJobs]);
+  }, [fetchQueue]);
 
   const filtered = filter === "all" ? queue : queue.filter((item) => item.status === filter);
 
@@ -164,62 +121,6 @@ export function QueuePage() {
           {t("queue_refresh")}
         </button>
       </header>
-
-      {/* agentMUSIC Generation Jobs */}
-      {agentmusicJobs.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ color: "#00c8dc", fontSize: 13, fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
-            agentMUSIC
-          </div>
-          {agentmusicJobs.map((job) => (
-            <div
-              key={job.job_id}
-              style={{
-                background: "#111",
-                border: "1px solid #222",
-                borderRadius: 8,
-                padding: "12px 16px",
-                marginBottom: 8,
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              <span
-                style={{
-                  width: 8, height: 8, borderRadius: "50%",
-                  background: JOB_STATUS_COLOR[job.status] ?? "#888",
-                  boxShadow: job.status === "running" ? `0 0 8px ${JOB_STATUS_COLOR.running}` : "none",
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: "#ccc", fontSize: 13 }}>
-                  {job.job_id.slice(0, 8)} — {job.current_message || job.current_phase || job.status}
-                </div>
-                <div style={{ color: "#666", fontSize: 11, marginTop: 2 }}>
-                  {job.progress}/{job.total} videos — {formatJobElapsed(job)}
-                </div>
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: JOB_STATUS_COLOR[job.status] ?? "#888", minWidth: 40, textAlign: "right" }}>
-                <SmoothPercent target={job.percent ?? 0} done={job.status === "done"} />
-              </div>
-              {job.status === "running" && (
-                <button
-                  onClick={() => stopJob(job.job_id)}
-                  style={{
-                    background: "transparent", border: "1px solid #444",
-                    color: "#ef4444", borderRadius: 4, padding: "4px 10px",
-                    fontSize: 11, cursor: "pointer",
-                  }}
-                >
-                  STOP
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Filters */}
       <div className={styles.filters}>

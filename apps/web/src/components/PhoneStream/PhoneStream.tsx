@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import { NAL_TYPE, parseNalUnits, spsToCodecString } from "./h264-parser";
 
+const MAX_DECODE_QUEUE = 3;
+
 interface PhoneStreamProps {
   serial: string;
   host?: string;
@@ -21,11 +23,15 @@ export function PhoneStream({
   onStatus,
 }: PhoneStreamProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const decoderRef = useRef<VideoDecoder | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const tsRef = useRef<number>(0);
   const gotKeyRef = useRef<boolean>(false);
   const mountedRef = useRef(true);
+  const codecRef = useRef<string>("");
+  const pendingFrameRef = useRef<VideoFrame | null>(null);
+  const rafRef = useRef<number>(0);
   const dragRef = useRef<{ startX: number; startY: number; startTime: number } | null>(null);
   const phoneRes = useRef({ w: 720, h: 1600 });
 
@@ -35,27 +41,32 @@ export function PhoneStream({
       window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
     if (isDev) return `ws://localhost:${port}/ws/stream/${serial}`;
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${proto}//${window.location.host}/relay/ws/stream/${serial}`;
+    return `${proto}//${window.location.host}/relay/ws/${serial}`;
   })();
 
-  const drawFrame = useCallback(
-    (frame: VideoFrame) => {
+  // Fix #2: render loop via requestAnimationFrame instead of sync drawImage
+  const renderLoop = useCallback(() => {
+    const frame = pendingFrameRef.current;
+    if (frame) {
+      pendingFrameRef.current = null;
       const canvas = canvasRef.current;
-      if (!canvas) {
-        frame.close();
-        return;
+      if (canvas) {
+        if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
+          canvas.width = frame.displayWidth;
+          canvas.height = frame.displayHeight;
+          // Fix #3: cache context, re-acquire only on resize
+          ctxRef.current = canvas.getContext("2d");
+        }
+        phoneRes.current = { w: frame.displayWidth, h: frame.displayHeight };
+        ctxRef.current?.drawImage(frame, 0, 0);
+        onStatus?.("streaming");
       }
-      if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
-        canvas.width = frame.displayWidth;
-        canvas.height = frame.displayHeight;
-      }
-      phoneRes.current = { w: frame.displayWidth, h: frame.displayHeight };
-      canvas.getContext("2d")?.drawImage(frame, 0, 0);
       frame.close();
-      onStatus?.("streaming");
-    },
-    [onStatus]
-  );
+    }
+    if (mountedRef.current) {
+      rafRef.current = requestAnimationFrame(renderLoop);
+    }
+  }, [onStatus]);
 
   const initDecoder = useCallback(
     (codec: string) => {
@@ -63,11 +74,17 @@ export function PhoneStream({
         decoderRef.current?.close();
       } catch {}
       gotKeyRef.current = false;
+      codecRef.current = codec;
 
       if (typeof VideoDecoder === "undefined") return;
 
       const decoder = new VideoDecoder({
-        output: drawFrame,
+        // Fix #2: decoder output goes to pending frame ref, not direct draw
+        output: (frame) => {
+          // drop previous undisplayed frame to avoid memory buildup
+          pendingFrameRef.current?.close();
+          pendingFrameRef.current = frame;
+        },
         error: (e) => {
           console.warn("[PhoneStream] decoder error:", e);
           if (mountedRef.current) setTimeout(() => initDecoder(codec), 300);
@@ -85,7 +102,7 @@ export function PhoneStream({
         console.warn("[PhoneStream] configure failed:", e);
       }
     },
-    [drawFrame]
+    [],
   );
 
   const sendCommand = useCallback((cmd: Record<string, unknown>) => {
@@ -97,8 +114,16 @@ export function PhoneStream({
     mountedRef.current = true;
     tsRef.current = 0;
 
+    // Fix #3: cache canvas context once
+    if (canvasRef.current) {
+      ctxRef.current = canvasRef.current.getContext("2d");
+    }
+
     // Init decoder with baseline fallback codec
     initDecoder("avc1.42E01E");
+
+    // Start render loop
+    rafRef.current = requestAnimationFrame(renderLoop);
 
     onStatus?.("connecting");
     const ws = new WebSocket(relayWsUrl);
@@ -126,8 +151,8 @@ export function PhoneStream({
         }
       }
 
-      // On keyframe: reinit decoder with correct codec if needed
-      if (hasIDR && detectedCodec) {
+      // Fix #1: only reinit decoder if codec string actually changed
+      if (hasIDR && detectedCodec && detectedCodec !== codecRef.current) {
         initDecoder(detectedCodec);
         gotKeyRef.current = true;
       } else if (hasIDR) {
@@ -140,6 +165,9 @@ export function PhoneStream({
       const decoder = decoderRef.current;
       if (!decoder || decoder.state !== "configured") return;
 
+      // Fix #4: drop frames if decode queue is backed up
+      if (decoder.decodeQueueSize > MAX_DECODE_QUEUE) return;
+
       try {
         decoder.decode(
           new EncodedVideoChunk({
@@ -148,7 +176,8 @@ export function PhoneStream({
             data: event.data,
           })
         );
-        tsRef.current += 33333;
+        // Fix #5: 66666μs (~15fps) matches real videorecorder FPS
+        tsRef.current += 66666;
       } catch (e) {
         console.warn("[PhoneStream] decode error:", e);
         if (detectedCodec) initDecoder(detectedCodec);
@@ -160,11 +189,8 @@ export function PhoneStream({
       onStatus?.("closed");
       if (mountedRef.current) {
         const t = setTimeout(() => {
-          // reconnect handled by re-running this effect via serial change
-          // simple reconnect:
           if (mountedRef.current && wsRef.current === ws) {
             wsRef.current = null;
-            // trigger reconnect by re-running effect (no-op, just close cleanup)
           }
         }, 100);
         return () => clearTimeout(t);
@@ -178,19 +204,18 @@ export function PhoneStream({
 
     return () => {
       mountedRef.current = false;
+      cancelAnimationFrame(rafRef.current);
       ws.onclose = null;
       ws.close();
       wsRef.current = null;
+      pendingFrameRef.current?.close();
+      pendingFrameRef.current = null;
       try {
         decoderRef.current?.close();
       } catch {}
       decoderRef.current = null;
     };
-  }, [
-    relayWsUrl,
-    onStatus, // Init decoder with baseline fallback codec
-    initDecoder,
-  ]);
+  }, [relayWsUrl, onStatus, initDecoder, renderLoop]);
 
   const toPhoneCoords = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;

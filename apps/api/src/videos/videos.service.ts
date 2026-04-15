@@ -26,7 +26,11 @@ export class VideosService {
       this.getMinioVideos(),
       this.getStreamCutVideos(),
     ]);
-    return [...minioVideos, ...scVideos];
+    // Deduplicate: MinIO is source of truth for done StreamCut jobs;
+    // scVideos fills in jobs not yet in MinIO (e.g. just completed)
+    const minioFilenames = new Set(minioVideos.map((v) => v.filename));
+    const uniqueScVideos = scVideos.filter((v) => !minioFilenames.has(v.filename));
+    return [...minioVideos, ...uniqueScVideos];
   }
 
   private async getMinioVideos(): Promise<VideoFile[]> {
@@ -110,7 +114,9 @@ export class VideosService {
         ? "agentmusic"
         : key.includes("sportzavod")
           ? "sportzavod"
-          : "contentzavod";
+          : key.includes("streamcut")
+            ? "streamcut"
+            : "contentzavod";
 
       videos.push({
         filename: key,
@@ -166,7 +172,11 @@ export class VideosService {
    */
   private resolveJsonKey(video: VideoFile): string | null {
     const key = video.filename;
-    if (video.source_service === "sportzavod" || video.source_service === "agentmusic") {
+    if (
+      video.source_service === "sportzavod" ||
+      video.source_service === "agentmusic" ||
+      video.source_service === "streamcut"
+    ) {
       return key.replace(/\.mp4$/i, ".json");
     }
     // content-zavod: {account_id}/{date}/{topic_slug}/{title_slug}.mp4
@@ -188,8 +198,8 @@ export class VideosService {
       video.description = this.str(data.description);
       video.caption = this.str(data.caption);
       video.hashtags = this.strArr(data.hashtags);
-    } else if (video.source_service === "agentmusic") {
-      // agentmusic: flat JSON with title, description, hashtags
+    } else if (video.source_service === "agentmusic" || video.source_service === "streamcut") {
+      // flat JSON with title, description, hashtags
       video.title = this.str(data.title);
       video.description = this.str(data.description);
       video.hashtags = this.strArr(data.hashtags);

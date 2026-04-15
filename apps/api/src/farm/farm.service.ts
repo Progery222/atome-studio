@@ -36,11 +36,30 @@ export class FarmService {
   }
 
   getPhones(): Promise<Phone[]> {
-    return this.get<Phone[]>("/api/devices").then((r) => r ?? []);
+    return this.get<Array<Record<string, unknown>>>("/api/devices").then((r) =>
+      (r ?? []).map((d) => this.normalizePhone(d))
+    );
   }
 
   getPhone(id: string): Promise<Phone | null> {
-    return this.get<Phone>(`/api/devices/${id}`);
+    return this.get<Record<string, unknown>>(`/api/devices/${id}`).then((d) =>
+      d ? this.normalizePhone(d) : null
+    );
+  }
+
+  private normalizePhone(d: Record<string, unknown>): Phone {
+    const serial = String(d.serial ?? d.phone_id ?? "");
+    const isActive = d.status === "active" || d.status === "online";
+    return {
+      phone_id: String(d.phone_id ?? d.serial ?? ""),
+      serial,
+      status: isActive ? "online" : "offline",
+      warmup_day: Number(d.warmup_day ?? 0),
+      health_score: d.health_score != null ? Number(d.health_score) : isActive ? 100 : 0,
+      accounts: Array.isArray(d.accounts) ? (d.accounts as Phone["accounts"]) : [],
+      adb_connected: Boolean(d.adb_connected ?? false),
+      node_id: String(d.node ?? d.node_id ?? ""),
+    } as unknown as Phone;
   }
 
   pausePhone(id: string): Promise<{ ok: boolean }> {
