@@ -89,6 +89,7 @@ videos/                 ← VideosService (S3 XML API к MinIO), GET /api/videos
 clients/                ← CRUD клиентов (super_admin only)
 metrics/                ← MetricsService, GET /api/metrics/history — читает из GenerationJobLog (Postgres), группирует по дням/часам; возвращает videos + jobs_completed из реальных данных; revenue/cost/accounts_active = 0 (нет источника)
 streamcut/              ← StreamCutModule — прокси к StreamCut (FastAPI); сервис-аккаунт авторизация; endpoints: GET /api/streamcut/video-info, POST /api/streamcut/jobs, GET /api/streamcut/jobs, GET /api/streamcut/jobs/:id, DELETE /api/streamcut/jobs/:id, GET /api/streamcut/footage-categories; поллит джобы каждые 5с и эмитит FarmEvent через EventsGateway
+autonomy/               ← AutonomyModule — прокси к Orchestrator (FastAPI :8001); без авторизации (orchestrator не требует токена); envelope unwrap через getList() — orchestrator отдаёт {sessions:[]} / {goals:[]} / {events:[]} / {recoveries:[]} / {global_goals:[]}; endpoints: GET|POST /api/autonomy/sessions[/:serial[/pause|/resume|/terminate]], GET /api/autonomy/actions/:serial/recent, GET /api/autonomy/observations/:serial/recent, GET /api/autonomy/anomaly/events, GET /api/autonomy/recoveries/recent, GET|POST /api/goals, GET /api/goals/:serial/current, GET|POST /api/global_goals; URL из process.env.AUTONOMY_URL (не ORCHESTRATOR_URL — тот указывает на farm-relay :8800)
 ```
 
 ### Frontend (`apps/web/src/`)
@@ -98,14 +99,18 @@ stores/
   farm.ts               ← Phone[], Account[], QueueTask[], WS events; sportzavodThemes: SportZavodTheme[]; fetchSportzavodThemes(); stopAllJobs(); fetchJobs пушит synthetic ActivityEvent (job progress/done/error) когда wsConnected=false; при пустом ответе API activeJobs=[] (не mock — mock только при сетевой ошибке И пустом списке)
   metrics.ts            ← kpis: HeroKPI, fetchKPIs(); demoMode toggle
   streamcut.ts          ← StreamCut store: jobs, videoInfo, footageCategories; CRUD через apiFetch к /api/streamcut/*; поллинг каждые 5с
+  autonomy.ts           ← Phone Autonomy store: sessionsBySerial (Record<serial, AutonomySessionDetail>), sessionsList, phoneGoals, globalGoals, anomalies, recoveries; CRUD через apiFetch к /api/autonomy/*, /api/goals, /api/global_goals; fetchAllSessions гидратирует sessionsBySerial (session без last_* полей — detail фетчится отдельно в AutonomyPage)
   analyticsExtra.ts     ← Performance Analytics store: accountStats, topVideos, trafficSources, conversionHistory, kpis (total_views/avg_views/link_clicks/conversion_rate), generationStats: GenerationStats, costReport: GenerationCostReport|null; fetchGenerationStats() → GET /api/jobs/stats; fetchCostStats() → GET /api/jobs/cost-stats; generateDemo(period) включает demo costReport; оба fetch вызываются каждые 30с
   activity.ts           ← кольцевой буфер ActivityEvent (max 50)
   auth.ts               ← useAuthStore — JWT token, user, login/logout
   lang.ts               ← useLangStore — текущий язык (ru/en/zh/es)
 i18n/
   index.ts              ← ~300 ключей, 4 локали; useT() хук; getT() для не-React кода; LOCALE_MAP; analytics_gen_speed/analytics_gen_jobs/analytics_gen_no_data — ключи для блока Generation Speed на Analytics
+hooks/
+  useAutonomyPolling.ts ← useAutonomyPolling(intervalMs=3000, activeOnly=false) — поллит fetchAllSessions; используется в PhoneGridPage и AutonomyPage
 components/
   AtomicCanvas/         ← Three.js галактика; getGalaxyServices() возвращает переведённые данные
+  AutonomyBadge/        ← StateBadge / SeverityBadge / GoalKindBadge / SeverityDot — переиспользуются на карточках PhoneGrid и в таблицах Autonomy/Anomalies; цвета state: observing=#60a5fa, planning=#a78bfa, acting=#22c55e, validating=#00d2ff, recovering/paused=#fbbf24, idle/terminated=#6b7280; severity: low=#6b7280, medium=#fbbf24, high=#ff6b6b, critical=#ef4444
   HeroKPIs/             ← 5 KPI-карточек с count-up, фиксированная высота 90px; адаптивный размер: 82px @<1200px, 72px @<900px (clamp font-size)
   ActivityFeed/         ← скролл-лог событий; иконки: ✓published ✗banned !error ▶job_started ●job_complete ■job_stopped ↑service_online ↓service_offline
   PlanetPanel/          ← панель при клике на планету
@@ -120,6 +125,10 @@ pages/
   Analytics ← 3 секции: основные KPI + графики; Performance секция с views/clicks/traffic/leaderboards; **Cost Analytics** секция — KPI (total_spent/per-service/avg_per_video) + donut (cost by service) + bar (avg $/video by service); данные из analyticsExtra.costReport, demo-aware
   Videos ← toolbar в header: сортировка (date_new/date_old/account), фильтры (service/account/status), текстовый поиск (title+caption+description+hashtags+account_id), toggle группировки по дате (groupByDate); subtitle показывает N/total; все фильтры — локальный state + useMemo pipeline на фронте
   StreamCut ← /streamcut — two-column layout: левая — ввод URL + опции (язык, max_shorts, caption_style, reframe_mode, music) + кнопка; правая — список джобов с прогрессом по шагам (download→transcribe→analyze→cut→render) + галерея шортсов при завершении
+  PhoneGrid ← /phone-grid — сетка карточек с WebCodecs H264 стримом через `<PhoneStream>` (WS /relay/ws/:serial → VideoDecoder); overlay снизу (serial + status), overlay сверху (StateBadge + SeverityDot если < 5 мин); клик — focus overlay с увеличенным стримом; автономные данные из useAutonomyStore.sessionsBySerial, обновляются через useAutonomyPolling(3000)
+  Autonomy ← /autonomy — two-column: левая — таблица всех сессий (serial, state badge, last action ✓/✗, last anomaly severity); правая — detail выбранной сессии: StateBadge + pause_reason, кнопки Pause/Resume/Terminate (disabled зависит от state), секция "Last 50 actions" (таблица ts/type/result/duration), секция "Last 20 observations" (ts + screen_summary); поллит fetchSession + fetchActions + fetchObservations каждые 3с
+  Goals ← /goals — tabs Phone goals / Global goals; Phone: форма (серийник select из useFarmStore.phones, kind dropdown, priority 0-10) + фильтр-чипы по status + таблица; Global: форма (kind + PhoneSelector поля serials/shard/count/status) + таблица; поллинг 10с
+  Anomalies ← /anomalies — filter bar (severity multi-chip, signature_id search, time range 1h/24h/7d — передаётся в fetchAnomalies как since=ISO); основная таблица аномалий + секция "Recent recoveries"; поллинг 10с
 ```
 
 ---
@@ -155,6 +164,27 @@ POST /api/accounts                    → создать аккаунт
 GET  /api/metrics                     → метрики
 WS   /ws/events                       → real-time события
 ```
+
+### Dashboard API → Orchestrator (autonomy) `AUTONOMY_URL=:8001`
+Отдельная env-переменная `AUTONOMY_URL` (дефолт `http://localhost:8001`). ORCHESTRATOR_URL=:8800 указывает на farm-relay, не путать. Все list-эндпоинты возвращают envelope-объект — `AutonomyService.getList()` распаковывает:
+```
+GET  /api/autonomy/sessions            → {sessions: PhoneAutonomySession[]}
+GET  /api/autonomy/sessions/:serial    → AutonomySessionDetail {session, last_observation?, last_action?, last_anomaly?}
+POST /api/autonomy/sessions/:serial/pause
+POST /api/autonomy/sessions/:serial/resume
+POST /api/autonomy/sessions/:serial/terminate
+GET  /api/autonomy/actions/:serial/recent?limit=50      → {actions: PhoneActionExecution[]}
+GET  /api/autonomy/observations/:serial/recent?limit=20 → {observations: PhoneObservation[]}
+GET  /api/autonomy/anomaly/events?severity=&signature_id=&since= → {events: PhoneAnomalyEvent[]}
+GET  /api/autonomy/recoveries/recent   → {recoveries: PhoneRecoveryAttempt[]}
+GET  /api/goals?status=&serial=        → {goals: PhoneGoal[]}
+GET  /api/goals/:serial/current        → PhoneGoal
+POST /api/goals                        → {serial, kind, params?, priority?} → PhoneGoal
+GET  /api/global_goals                 → {global_goals: GlobalGoal[]}
+POST /api/global_goals                 → {kind, phone_selector: {serials?|shard?|count?|status?}, params?} → GlobalGoal
+```
+
+Human override: существующий POST /api/input/:serial (на farm-relay) — тап/свайп по телефону в PhoneGridPage автоматически ставит autonomy-сессию в `paused` с `pause_reason=human` (обрабатывается оркестратором, фронту ничего не надо делать — после следующего polling session придёт с новым state).
 
 ### Dashboard API → SportZavod `:8000`
 ```
@@ -214,6 +244,20 @@ GET  /footage/categories              → категории B-roll футажа
 - `StreamCutShort` — готовый шортс (filename, url, title, duration, score)
 - `StreamCutJob` — задача нарезки (job_id, status, message, progress, steps[], shorts[], error, source_url)
 - `StreamCutVideoInfo` — метаданные видео (title, duration, thumbnail, uploader)
+- `AutonomyState` — `"idle" | "observing" | "planning" | "acting" | "validating" | "recovering" | "paused" | "terminated"`
+- `AutonomyPauseReason` — `"human" | "anomaly" | "manual" | null`
+- `GoalKind` — `"browse_fyp" | "warmup_day_1" | "publish_video" | "recover_from_ban"`
+- `GoalStatus` — `"pending" | "active" | "completed" | "failed" | "cancelled"`
+- `AnomalySeverity` — `"low" | "medium" | "high" | "critical"`
+- `PhoneAutonomySession` — состояние автономии телефона (serial, state, active_goal_id, pause_reason, started_at, updated_at)
+- `PhoneObservation` — снимок экрана/состояния (id, serial, ts, screen_summary?, raw?)
+- `PhoneActionExecution` — выполненное действие (id, serial, ts, action_type, ok, error?, duration_ms?)
+- `PhoneAnomalyEvent` — аномалия (id, serial, ts, signature_id, severity, message?, resolved)
+- `PhoneRecoveryAttempt` — попытка восстановления (id, serial, ts, strategy, anomaly_id?, success, details?)
+- `PhoneGoal` — цель для конкретного телефона (goal_id, serial, kind, status, priority, params?, progress?, created_at, updated_at)
+- `PhoneSelector` — `{serials?, shard?, count?, status?}` — селектор для GlobalGoal
+- `GlobalGoal` — глобальная цель (goal_id, kind, phone_selector, params?, status, created_at)
+- `AutonomySessionDetail` — `{session, last_observation?, last_action?, last_anomaly?}` — detail карточки
 
 ---
 

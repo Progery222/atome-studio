@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { NAL_TYPE, parseNalUnits, spsToCodecString } from "./h264-parser";
 
 const MAX_DECODE_QUEUE = 3;
+const WS_RECONNECT_DELAY = 2000;
 
 interface PhoneStreamProps {
   serial: string;
@@ -32,6 +33,9 @@ export function PhoneStream({
   const codecRef = useRef<string>("");
   const pendingFrameRef = useRef<VideoFrame | null>(null);
   const rafRef = useRef<number>(0);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onStatusRef = useRef(onStatus);
+  onStatusRef.current = onStatus;
   const dragRef = useRef<{ startX: number; startY: number; startTime: number } | null>(null);
   const phoneRes = useRef({ w: 720, h: 1600 });
 
@@ -44,7 +48,6 @@ export function PhoneStream({
     return `${proto}//${window.location.host}/relay/ws/${serial}`;
   })();
 
-  // Fix #2: render loop via requestAnimationFrame instead of sync drawImage
   const renderLoop = useCallback(() => {
     const frame = pendingFrameRef.current;
     if (frame) {
@@ -54,19 +57,18 @@ export function PhoneStream({
         if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
           canvas.width = frame.displayWidth;
           canvas.height = frame.displayHeight;
-          // Fix #3: cache context, re-acquire only on resize
           ctxRef.current = canvas.getContext("2d");
         }
         phoneRes.current = { w: frame.displayWidth, h: frame.displayHeight };
         ctxRef.current?.drawImage(frame, 0, 0);
-        onStatus?.("streaming");
+        onStatusRef.current?.("streaming");
       }
       frame.close();
     }
     if (mountedRef.current) {
       rafRef.current = requestAnimationFrame(renderLoop);
     }
-  }, [onStatus]);
+  }, []);
 
   const initDecoder = useCallback(
     (codec: string) => {
@@ -79,15 +81,15 @@ export function PhoneStream({
       if (typeof VideoDecoder === "undefined") return;
 
       const decoder = new VideoDecoder({
-        // Fix #2: decoder output goes to pending frame ref, not direct draw
         output: (frame) => {
-          // drop previous undisplayed frame to avoid memory buildup
           pendingFrameRef.current?.close();
           pendingFrameRef.current = frame;
         },
-        error: (e) => {
-          console.warn("[PhoneStream] decoder error:", e);
-          if (mountedRef.current) setTimeout(() => initDecoder(codec), 300);
+        error: () => {
+          // Null out broken decoder — next SPS+IDR will recreate it
+          decoderRef.current = null;
+          codecRef.current = "";
+          gotKeyRef.current = false;
         },
       });
 
@@ -98,9 +100,7 @@ export function PhoneStream({
           optimizeForLatency: true,
         });
         decoderRef.current = decoder;
-      } catch (e) {
-        console.warn("[PhoneStream] configure failed:", e);
-      }
+      } catch {}
     },
     [],
   );
@@ -114,99 +114,102 @@ export function PhoneStream({
     mountedRef.current = true;
     tsRef.current = 0;
 
-    // Fix #3: cache canvas context once
     if (canvasRef.current) {
       ctxRef.current = canvasRef.current.getContext("2d");
     }
 
-    // Init decoder with baseline fallback codec
     initDecoder("avc1.42E01E");
-
-    // Start render loop
     rafRef.current = requestAnimationFrame(renderLoop);
 
-    onStatus?.("connecting");
-    const ws = new WebSocket(relayWsUrl);
-    ws.binaryType = "arraybuffer";
-    wsRef.current = ws;
+    function connect() {
+      if (!mountedRef.current) return;
+      console.log("[PhoneStream]", serial, "connecting to", relayWsUrl);
 
-    ws.onopen = () => {
-      onStatus?.("connected");
-    };
+      onStatusRef.current?.("connecting");
+      const ws = new WebSocket(relayWsUrl);
+      ws.binaryType = "arraybuffer";
+      wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      if (!(event.data instanceof ArrayBuffer)) return;
+      ws.onopen = () => {
+        console.log("[PhoneStream]", serial, "WS open");
+        onStatusRef.current?.("connected");
+      };
 
-      const data = new Uint8Array(event.data);
-      const nals = parseNalUnits(data);
-      let hasIDR = false;
-      let detectedCodec: string | null = null;
+      let msgCount = 0;
+      ws.onmessage = (event) => {
+        if (!(event.data instanceof ArrayBuffer)) return;
+        msgCount++;
+        if (msgCount <= 3) console.log("[PhoneStream]", serial, "msg", msgCount, "bytes:", event.data.byteLength);
 
-      for (const nal of nals) {
-        if (nal.type === NAL_TYPE.SPS) {
-          detectedCodec = spsToCodecString(nal.data);
-        }
-        if (nal.type === NAL_TYPE.IDR) {
-          hasIDR = true;
-        }
-      }
+        const data = new Uint8Array(event.data);
+        const nals = parseNalUnits(data);
+        let hasIDR = false;
+        let detectedCodec: string | null = null;
 
-      // Fix #1: only reinit decoder if codec string actually changed
-      if (hasIDR && detectedCodec && detectedCodec !== codecRef.current) {
-        initDecoder(detectedCodec);
-        gotKeyRef.current = true;
-      } else if (hasIDR) {
-        gotKeyRef.current = true;
-      }
-
-      // Skip delta frames before first keyframe
-      if (!hasIDR && !gotKeyRef.current) return;
-
-      const decoder = decoderRef.current;
-      if (!decoder || decoder.state !== "configured") return;
-
-      // Fix #4: drop frames if decode queue is backed up
-      if (decoder.decodeQueueSize > MAX_DECODE_QUEUE) return;
-
-      try {
-        decoder.decode(
-          new EncodedVideoChunk({
-            type: hasIDR ? "key" : "delta",
-            timestamp: tsRef.current,
-            data: event.data,
-          })
-        );
-        // Fix #5: 66666μs (~15fps) matches real videorecorder FPS
-        tsRef.current += 66666;
-      } catch (e) {
-        console.warn("[PhoneStream] decode error:", e);
-        if (detectedCodec) initDecoder(detectedCodec);
-        else initDecoder("avc1.42E01E");
-      }
-    };
-
-    ws.onclose = () => {
-      onStatus?.("closed");
-      if (mountedRef.current) {
-        const t = setTimeout(() => {
-          if (mountedRef.current && wsRef.current === ws) {
-            wsRef.current = null;
+        for (const nal of nals) {
+          if (nal.type === NAL_TYPE.SPS) {
+            detectedCodec = spsToCodecString(nal.data);
           }
-        }, 100);
-        return () => clearTimeout(t);
-      }
-    };
+          if (nal.type === NAL_TYPE.IDR) {
+            hasIDR = true;
+          }
+        }
 
-    ws.onerror = () => {
-      onStatus?.("error");
-      ws.close();
-    };
+        if (hasIDR && detectedCodec && detectedCodec !== codecRef.current) {
+          initDecoder(detectedCodec);
+          gotKeyRef.current = true;
+        } else if (hasIDR) {
+          gotKeyRef.current = true;
+        }
+
+        if (!hasIDR && !gotKeyRef.current) return;
+
+        const decoder = decoderRef.current;
+        if (!decoder || decoder.state !== "configured") return;
+        if (decoder.decodeQueueSize > MAX_DECODE_QUEUE) return;
+
+        try {
+          decoder.decode(
+            new EncodedVideoChunk({
+              type: hasIDR ? "key" : "delta",
+              timestamp: tsRef.current,
+              data: event.data,
+            })
+          );
+          tsRef.current += 66666;
+        } catch {
+          decoderRef.current = null;
+          codecRef.current = "";
+          gotKeyRef.current = false;
+        }
+      };
+
+      ws.onclose = (ev) => {
+        console.log("[PhoneStream]", serial, "WS closed, code:", ev.code, "reason:", ev.reason);
+        onStatusRef.current?.("closed");
+        if (mountedRef.current) {
+          reconnectTimer.current = setTimeout(connect, WS_RECONNECT_DELAY);
+        }
+      };
+
+      ws.onerror = (ev) => {
+        console.warn("[PhoneStream]", serial, "WS error", ev);
+        onStatusRef.current?.("error");
+        ws.close();
+      };
+    }
+
+    connect();
 
     return () => {
       mountedRef.current = false;
       cancelAnimationFrame(rafRef.current);
-      ws.onclose = null;
-      ws.close();
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      const ws = wsRef.current;
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
       wsRef.current = null;
       pendingFrameRef.current?.close();
       pendingFrameRef.current = null;
@@ -215,7 +218,8 @@ export function PhoneStream({
       } catch {}
       decoderRef.current = null;
     };
-  }, [relayWsUrl, onStatus, initDecoder, renderLoop]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [relayWsUrl, initDecoder, renderLoop]);
 
   const toPhoneCoords = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;

@@ -1,19 +1,52 @@
-import { useEffect, useState } from "react";
-import { useFarmStore } from "../../stores/farm";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { GoalKindBadge, SeverityDot, StateBadge } from "../../components/AutonomyBadge";
 import { PhoneStream } from "../../components/PhoneStream/PhoneStream";
+import { useAutonomyPolling } from "../../hooks/useAutonomyPolling";
+import { useAutonomyStore } from "../../stores/autonomy";
+import { useFarmStore } from "../../stores/farm";
 import styles from "./PhoneGridPage.module.css";
+
+const ANOMALY_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+
+function isRecentAnomaly(ts?: string): boolean {
+  if (!ts) return false;
+  const age = Date.now() - new Date(ts).getTime();
+  return age >= 0 && age < ANOMALY_WINDOW_MS;
+}
 
 export function PhoneGridPage() {
   const phones = useFarmStore((s) => s.phones);
   const fetchPhones = useFarmStore((s) => s.fetchPhones);
+  const sessionsBySerial = useAutonomyStore((s) => s.sessionsBySerial);
   const [focusedSerial, setFocusedSerial] = useState<string | null>(null);
+  const streamingSetRef = useRef(new Set<string>());
   const [streamingCount, setStreamingCount] = useState(0);
+
+  useAutonomyPolling(3000);
 
   useEffect(() => {
     fetchPhones();
     const id = setInterval(fetchPhones, 15_000);
     return () => clearInterval(id);
   }, [fetchPhones]);
+
+  const handleStatus = useCallback(
+    (serial: string, s: "connecting" | "connected" | "streaming" | "error" | "closed") => {
+      const set = streamingSetRef.current;
+      if (s === "streaming") {
+        if (!set.has(serial)) {
+          set.add(serial);
+          setStreamingCount(set.size);
+        }
+      } else if (s === "closed" || s === "error") {
+        if (set.has(serial)) {
+          set.delete(serial);
+          setStreamingCount(set.size);
+        }
+      }
+    },
+    [],
+  );
 
   return (
     <div className={styles.page}>
@@ -32,6 +65,11 @@ export function PhoneGridPage() {
       <div className={styles.grid}>
         {phones.map((phone: any) => {
           const serial = phone.serial || phone.phone_id;
+          const detail = sessionsBySerial[serial];
+          const session = detail?.session;
+          const lastAnomaly = detail?.last_anomaly;
+          const showAnomaly = lastAnomaly && isRecentAnomaly(lastAnomaly.ts);
+
           return (
             <div
               key={serial}
@@ -41,12 +79,20 @@ export function PhoneGridPage() {
               <PhoneStream
                 serial={serial}
                 className={styles.screenImage}
-                onStatus={(s) => {
-                  if (s === "streaming") setStreamingCount((c) => c + 1);
-                  else if (s === "closed" || s === "error")
-                    setStreamingCount((c) => Math.max(0, c - 1));
-                }}
+                onStatus={(s) => handleStatus(serial, s)}
               />
+
+              {session && (
+                <div className={styles.cardAutonomy}>
+                  <StateBadge state={session.state} />
+                  {showAnomaly && (
+                    <span className={styles.cardAnomalyDot}>
+                      <SeverityDot severity={lastAnomaly.severity} />
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className={styles.cardOverlay}>
                 <span className={styles.cardSerial}>{serial.slice(-6)}</span>
                 <span
@@ -78,6 +124,32 @@ export function PhoneGridPage() {
             <button className={styles.focusClose} onClick={() => setFocusedSerial(null)}>
               ✕ Close
             </button>
+            {(() => {
+              const detail = sessionsBySerial[focusedSerial];
+              const goal = detail?.session?.active_goal_id;
+              const state = detail?.session?.state;
+              if (!state) return null;
+              return (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: -40,
+                    left: 180,
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "center",
+                  }}
+                >
+                  <StateBadge state={state} size="md" />
+                  {goal && (
+                    <GoalKindBadge
+                      kind={(detail?.last_action?.action_type as never) ?? "browse_fyp"}
+                      size="md"
+                    />
+                  )}
+                </div>
+              );
+            })()}
             <PhoneStream serial={focusedSerial} className={styles.focusScreen} />
           </div>
         </div>

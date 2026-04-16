@@ -3,6 +3,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { ScheduleModule } from "@nestjs/schedule";
 import { AuthModule } from "./auth/auth.module";
 import { JwtAuthGuard } from "./auth/jwt-auth.guard";
+import { AutonomyModule } from "./autonomy/autonomy.module";
 import { ClientsModule } from "./clients/clients.module";
 import { EventsModule } from "./events/events.module";
 import { FarmModule } from "./farm/farm.module";
@@ -32,6 +33,7 @@ import { AgentMusicModule } from "./agentmusic/agentmusic.module";
     ClientsModule,
     MetricsModule,
     AgentMusicModule,
+    AutonomyModule,
   ],
   providers: [
     // Apply JWT guard to every route globally; use @Public() to opt out

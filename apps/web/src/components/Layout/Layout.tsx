@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useT } from "../../i18n";
 import { useAuthStore } from "../../stores/auth";
+import { useAutonomyStore } from "../../stores/autonomy";
 import { useFarmStore } from "../../stores/farm";
 import { type Lang, useLangStore } from "../../stores/lang";
 import { useMetricsStore } from "../../stores/metrics";
@@ -58,6 +59,19 @@ export function Layout() {
   ).length;
   const generatingNow = activeJobs.filter((j) => j.status === "running").length;
 
+  const sessionsList = useAutonomyStore((s) => s.sessionsList);
+  const anomalies = useAutonomyStore((s) => s.anomalies);
+  const activeSessionsCount = sessionsList.filter(
+    (s) => s.state !== "idle" && s.state !== "terminated"
+  ).length;
+  const hourAgo = Date.now() - 60 * 60 * 1000;
+  const criticalAnomaliesCount = anomalies.filter(
+    (a) =>
+      (a.severity === "high" || a.severity === "critical") &&
+      new Date(a.ts).getTime() > hourAgo &&
+      !a.resolved
+  ).length;
+
   const NAV_ITEMS = [
     { path: "/phone-grid", label: "📺 Grid", badge: phones.length > 0 ? phonesOnline : null },
     { path: "/phones", label: t("nav_phones"), badge: null },
@@ -74,6 +88,17 @@ export function Layout() {
     { path: "/queue", label: t("nav_queue"), badge: queueActive > 0 ? queueActive : null },
     { path: "/videos", label: t("nav_videos"), badge: null },
     { path: "/analytics", label: t("nav_analytics"), badge: null },
+    {
+      path: "/autonomy",
+      label: t("nav_autonomy"),
+      badge: activeSessionsCount > 0 ? activeSessionsCount : null,
+    },
+    { path: "/goals", label: t("nav_goals"), badge: null },
+    {
+      path: "/anomalies",
+      label: t("nav_anomalies"),
+      badge: criticalAnomaliesCount > 0 ? criticalAnomaliesCount : null,
+    },
     ...(role === "super_admin" ? [{ path: "/clients", label: t("nav_clients"), badge: null }] : []),
     { path: "/settings", label: t("nav_settings"), badge: null },
   ];

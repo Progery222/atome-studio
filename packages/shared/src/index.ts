@@ -413,3 +413,105 @@ export interface Client {
   status: "active" | "inactive";
   created_at: string;
 }
+
+// ─── Phone Autonomy ───────────────────────────────────────────────────────────
+
+export type AutonomyState =
+  | "idle"
+  | "observing"
+  | "planning"
+  | "acting"
+  | "validating"
+  | "recovering"
+  | "paused"
+  | "terminated";
+
+export type AutonomyPauseReason = "human" | "anomaly" | "manual" | null;
+
+export type GoalKind = "browse_fyp" | "warmup_day_1" | "publish_video" | "recover_from_ban";
+
+export type GoalStatus = "pending" | "active" | "completed" | "failed" | "cancelled";
+
+export type AnomalySeverity = "low" | "medium" | "high" | "critical";
+
+export interface PhoneAutonomySession {
+  serial: string;
+  state: AutonomyState;
+  active_goal_id: string | null;
+  pause_reason: AutonomyPauseReason;
+  started_at: string;
+  updated_at: string;
+}
+
+export interface PhoneObservation {
+  id: string;
+  serial: string;
+  ts: string;
+  screen_summary?: string;
+  raw?: Record<string, unknown>;
+}
+
+export interface PhoneActionExecution {
+  id: string;
+  serial: string;
+  ts: string;
+  action_type: string;
+  ok: boolean;
+  error?: string;
+  duration_ms?: number;
+}
+
+export interface PhoneAnomalyEvent {
+  id: string;
+  serial: string;
+  ts: string;
+  signature_id: string;
+  severity: AnomalySeverity;
+  message?: string;
+  resolved: boolean;
+}
+
+export interface PhoneRecoveryAttempt {
+  id: string;
+  serial: string;
+  ts: string;
+  strategy: string;
+  anomaly_id?: string;
+  success: boolean;
+  details?: string;
+}
+
+export interface PhoneGoal {
+  goal_id: string;
+  serial: string;
+  kind: GoalKind;
+  status: GoalStatus;
+  priority: number;
+  params?: Record<string, unknown>;
+  progress?: { actions_done?: number; total?: number };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PhoneSelector {
+  serials?: string[];
+  shard?: string;
+  count?: number;
+  status?: string;
+}
+
+export interface GlobalGoal {
+  goal_id: string;
+  kind: GoalKind;
+  phone_selector: PhoneSelector;
+  params?: Record<string, unknown>;
+  status: GoalStatus;
+  created_at: string;
+}
+
+export interface AutonomySessionDetail {
+  session: PhoneAutonomySession;
+  last_observation?: PhoneObservation;
+  last_action?: PhoneActionExecution;
+  last_anomaly?: PhoneAnomalyEvent;
+}
