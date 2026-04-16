@@ -49,15 +49,26 @@ export class FarmService {
 
   private normalizePhone(d: Record<string, unknown>): Phone {
     const serial = String(d.serial ?? d.phone_id ?? "");
-    const isActive = d.status === "active" || d.status === "online";
+    const rawStatus = d.status;
+    const isActive = rawStatus === "active" || rawStatus === "online";
+    // Frontend `Phone["status"]` union: active|warmup|paused|offline|banned|error
+    let status: Phone["status"] = "offline";
+    if (isActive) status = "active";
+    else if (rawStatus === "warmup") status = "warmup";
+    else if (rawStatus === "paused") status = "paused";
+    else if (rawStatus === "banned") status = "banned";
+    else if (rawStatus === "error") status = "error";
     return {
       phone_id: String(d.phone_id ?? d.serial ?? ""),
       serial,
-      status: isActive ? "online" : "offline",
+      model: d.model ? String(d.model) : undefined,
+      status,
       warmup_day: Number(d.warmup_day ?? 0),
       health_score: d.health_score != null ? Number(d.health_score) : isActive ? 100 : 0,
       accounts: Array.isArray(d.accounts) ? (d.accounts as Phone["accounts"]) : [],
-      adb_connected: Boolean(d.adb_connected ?? false),
+      // Relay doesn't return adb_connected; if device is listed as active,
+      // that implies videorecorder has adb access — treat as connected.
+      adb_connected: d.adb_connected != null ? Boolean(d.adb_connected) : isActive,
       node_id: String(d.node ?? d.node_id ?? ""),
     } as unknown as Phone;
   }
