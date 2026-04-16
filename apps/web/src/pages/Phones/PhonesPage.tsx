@@ -4,6 +4,9 @@ import { Link } from "react-router-dom";
 import { useT } from "../../i18n";
 import { useAuthStore } from "../../stores/auth";
 import { useFarmStore } from "../../stores/farm";
+import { AnomaliesPage } from "../Anomalies/AnomaliesPage";
+import { AutonomyPage } from "../Autonomy/AutonomyPage";
+import { GoalsPage } from "../Goals/GoalsPage";
 import styles from "./PhonesPage.module.css";
 
 const STATUS_COLOR: Record<Phone["status"], string> = {
@@ -52,10 +55,8 @@ function PhoneCard({ phone }: { phone: Phone }) {
 
   return (
     <div className={styles.card}>
-      {/* ADB disconnected warning — FR-4.9 */}
       {!phone.adb_connected && <div className={styles.adbWarning}>{t("phones_adb_warn")}</div>}
 
-      {/* Header row */}
       <div className={styles.cardHeader}>
         <span
           className={styles.statusDot}
@@ -73,13 +74,11 @@ function PhoneCard({ phone }: { phone: Phone }) {
         </span>
       </div>
 
-      {/* Model + group */}
       <div className={styles.model}>
         {phone.model || "—"}
         {phone.group && <span className={styles.groupBadge}>{phone.group}</span>}
       </div>
 
-      {/* Health bar */}
       <div className={styles.healthRow}>
         <span className={styles.healthLabel}>health</span>
         <div className={styles.healthBar}>
@@ -93,7 +92,6 @@ function PhoneCard({ phone }: { phone: Phone }) {
         </span>
       </div>
 
-      {/* Stats */}
       <div className={styles.stats}>
         <div className={styles.stat}>
           <span className={styles.statLabel}>{t("phones_posts")}</span>
@@ -109,7 +107,6 @@ function PhoneCard({ phone }: { phone: Phone }) {
         </div>
       </div>
 
-      {/* Actions — hidden for viewer role */}
       {canControl && (
         <div className={styles.actions}>
           {phone.status === "paused" ? (
@@ -133,38 +130,28 @@ function PhoneCard({ phone }: { phone: Phone }) {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Overview Tab ─────────────────────────────────────────────────────────────
 
-export function PhonesPage() {
+function PhonesOverview() {
   const phones = useFarmStore((s) => s.phones);
   const phonesLoading = useFarmStore((s) => s.phonesLoading);
-  const fetchPhones = useFarmStore((s) => s.fetchPhones);
   const t = useT();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<Phone["status"] | "all">("all");
   const [groupFilter, setGroupFilter] = useState<string | "all">("all");
 
-  useEffect(() => {
-    fetchPhones();
-    const id = setInterval(fetchPhones, 30_000);
-    return () => clearInterval(id);
-  }, [fetchPhones]);
-
-  // Collect unique groups
   const groups = useMemo(
     () => [...new Set(phones.map((p) => p.group).filter(Boolean))].sort(),
     [phones]
   );
 
-  // Status counts
   const statusCounts = useMemo(() => {
     const m: Record<string, number> = {};
     for (const st of ALL_STATUSES) m[st] = phones.filter((p) => p.status === st).length;
     return m;
   }, [phones]);
 
-  // Filter
   const filtered = useMemo(() => {
     let list = phones;
     if (statusFilter !== "all") list = list.filter((p) => p.status === statusFilter);
@@ -181,26 +168,8 @@ export function PhonesPage() {
     return list;
   }, [phones, statusFilter, groupFilter, search]);
 
-  const online = phones.filter((p) => p.status === "active").length;
-  const subtitle = phonesLoading
-    ? t("phones_loading")
-    : phones.length > 0
-      ? `${phones.length} ${t("phones_devices_unit")} · ${online} ${t("phones_online_unit")}`
-      : t("phones_no_data");
-
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <div className={styles.title}>{t("phones_title")}</div>
-          <div className={styles.subtitle}>{subtitle}</div>
-        </div>
-        <button className={styles.syncBtn} onClick={fetchPhones}>
-          {t("phones_refresh")}
-        </button>
-      </header>
-
-      {/* ── Status summary bar ── */}
+    <>
       <div className={styles.statusBar}>
         <span className={styles.statusCount} style={{ color: "#22c55e" }}>
           ● {statusCounts.active ?? 0} {t("phones_bar_online")}
@@ -216,9 +185,7 @@ export function PhonesPage() {
         </span>
       </div>
 
-      {/* ── Filters row (FR-4.4, FR-4.5, FR-4.6) ── */}
       <div className={styles.filtersRow}>
-        {/* Search */}
         <input
           type="text"
           className={styles.searchInput}
@@ -227,7 +194,6 @@ export function PhonesPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        {/* Group filter */}
         <select
           className={styles.filterSelect}
           value={groupFilter}
@@ -241,7 +207,6 @@ export function PhonesPage() {
           ))}
         </select>
 
-        {/* Status filter */}
         <div className={styles.filterTabs}>
           <button
             className={`${styles.filterTab} ${statusFilter === "all" ? styles.filterTabActive : ""}`}
@@ -276,6 +241,75 @@ export function PhonesPage() {
           ))}
         </div>
       )}
+    </>
+  );
+}
+
+// ─── Page (with tabs) ─────────────────────────────────────────────────────────
+
+type Tab = "overview" | "autonomy" | "goals" | "anomalies";
+
+export function PhonesPage() {
+  const phones = useFarmStore((s) => s.phones);
+  const phonesLoading = useFarmStore((s) => s.phonesLoading);
+  const fetchPhones = useFarmStore((s) => s.fetchPhones);
+  const t = useT();
+
+  const [tab, setTab] = useState<Tab>("overview");
+
+  useEffect(() => {
+    fetchPhones();
+    const id = setInterval(fetchPhones, 30_000);
+    return () => clearInterval(id);
+  }, [fetchPhones]);
+
+  const online = phones.filter((p) => p.status === "active").length;
+  const subtitle = phonesLoading
+    ? t("phones_loading")
+    : phones.length > 0
+      ? `${phones.length} ${t("phones_devices_unit")} · ${online} ${t("phones_online_unit")}`
+      : t("phones_no_data");
+
+  const TABS: { id: Tab; label: string }[] = [
+    { id: "overview", label: t("phones_tab_overview") },
+    { id: "autonomy", label: t("phones_tab_autonomy") },
+    { id: "goals", label: t("phones_tab_goals") },
+    { id: "anomalies", label: t("phones_tab_anomalies") },
+  ];
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <div>
+          <div className={styles.title}>{t("phones_title")}</div>
+          <div className={styles.subtitle}>{subtitle}</div>
+        </div>
+        {tab === "overview" && (
+          <button className={styles.syncBtn} onClick={fetchPhones}>
+            {t("phones_refresh")}
+          </button>
+        )}
+      </header>
+
+      <div className={styles.topTabs}>
+        {TABS.map((tb) => (
+          <button
+            key={tb.id}
+            type="button"
+            className={`${styles.topTab} ${tab === tb.id ? styles.topTabActive : ""}`}
+            onClick={() => setTab(tb.id)}
+          >
+            {tb.label}
+          </button>
+        ))}
+      </div>
+
+      <div className={styles.tabContent}>
+        {tab === "overview" && <PhonesOverview />}
+        {tab === "autonomy" && <AutonomyPage embedded />}
+        {tab === "goals" && <GoalsPage embedded />}
+        {tab === "anomalies" && <AnomaliesPage embedded />}
+      </div>
     </div>
   );
 }

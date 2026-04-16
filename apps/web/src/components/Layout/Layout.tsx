@@ -74,7 +74,17 @@ export function Layout() {
 
   const NAV_ITEMS = [
     { path: "/phone-grid", label: "📺 Grid", badge: phones.length > 0 ? phonesOnline : null },
-    { path: "/phones", label: t("nav_phones"), badge: null },
+    {
+      path: "/phones",
+      label: t("nav_phones"),
+      // Show count of critical/high anomalies from last hour, fallback to active autonomy sessions
+      badge:
+        criticalAnomaliesCount > 0
+          ? criticalAnomaliesCount
+          : activeSessionsCount > 0
+            ? activeSessionsCount
+            : null,
+    },
     { path: "/accounts", label: t("nav_accounts"), badge: null },
     ...(role !== "viewer"
       ? [
@@ -88,17 +98,6 @@ export function Layout() {
     { path: "/queue", label: t("nav_queue"), badge: queueActive > 0 ? queueActive : null },
     { path: "/videos", label: t("nav_videos"), badge: null },
     { path: "/analytics", label: t("nav_analytics"), badge: null },
-    {
-      path: "/autonomy",
-      label: t("nav_autonomy"),
-      badge: activeSessionsCount > 0 ? activeSessionsCount : null,
-    },
-    { path: "/goals", label: t("nav_goals"), badge: null },
-    {
-      path: "/anomalies",
-      label: t("nav_anomalies"),
-      badge: criticalAnomaliesCount > 0 ? criticalAnomaliesCount : null,
-    },
     ...(role === "super_admin" ? [{ path: "/clients", label: t("nav_clients"), badge: null }] : []),
     { path: "/settings", label: t("nav_settings"), badge: null },
   ];

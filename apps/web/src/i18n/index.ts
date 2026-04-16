@@ -509,6 +509,10 @@ const T = {
     time_filter_1h: "1 час",
     time_filter_24h: "24 часа",
     time_filter_7d: "7 дней",
+    phones_tab_overview: "Обзор",
+    phones_tab_autonomy: "Автономия",
+    phones_tab_goals: "Цели",
+    phones_tab_anomalies: "Аномалии",
   },
 
   en: {
@@ -1000,6 +1004,10 @@ const T = {
     time_filter_1h: "1h",
     time_filter_24h: "24h",
     time_filter_7d: "7d",
+    phones_tab_overview: "Overview",
+    phones_tab_autonomy: "Autonomy",
+    phones_tab_goals: "Goals",
+    phones_tab_anomalies: "Anomalies",
   },
 
   zh: {
@@ -1491,6 +1499,10 @@ const T = {
     time_filter_1h: "1小时",
     time_filter_24h: "24小时",
     time_filter_7d: "7天",
+    phones_tab_overview: "概览",
+    phones_tab_autonomy: "自主",
+    phones_tab_goals: "目标",
+    phones_tab_anomalies: "异常",
   },
 
   es: {
@@ -1982,6 +1994,10 @@ const T = {
     time_filter_1h: "1h",
     time_filter_24h: "24h",
     time_filter_7d: "7d",
+    phones_tab_overview: "Resumen",
+    phones_tab_autonomy: "Autonomía",
+    phones_tab_goals: "Metas",
+    phones_tab_anomalies: "Anomalías",
   },
 } satisfies Record<Lang, Record<string, string>>;
 

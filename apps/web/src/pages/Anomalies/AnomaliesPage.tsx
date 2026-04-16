@@ -15,7 +15,7 @@ const TIME_RANGE_MS: Record<TimeRange, number> = {
 
 const SEVERITY_LIST: AnomalySeverity[] = ["low", "medium", "high", "critical"];
 
-export function AnomaliesPage() {
+export function AnomaliesPage({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useT();
   const anomalies = useAutonomyStore((s) => s.anomalies);
   const recoveries = useAutonomyStore((s) => s.recoveries);
@@ -63,10 +63,12 @@ export function AnomaliesPage() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>{t("anomalies_title")}</h1>
-      </header>
+    <div className={embedded ? styles.embedded : styles.page}>
+      {!embedded && (
+        <header className={styles.header}>
+          <h1 className={styles.title}>{t("anomalies_title")}</h1>
+        </header>
+      )}
 
       <div className={styles.filterBar}>
         <div className={styles.filterGroup}>

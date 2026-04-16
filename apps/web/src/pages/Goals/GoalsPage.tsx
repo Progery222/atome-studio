@@ -24,7 +24,7 @@ const GOAL_STATUS_COLOR: Record<GoalStatus, string> = {
 type Tab = "phone" | "global";
 type FilterStatus = "all" | GoalStatus;
 
-export function GoalsPage() {
+export function GoalsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useT();
   const [tab, setTab] = useState<Tab>("phone");
   const [filter, setFilter] = useState<FilterStatus>("all");
@@ -107,10 +107,14 @@ export function GoalsPage() {
     }
   }
 
+  const header = embedded ? null : (
+    <h1 className={styles.title}>{t("goals_title")}</h1>
+  );
+
   return (
-    <div className={styles.page}>
+    <div className={embedded ? styles.embedded : styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>{t("goals_title")}</h1>
+        {header}
         <div className={styles.tabs}>
           <button
             type="button"

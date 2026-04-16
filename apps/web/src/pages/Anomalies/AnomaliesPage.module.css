@@ -7,6 +7,12 @@
   overflow: auto;
 }
 
+.embedded {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .header {
   flex-shrink: 0;
 }

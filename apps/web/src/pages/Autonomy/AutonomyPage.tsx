@@ -18,7 +18,7 @@ function fmtDuration(ms?: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-export function AutonomyPage() {
+export function AutonomyPage({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useT();
   const sessionsList = useAutonomyStore((s) => s.sessionsList);
   const sessionsBySerial = useAutonomyStore((s) => s.sessionsBySerial);
@@ -62,14 +62,8 @@ export function AutonomyPage() {
   const selectedDetail = selectedSerial ? sessionsBySerial[selectedSerial] : undefined;
   const selectedSession = selectedDetail?.session;
 
-  return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>{t("autonomy_title")}</h1>
-        <div className={styles.subtitle}>{t("autonomy_subtitle")}</div>
-      </header>
-
-      <div className={styles.layout}>
+  const content = (
+    <div className={styles.layout}>
         {/* Sessions list */}
         <div className={styles.listPane}>
           {sessionsList.length === 0 ? (
@@ -216,7 +210,20 @@ export function AutonomyPage() {
             </>
           )}
         </div>
-      </div>
+    </div>
+  );
+
+  if (embedded) {
+    return <div className={styles.embedded}>{content}</div>;
+  }
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <h1 className={styles.title}>{t("autonomy_title")}</h1>
+        <div className={styles.subtitle}>{t("autonomy_subtitle")}</div>
+      </header>
+      {content}
     </div>
   );
 }

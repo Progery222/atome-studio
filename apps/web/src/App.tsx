@@ -5,12 +5,9 @@ import { Layout } from "./components/Layout/Layout";
 import { AccountDetailPage } from "./pages/AccountDetail/AccountDetailPage";
 import { AccountsPage } from "./pages/Accounts/AccountsPage";
 import { AnalyticsPage } from "./pages/Analytics/AnalyticsPage";
-import { AnomaliesPage } from "./pages/Anomalies/AnomaliesPage";
-import { AutonomyPage } from "./pages/Autonomy/AutonomyPage";
 import { ClientsPage } from "./pages/Clients/ClientsPage";
 import { GalaxyPage } from "./pages/Galaxy/GalaxyPage";
 import { GeneratePage } from "./pages/Generate/GeneratePage";
-import { GoalsPage } from "./pages/Goals/GoalsPage";
 import { LoginPage } from "./pages/Login/LoginPage";
 import { PhoneDetailPage } from "./pages/PhoneDetail/PhoneDetailPage";
 import { PhoneGridPage } from "./pages/PhoneGrid/PhoneGridPage";
@@ -42,9 +39,6 @@ export function App() {
             <Route path="/queue" element={<QueuePage />} />
             <Route path="/videos" element={<VideosPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="/autonomy" element={<AutonomyPage />} />
-            <Route path="/goals" element={<GoalsPage />} />
-            <Route path="/anomalies" element={<AnomaliesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
 
             {/* Super admin only (FR-15.7) */}
