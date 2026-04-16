@@ -212,3 +212,51 @@
   font-size: 11px;
   color: var(--text-secondary, #c8d0da);
 }
+
+.serialCheckboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0;
+}
+
+.serialChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.serialChip:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.serialChip input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent-cyan, #00d2ff);
+}
+
+.serialChipActive {
+  background: rgba(0, 210, 255, 0.1);
+  border-color: var(--accent-cyan, #00d2ff);
+}
+
+.serialChipSerial {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-primary, #fff);
+}
+
+.serialChipModel {
+  font-size: 10px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+}

@@ -245,14 +245,46 @@ export function GoalsPage({ embedded = false }: { embedded?: boolean } = {}) {
                   ))}
                 </select>
               </label>
-              <label className={styles.field}>
+              <label className={styles.field} style={{ flexBasis: "100%" }}>
                 <span>{t("goal_selector_serials")}</span>
-                <input
-                  type="text"
-                  value={ggSerials}
-                  onChange={(e) => setGgSerials(e.target.value)}
-                  placeholder="R83YA06Y8MF,R83YA06YFDT"
-                />
+                {phones.length === 0 ? (
+                  <div className={styles.muted} style={{ padding: "8px 0" }}>
+                    {t("phones_no_data")}
+                  </div>
+                ) : (
+                  <div className={styles.serialCheckboxes}>
+                    {phones.map((p: any) => {
+                      const serial = p.serial || p.phone_id;
+                      const selected = ggSerials
+                        .split(",")
+                        .map((s) => s.trim())
+                        .includes(serial);
+                      return (
+                        <label
+                          key={serial}
+                          className={`${styles.serialChip} ${selected ? styles.serialChipActive : ""}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={(e) => {
+                              const current = ggSerials
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean);
+                              const next = e.target.checked
+                                ? [...current, serial]
+                                : current.filter((s) => s !== serial);
+                              setGgSerials(next.join(","));
+                            }}
+                          />
+                          <span className={styles.serialChipSerial}>{serial}</span>
+                          {p.model && <span className={styles.serialChipModel}>{p.model}</span>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </label>
               <label className={styles.field}>
                 <span>{t("goal_selector_shard")}</span>
