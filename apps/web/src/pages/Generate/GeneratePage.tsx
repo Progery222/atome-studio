@@ -23,6 +23,15 @@ function formatElapsed(iso?: string, nowMs = Date.now()): string {
   return `${min}m ${sec}s`;
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes < 0) return "—";
+  const units = ["B", "KB", "MB", "GB"];
+  let i = 0;
+  let n = bytes;
+  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+  return `${n < 10 && i > 0 ? n.toFixed(1) : Math.round(n)} ${units[i]}`;
+}
+
 function formatEventClock(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -1236,48 +1245,142 @@ export function GeneratePage() {
 
                     {/* Список треков MinIO */}
                     {amMinioTracks.length > 0 ? (
-                      <div style={{ maxHeight: 300, overflowY: "auto" }}>
-                        {amMinioTracks.map((tr) => (
-                          <div
-                            key={tr.key}
-                            style={{
-                              padding: "8px 0",
-                              borderBottom: "1px solid #222",
-                              fontSize: 13,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                              opacity: tr.processed ? 0.6 : 1,
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={amSelectedKeys.has(tr.key)}
-                              onChange={() => amToggleKey(tr.key)}
-                              style={{ accentColor: "#00c8dc" }}
-                            />
-                            <span style={{ flex: 1, color: "#ccc" }}>
-                              <span style={{ color: "#00c8dc" }}>{tr.artist}</span>
-                              {" — "}{tr.title}
-                            </span>
-                            {tr.processed ? (
-                              <span style={{ color: "#22c55e", fontSize: 11 }}>READY</span>
-                            ) : (
-                              <button
-                                className={styles.launchBtn}
-                                disabled={amProcessingKey === tr.key}
-                                onClick={() => amImportTrack(tr.key)}
-                                style={{ padding: "3px 10px", fontSize: 11, minWidth: 90 }}
-                              >
-                                {amProcessingKey === tr.key ? "..." : "Обработать"}
-                              </button>
-                            )}
-                          </div>
-                        ))}
+                      <div style={{
+                        maxHeight: 380,
+                        overflowY: "auto",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                        paddingRight: 4,
+                      }}>
+                        {amMinioTracks.map((tr) => {
+                          const selected = amSelectedKeys.has(tr.key);
+                          const processing = amProcessingKey === tr.key;
+                          return (
+                            <div
+                              key={tr.key}
+                              onClick={() => amToggleKey(tr.key)}
+                              onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); amToggleKey(tr.key); } }}
+                              role="checkbox"
+                              aria-checked={selected}
+                              tabIndex={0}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 12,
+                                padding: "10px 12px",
+                                borderRadius: 8,
+                                border: `1px solid ${selected ? "rgba(0,200,220,0.45)" : "#1f1f1f"}`,
+                                background: selected
+                                  ? "linear-gradient(180deg, rgba(0,200,220,0.08), rgba(0,200,220,0.02))"
+                                  : "#0d0d0d",
+                                cursor: "pointer",
+                                transition: "background .15s, border-color .15s",
+                                opacity: tr.processed ? 0.72 : 1,
+                              }}
+                              onMouseEnter={(e) => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = "#131313"; }}
+                              onMouseLeave={(e) => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = "#0d0d0d"; }}
+                            >
+                              {/* кастомный чекбокс */}
+                              <span style={{
+                                width: 18, height: 18, flexShrink: 0, borderRadius: 4,
+                                border: `1.5px solid ${selected ? "#00c8dc" : "#333"}`,
+                                background: selected ? "#00c8dc" : "transparent",
+                                display: "grid", placeItems: "center",
+                                transition: "all .15s",
+                              }}>
+                                {selected && (
+                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
+                                    <path d="M2 5.5L4 7.5L8 2.5" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                )}
+                              </span>
+
+                              {/* иконка-нотка */}
+                              <span style={{
+                                width: 30, height: 30, flexShrink: 0, borderRadius: 6,
+                                background: "rgba(0,200,220,0.08)",
+                                display: "grid", placeItems: "center",
+                                color: "#00c8dc",
+                              }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                                  <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
+                                </svg>
+                              </span>
+
+                              {/* название / артист / размер */}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                  color: "#fff", fontSize: 13, fontWeight: 500,
+                                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                                }}>
+                                  {tr.title}
+                                </div>
+                                <div style={{
+                                  color: "#888", fontSize: 11, marginTop: 2,
+                                  display: "flex", alignItems: "center", gap: 6,
+                                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                                }}>
+                                  <span style={{ color: "#00c8dc" }}>{tr.artist || "Unknown"}</span>
+                                  <span style={{ color: "#444" }}>•</span>
+                                  <span>{formatBytes(tr.size_bytes)}</span>
+                                </div>
+                              </div>
+
+                              {/* статус / кнопка */}
+                              {tr.processed ? (
+                                <span style={{
+                                  display: "inline-flex", alignItems: "center", gap: 5,
+                                  padding: "3px 9px", borderRadius: 999,
+                                  background: "rgba(34,197,94,0.12)",
+                                  border: "1px solid rgba(34,197,94,0.3)",
+                                  color: "#22c55e", fontSize: 10, fontWeight: 600, letterSpacing: 0.4,
+                                  flexShrink: 0,
+                                }}>
+                                  <span style={{ width: 6, height: 6, borderRadius: 999, background: "#22c55e" }} />
+                                  READY
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={processing}
+                                  onClick={(e) => { e.stopPropagation(); amImportTrack(tr.key); }}
+                                  style={{
+                                    flexShrink: 0,
+                                    padding: "5px 12px", borderRadius: 999,
+                                    border: "1px solid rgba(0,200,220,0.3)",
+                                    background: processing ? "rgba(0,200,220,0.05)" : "rgba(0,200,220,0.1)",
+                                    color: "#00c8dc", fontSize: 11, fontWeight: 600, letterSpacing: 0.3,
+                                    cursor: processing ? "wait" : "pointer",
+                                    minWidth: 100, transition: "all .15s",
+                                  }}
+                                >
+                                  {processing ? "ОБРАБОТКА…" : "ОБРАБОТАТЬ"}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : !amTracksLoading ? (
-                      <div style={{ color: "#666", fontSize: 13, padding: 16, textAlign: "center" }}>
-                        Загрузите треки в MinIO бакет music-tracks/ (артист/трек.mp3)
+                      <div style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
+                        color: "#666", fontSize: 12, padding: "28px 16px", textAlign: "center",
+                        border: "1px dashed #222", borderRadius: 10,
+                        background: "rgba(255,255,255,0.01)",
+                      }}>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.5" aria-hidden>
+                          <path d="M9 18V5l12-2v13" />
+                          <circle cx="6" cy="18" r="3" />
+                          <circle cx="18" cy="16" r="3" />
+                        </svg>
+                        <div style={{ color: "#888" }}>Бакет пока пуст</div>
+                        <div>
+                          Загрузите треки в{" "}
+                          <code style={{ color: "#00c8dc", background: "rgba(0,200,220,0.08)", padding: "2px 6px", borderRadius: 4 }}>
+                            music-tracks/&lt;артист&gt;/&lt;трек&gt;.mp3
+                          </code>
+                        </div>
                       </div>
                     ) : null}
                   </>
@@ -1320,31 +1423,70 @@ export function GeneratePage() {
                     )}
 
                     {amSpotifyResult && amSpotifyResult.tracks.length > 0 ? (
-                      <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                      <div style={{
+                        maxHeight: 380, overflowY: "auto",
+                        display: "flex", flexDirection: "column", gap: 6, paddingRight: 4,
+                      }}>
                         {amSpotifyResult.tracks.map((t, i) => (
                           <div
                             key={t.id ?? i}
                             style={{
-                              padding: "8px 0",
-                              borderBottom: "1px solid #222",
-                              fontSize: 13,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
+                              display: "flex", alignItems: "center", gap: 12,
+                              padding: "10px 12px", borderRadius: 8,
+                              border: "1px solid #1f1f1f", background: "#0d0d0d",
                             }}
                           >
-                            <span style={{ flex: 1, color: "#ccc" }}>
-                              <span style={{ color: "#1db954" }}>{t.artist || "—"}</span>
-                              {" — "}{t.title || "—"}
+                            <span style={{
+                              width: 30, height: 30, flexShrink: 0, borderRadius: 6,
+                              background: "rgba(29,185,84,0.10)",
+                              display: "grid", placeItems: "center", color: "#1db954",
+                            }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                                <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
+                              </svg>
                             </span>
-                            <span style={{ color: "#22c55e", fontSize: 11 }}>READY</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                color: "#fff", fontSize: 13, fontWeight: 500,
+                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                              }}>{t.title || "—"}</div>
+                              <div style={{
+                                color: "#888", fontSize: 11, marginTop: 2,
+                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                              }}>
+                                <span style={{ color: "#1db954" }}>{t.artist || "—"}</span>
+                              </div>
+                            </div>
+                            <span style={{
+                              display: "inline-flex", alignItems: "center", gap: 5,
+                              padding: "3px 9px", borderRadius: 999,
+                              background: "rgba(34,197,94,0.12)",
+                              border: "1px solid rgba(34,197,94,0.3)",
+                              color: "#22c55e", fontSize: 10, fontWeight: 600, letterSpacing: 0.4,
+                              flexShrink: 0,
+                            }}>
+                              <span style={{ width: 6, height: 6, borderRadius: 999, background: "#22c55e" }} />
+                              READY
+                            </span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div style={{ color: "#666", fontSize: 13, padding: 16, textAlign: "center" }}>
-                        Вставьте ссылку на артиста или трек Spotify. Загрузится до 5 треков и
-                        автоматически обработается (транскрипция + припев).
+                      <div style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
+                        color: "#666", fontSize: 12, padding: "28px 16px", textAlign: "center",
+                        border: "1px dashed #222", borderRadius: 10,
+                        background: "rgba(255,255,255,0.01)",
+                      }}>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.5" aria-hidden>
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M7 14c3-1.5 7-1.5 10 0M7 11c4-2 9-2 12 0M7 8c5-2 10-2 13 0" />
+                        </svg>
+                        <div style={{ color: "#888" }}>Вставьте ссылку Spotify</div>
+                        <div>
+                          Артист или трек — загрузится до 5 треков, автоматически
+                          <br/>пройдёт транскрипцию и извлечение припева.
+                        </div>
                       </div>
                     )}
                   </>
