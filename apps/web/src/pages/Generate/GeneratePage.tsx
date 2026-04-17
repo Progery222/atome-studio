@@ -1179,7 +1179,8 @@ export function GeneratePage() {
                 </div>
               </div>
 
-              {/* База треков: MinIO / Spotify */}
+              {/* База треков: MinIO / Spotify — только для караоке */}
+              {amScenario === "karaoke" && (
               <div className={styles.card}>
                 <div className={styles.cardTitleRow}>
                   <div className={styles.cardTitle}>
@@ -1366,9 +1367,10 @@ export function GeneratePage() {
                   </>
                 )}
               </div>
+              )}
 
-              {/* Выбор припева */}
-              {amChoruses.length > 0 && (() => {
+              {/* Выбор припева — только для караоке */}
+              {amScenario === "karaoke" && amChoruses.length > 0 && (() => {
                 const selected = amChoruses.find((c) => c.id === amSelectedChorus);
                 return (
                   <div className={styles.card}>
