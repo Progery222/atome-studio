@@ -1363,7 +1363,9 @@
   border: 1px solid var(--border-light);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.015);
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .scJobItem:hover {
@@ -1391,10 +1393,18 @@
   text-transform: uppercase;
 }
 
-.scJobStatusDone { color: #22c55e; }
-.scJobStatusError { color: #ef4444; }
-.scJobStatusPending { color: var(--text-muted); }
-.scJobStatusRunning { color: rgba(0, 210, 255, 0.85); }
+.scJobStatusDone {
+  color: #22c55e;
+}
+.scJobStatusError {
+  color: #ef4444;
+}
+.scJobStatusPending {
+  color: var(--text-muted);
+}
+.scJobStatusRunning {
+  color: rgba(0, 210, 255, 0.85);
+}
 
 .scProgressBar {
   height: 4px;
@@ -1434,9 +1444,15 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-.scStepDotDone { background: #22c55e; }
-.scStepDotActive { background: rgba(0, 210, 255, 0.85); }
-.scStepDotError { background: #ef4444; }
+.scStepDotDone {
+  background: #22c55e;
+}
+.scStepDotActive {
+  background: rgba(0, 210, 255, 0.85);
+}
+.scStepDotError {
+  background: #ef4444;
+}
 
 .scJobMessage {
   font-size: 11px;
@@ -1611,6 +1627,37 @@
   .scOptions {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* ─── Toggle Group ─────────────────────────────────────────────────────────── */
+.toggleGroup {
+  display: flex;
+  gap: 4px;
+}
+
+.toggleBtn {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toggleBtn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.toggleBtnActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-primary);
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {

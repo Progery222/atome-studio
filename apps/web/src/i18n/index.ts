@@ -421,6 +421,9 @@ const T = {
     gen_sc_srt_label: "SRT таймкоды",
     gen_sc_srt_ph: "start,end,title (по строкам)",
     gen_sc_music_auto: "Авто (AI)",
+    gen_sc_watermark: "Водяной знак",
+    gen_sc_watermark_on: "Включён",
+    gen_sc_watermark_off: "Выключен",
 
     // ── Phone Autonomy ──
     nav_autonomy: "◉ Автономия",
@@ -916,6 +919,9 @@ const T = {
     gen_sc_srt_label: "SRT timecodes",
     gen_sc_srt_ph: "start,end,title (one per line)",
     gen_sc_music_auto: "Auto (AI)",
+    gen_sc_watermark: "Watermark",
+    gen_sc_watermark_on: "On",
+    gen_sc_watermark_off: "Off",
 
     // ── Phone Autonomy ──
     nav_autonomy: "◉ Autonomy",
@@ -1411,6 +1417,9 @@ const T = {
     gen_sc_srt_label: "SRT时间码",
     gen_sc_srt_ph: "start,end,title(每行一个)",
     gen_sc_music_auto: "自动(AI)",
+    gen_sc_watermark: "水印",
+    gen_sc_watermark_on: "开启",
+    gen_sc_watermark_off: "关闭",
 
     // ── Phone Autonomy ──
     nav_autonomy: "◉ 自主",
@@ -1906,6 +1915,9 @@ const T = {
     gen_sc_srt_label: "Códigos de tiempo SRT",
     gen_sc_srt_ph: "start,end,title (uno por línea)",
     gen_sc_music_auto: "Auto (IA)",
+    gen_sc_watermark: "Marca de agua",
+    gen_sc_watermark_on: "Activado",
+    gen_sc_watermark_off: "Desactivado",
 
     // ── Phone Autonomy ──
     nav_autonomy: "◉ Autonomía",

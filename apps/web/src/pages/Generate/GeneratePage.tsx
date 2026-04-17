@@ -259,9 +259,17 @@ export function GeneratePage() {
   const [amScenario, setAmScenario] = useState<"karaoke" | "streamer">("karaoke");
   const [amBgType, setAmBgType] = useState<"footage" | "animated">("footage");
   // MinIO tracks
-  interface MinioTrack { key: string; artist: string; title: string; size_bytes: number; processed: boolean; }
+  interface MinioTrack {
+    key: string;
+    artist: string;
+    title: string;
+    size_bytes: number;
+    processed: boolean;
+  }
   const [amMinioTracks, setAmMinioTracks] = useState<MinioTrack[]>([]);
-  const [amChoruses, setAmChoruses] = useState<Array<{ id: string; name: string; artist?: string; track_id: string; variant: string }>>([]);
+  const [amChoruses, setAmChoruses] = useState<
+    Array<{ id: string; name: string; artist?: string; track_id: string; variant: string }>
+  >([]);
   const [amSelectedChorus, setAmSelectedChorus] = useState<string | null>(null);
   const [amTracksLoading, setAmTracksLoading] = useState(false);
   const [amSelectedKeys, setAmSelectedKeys] = useState<Set<string>>(new Set());
@@ -282,23 +290,27 @@ export function GeneratePage() {
     setAmTracksLoading(false);
   }, []);
 
-  const amImportTrack = useCallback(async (key: string) => {
-    setAmProcessingKey(key);
-    try {
-      const res = await apiFetch("/api/agentmusic/tracks/minio/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key }),
-      });
-      if (res.ok) await amLoadData();
-    } catch {}
-    setAmProcessingKey(null);
-  }, [amLoadData]);
+  const amImportTrack = useCallback(
+    async (key: string) => {
+      setAmProcessingKey(key);
+      try {
+        const res = await apiFetch("/api/agentmusic/tracks/minio/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key }),
+        });
+        if (res.ok) await amLoadData();
+      } catch {}
+      setAmProcessingKey(null);
+    },
+    [amLoadData]
+  );
 
   const amImportBatch = useCallback(async () => {
-    const keys = amSelectedKeys.size > 0
-      ? [...amSelectedKeys]
-      : amMinioTracks.filter((t) => !t.processed).map((t) => t.key);
+    const keys =
+      amSelectedKeys.size > 0
+        ? [...amSelectedKeys]
+        : amMinioTracks.filter((t) => !t.processed).map((t) => t.key);
     if (keys.length === 0) return;
     setAmBatchProcessing(true);
     try {
@@ -316,7 +328,8 @@ export function GeneratePage() {
   const amToggleKey = useCallback((key: string) => {
     setAmSelectedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }, []);
@@ -330,9 +343,10 @@ export function GeneratePage() {
   const [amSpotifyUrl, setAmSpotifyUrl] = useState("");
   const [amSpotifyLoading, setAmSpotifyLoading] = useState(false);
   const [amSpotifyError, setAmSpotifyError] = useState("");
-  const [amSpotifyResult, setAmSpotifyResult] = useState<
-    { count: number; tracks: Array<{ id?: string; artist?: string; title?: string }> } | null
-  >(null);
+  const [amSpotifyResult, setAmSpotifyResult] = useState<{
+    count: number;
+    tracks: Array<{ id?: string; artist?: string; title?: string }>;
+  } | null>(null);
 
   const amSpotifyDownload = useCallback(async () => {
     const url = amSpotifyUrl.trim();
@@ -379,6 +393,7 @@ export function GeneratePage() {
   const [scCaptionPosition, setScCaptionPosition] = useState("auto");
   const [scMinDuration, setScMinDuration] = useState(15);
   const [scMaxDuration, setScMaxDuration] = useState(60);
+  const [scAddWatermark, setScAddWatermark] = useState(true);
   const [scSrtText, setScSrtText] = useState("");
   const nicheRef = useRef<HTMLDivElement>(null);
   const scPollRef = useRef<ReturnType<typeof setInterval>>();
@@ -551,13 +566,18 @@ export function GeneratePage() {
       await startGeneration({
         service: service as "sportzavod" | "contentzavod" | "agentmusic",
         account_ids:
-          service === "contentzavod" && selectedIds.size === 0 ? ["default"]
-            : service === "agentmusic" ? ["telegram"]
-            : [...selectedIds],
+          service === "contentzavod" && selectedIds.size === 0
+            ? ["default"]
+            : service === "agentmusic"
+              ? ["telegram"]
+              : [...selectedIds],
         videos_per_account: videosPerAcc,
-        topic: service === "contentzavod" ? topic
-          : service === "agentmusic" ? JSON.stringify({ scenario: amScenario, orientation: "portrait", bg_type: amBgType })
-          : undefined,
+        topic:
+          service === "contentzavod"
+            ? topic
+            : service === "agentmusic"
+              ? JSON.stringify({ scenario: amScenario, orientation: "portrait", bg_type: amBgType })
+              : undefined,
       });
       setShowConfirm(false);
     } catch (e: any) {
@@ -681,33 +701,41 @@ export function GeneratePage() {
           <div className={styles.card}>
             <div className={styles.cardTitle}>{t("gen_service_card")}</div>
             <div className={styles.serviceTabs}>
-              {(["sportzavod", "contentzavod", "streamcut", "agentmusic"] as Service[]).map((svc) => {
-                const label =
-                  svc === "sportzavod"
-                    ? "SportZavod"
-                    : svc === "contentzavod"
-                      ? "content-zavod"
-                      : svc === "agentmusic"
-                        ? "agentMUSIC"
-                        : "StreamCut";
-                const dot =
-                  svc === "sportzavod" ? "#d4af37" : svc === "contentzavod" ? "#b496ff" : svc === "agentmusic" ? "#00c8dc" : "#00d2ff";
-                return (
-                  <button
-                    key={svc}
-                    className={`${styles.serviceTab} ${service === svc ? styles.serviceTabActive : ""}`}
-                    onClick={() => {
-                      setService(svc);
-                      setSelectedIds(new Set());
-                      setNicheFilter(null);
-                      setScope(null);
-                    }}
-                  >
-                    <span className={styles.serviceTabDot} style={{ background: dot }} />
-                    {label}
-                  </button>
-                );
-              })}
+              {(["sportzavod", "contentzavod", "streamcut", "agentmusic"] as Service[]).map(
+                (svc) => {
+                  const label =
+                    svc === "sportzavod"
+                      ? "SportZavod"
+                      : svc === "contentzavod"
+                        ? "content-zavod"
+                        : svc === "agentmusic"
+                          ? "agentMUSIC"
+                          : "StreamCut";
+                  const dot =
+                    svc === "sportzavod"
+                      ? "#d4af37"
+                      : svc === "contentzavod"
+                        ? "#b496ff"
+                        : svc === "agentmusic"
+                          ? "#00c8dc"
+                          : "#00d2ff";
+                  return (
+                    <button
+                      key={svc}
+                      className={`${styles.serviceTab} ${service === svc ? styles.serviceTabActive : ""}`}
+                      onClick={() => {
+                        setService(svc);
+                        setSelectedIds(new Set());
+                        setNicheFilter(null);
+                        setScope(null);
+                      }}
+                    >
+                      <span className={styles.serviceTabDot} style={{ background: dot }} />
+                      {label}
+                    </button>
+                  );
+                }
+              )}
             </div>
 
             {/* Stats bar */}
@@ -1082,6 +1110,27 @@ export function GeneratePage() {
                   />
                 </div>
 
+                {/* Watermark toggle */}
+                <div className={styles.scField}>
+                  <label>{t("gen_sc_watermark")}</label>
+                  <div className={styles.toggleGroup}>
+                    <button
+                      type="button"
+                      className={`${styles.toggleBtn} ${scAddWatermark ? styles.toggleBtnActive : ""}`}
+                      onClick={() => setScAddWatermark(true)}
+                    >
+                      {t("gen_sc_watermark_on")}
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.toggleBtn} ${!scAddWatermark ? styles.toggleBtnActive : ""}`}
+                      onClick={() => setScAddWatermark(false)}
+                    >
+                      {t("gen_sc_watermark_off")}
+                    </button>
+                  </div>
+                </div>
+
                 {/* Row 4: SRT timecodes (full width) */}
                 <div className={`${styles.scField} ${styles.scFieldFull}`}>
                   <label>{t("gen_sc_srt_label")}</label>
@@ -1113,6 +1162,7 @@ export function GeneratePage() {
                       caption_position: scCaptionPosition,
                       min_duration: scMinDuration,
                       max_duration: scMaxDuration,
+                      add_watermark: scAddWatermark,
                     };
                     if (scFootageLayout !== "none" && scFootageCategory) {
                       dto.footage_category = scFootageCategory;
@@ -1164,356 +1214,521 @@ export function GeneratePage() {
             <>
               {/* База треков: MinIO / Spotify — только для караоке */}
               {amScenario === "karaoke" && (
-              <div className={styles.card}>
-                <div className={styles.cardTitleRow}>
-                  <div className={styles.cardTitle}>
-                    База треков
-                    {amSource === "minio" && amTracksLoading && (
-                      <span className={styles.loading}> загрузка...</span>
-                    )}
-                  </div>
-                  <span style={{ color: "#666", fontSize: 12 }}>
-                    {amSource === "minio"
-                      ? amSelectedKeys.size > 0
-                        ? `${amSelectedKeys.size} выбрано`
-                        : `${amMinioTracks.length} треков`
-                      : amSpotifyResult
-                        ? `загружено: ${amSpotifyResult.count}`
-                        : "по ссылке Spotify"}
-                  </span>
-                </div>
-
-                {/* Переключатель источника */}
-                <div className={styles.serviceTabs} style={{ marginBottom: 12 }}>
-                  {(["minio", "spotify"] as const).map((src) => (
-                    <button
-                      key={src}
-                      type="button"
-                      className={`${styles.serviceTab} ${amSource === src ? styles.serviceTabActive : ""}`}
-                      onClick={() => setAmSource(src)}
-                    >
-                      {src === "minio" ? "MinIO (music-tracks/)" : "Spotify (ссылка)"}
-                    </button>
-                  ))}
-                </div>
-
-                {amSource === "minio" ? (
-                  <>
-                    {/* Кнопки управления MinIO */}
-                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                      <button
-                        className={styles.launchBtn}
-                        onClick={amSelectAll}
-                        style={{ padding: "6px 14px", fontSize: 12 }}
-                      >
-                        Выбрать все
-                      </button>
-                      <button
-                        className={styles.launchBtn}
-                        onClick={() => setAmSelectedKeys(new Set())}
-                        style={{ padding: "6px 14px", fontSize: 12 }}
-                        disabled={amSelectedKeys.size === 0}
-                      >
-                        Снять выбор
-                      </button>
-                      <button
-                        className={styles.launchBtn}
-                        disabled={amBatchProcessing}
-                        onClick={amImportBatch}
-                        style={{ padding: "6px 14px", fontSize: 12, marginLeft: "auto" }}
-                      >
-                        {amBatchProcessing
-                          ? "Обработка..."
-                          : amSelectedKeys.size > 0
-                            ? `Обработать выбранные (${amSelectedKeys.size})`
-                            : "Обработать все необработанные"}
-                      </button>
+                <div className={styles.card}>
+                  <div className={styles.cardTitleRow}>
+                    <div className={styles.cardTitle}>
+                      База треков
+                      {amSource === "minio" && amTracksLoading && (
+                        <span className={styles.loading}> загрузка...</span>
+                      )}
                     </div>
+                    <span style={{ color: "#666", fontSize: 12 }}>
+                      {amSource === "minio"
+                        ? amSelectedKeys.size > 0
+                          ? `${amSelectedKeys.size} выбрано`
+                          : `${amMinioTracks.length} треков`
+                        : amSpotifyResult
+                          ? `загружено: ${amSpotifyResult.count}`
+                          : "по ссылке Spotify"}
+                    </span>
+                  </div>
 
-                    {/* Список треков MinIO */}
-                    {amMinioTracks.length > 0 ? (
-                      <div style={{
-                        maxHeight: 380,
-                        overflowY: "auto",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 6,
-                        paddingRight: 4,
-                      }}>
-                        {amMinioTracks.map((tr) => {
-                          const selected = amSelectedKeys.has(tr.key);
-                          const processing = amProcessingKey === tr.key;
-                          return (
+                  {/* Переключатель источника */}
+                  <div className={styles.serviceTabs} style={{ marginBottom: 12 }}>
+                    {(["minio", "spotify"] as const).map((src) => (
+                      <button
+                        key={src}
+                        type="button"
+                        className={`${styles.serviceTab} ${amSource === src ? styles.serviceTabActive : ""}`}
+                        onClick={() => setAmSource(src)}
+                      >
+                        {src === "minio" ? "MinIO (music-tracks/)" : "Spotify (ссылка)"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {amSource === "minio" ? (
+                    <>
+                      {/* Кнопки управления MinIO */}
+                      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                        <button
+                          className={styles.launchBtn}
+                          onClick={amSelectAll}
+                          style={{ padding: "6px 14px", fontSize: 12 }}
+                        >
+                          Выбрать все
+                        </button>
+                        <button
+                          className={styles.launchBtn}
+                          onClick={() => setAmSelectedKeys(new Set())}
+                          style={{ padding: "6px 14px", fontSize: 12 }}
+                          disabled={amSelectedKeys.size === 0}
+                        >
+                          Снять выбор
+                        </button>
+                        <button
+                          className={styles.launchBtn}
+                          disabled={amBatchProcessing}
+                          onClick={amImportBatch}
+                          style={{ padding: "6px 14px", fontSize: 12, marginLeft: "auto" }}
+                        >
+                          {amBatchProcessing
+                            ? "Обработка..."
+                            : amSelectedKeys.size > 0
+                              ? `Обработать выбранные (${amSelectedKeys.size})`
+                              : "Обработать все необработанные"}
+                        </button>
+                      </div>
+
+                      {/* Список треков MinIO */}
+                      {amMinioTracks.length > 0 ? (
+                        <div
+                          style={{
+                            maxHeight: 380,
+                            overflowY: "auto",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                            paddingRight: 4,
+                          }}
+                        >
+                          {amMinioTracks.map((tr) => {
+                            const selected = amSelectedKeys.has(tr.key);
+                            const processing = amProcessingKey === tr.key;
+                            return (
+                              <div
+                                key={tr.key}
+                                onClick={() => amToggleKey(tr.key)}
+                                onKeyDown={(e) => {
+                                  if (e.key === " " || e.key === "Enter") {
+                                    e.preventDefault();
+                                    amToggleKey(tr.key);
+                                  }
+                                }}
+                                role="checkbox"
+                                aria-checked={selected}
+                                tabIndex={0}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 12,
+                                  padding: "10px 12px",
+                                  borderRadius: 8,
+                                  border: `1px solid ${selected ? "rgba(0,200,220,0.45)" : "#1f1f1f"}`,
+                                  background: selected
+                                    ? "linear-gradient(180deg, rgba(0,200,220,0.08), rgba(0,200,220,0.02))"
+                                    : "#0d0d0d",
+                                  cursor: "pointer",
+                                  transition: "background .15s, border-color .15s",
+                                  opacity: tr.processed ? 0.72 : 1,
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!selected)
+                                    (e.currentTarget as HTMLDivElement).style.background =
+                                      "#131313";
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!selected)
+                                    (e.currentTarget as HTMLDivElement).style.background =
+                                      "#0d0d0d";
+                                }}
+                              >
+                                {/* кастомный чекбокс */}
+                                <span
+                                  style={{
+                                    width: 18,
+                                    height: 18,
+                                    flexShrink: 0,
+                                    borderRadius: 4,
+                                    border: `1.5px solid ${selected ? "#00c8dc" : "#333"}`,
+                                    background: selected ? "#00c8dc" : "transparent",
+                                    display: "grid",
+                                    placeItems: "center",
+                                    transition: "all .15s",
+                                  }}
+                                >
+                                  {selected && (
+                                    <svg
+                                      width="10"
+                                      height="10"
+                                      viewBox="0 0 10 10"
+                                      fill="none"
+                                      aria-hidden
+                                    >
+                                      <path
+                                        d="M2 5.5L4 7.5L8 2.5"
+                                        stroke="#000"
+                                        strokeWidth="1.8"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </svg>
+                                  )}
+                                </span>
+
+                                {/* исполнитель — трек */}
+                                <div
+                                  style={{
+                                    flex: 1,
+                                    minWidth: 0,
+                                    color: "#ddd",
+                                    fontSize: 13,
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  }}
+                                >
+                                  <span style={{ color: "#00c8dc" }}>{tr.artist || "Unknown"}</span>
+                                  <span style={{ color: "#555" }}> — </span>
+                                  <span style={{ color: "#fff" }}>{tr.title}</span>
+                                </div>
+
+                                {/* статус / кнопка */}
+                                {tr.processed ? (
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 5,
+                                      padding: "3px 9px",
+                                      borderRadius: 999,
+                                      background: "rgba(34,197,94,0.12)",
+                                      border: "1px solid rgba(34,197,94,0.3)",
+                                      color: "#22c55e",
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                      letterSpacing: 0.4,
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        width: 6,
+                                        height: 6,
+                                        borderRadius: 999,
+                                        background: "#22c55e",
+                                      }}
+                                    />
+                                    READY
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={processing}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      amImportTrack(tr.key);
+                                    }}
+                                    style={{
+                                      flexShrink: 0,
+                                      padding: "5px 12px",
+                                      borderRadius: 999,
+                                      border: "1px solid rgba(0,200,220,0.3)",
+                                      background: processing
+                                        ? "rgba(0,200,220,0.05)"
+                                        : "rgba(0,200,220,0.1)",
+                                      color: "#00c8dc",
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      letterSpacing: 0.3,
+                                      cursor: processing ? "wait" : "pointer",
+                                      minWidth: 100,
+                                      transition: "all .15s",
+                                    }}
+                                  >
+                                    {processing ? "ОБРАБОТКА…" : "ОБРАБОТАТЬ"}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : !amTracksLoading ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 10,
+                            color: "#666",
+                            fontSize: 12,
+                            padding: "28px 16px",
+                            textAlign: "center",
+                            border: "1px dashed #222",
+                            borderRadius: 10,
+                            background: "rgba(255,255,255,0.01)",
+                          }}
+                        >
+                          <svg
+                            width="28"
+                            height="28"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#333"
+                            strokeWidth="1.5"
+                            aria-hidden
+                          >
+                            <path d="M9 18V5l12-2v13" />
+                            <circle cx="6" cy="18" r="3" />
+                            <circle cx="18" cy="16" r="3" />
+                          </svg>
+                          <div style={{ color: "#888" }}>Бакет пока пуст</div>
+                          <div>
+                            Загрузите треки в{" "}
+                            <code
+                              style={{
+                                color: "#00c8dc",
+                                background: "rgba(0,200,220,0.08)",
+                                padding: "2px 6px",
+                                borderRadius: 4,
+                              }}
+                            >
+                              music-tracks/&lt;артист&gt;/&lt;трек&gt;.mp3
+                            </code>
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      {/* Spotify загрузка по ссылке */}
+                      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                        <input
+                          type="url"
+                          className={styles.input}
+                          placeholder="https://open.spotify.com/artist/... или /track/..."
+                          value={amSpotifyUrl}
+                          onChange={(e) => setAmSpotifyUrl(e.target.value)}
+                          disabled={amSpotifyLoading}
+                          style={{
+                            flex: 1,
+                            background: "#0a0a0a",
+                            border: "1px solid #333",
+                            borderRadius: 6,
+                            color: "#fff",
+                            padding: "10px 14px",
+                            fontSize: 13,
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className={styles.launchBtn}
+                          disabled={amSpotifyLoading || !amSpotifyUrl.trim()}
+                          onClick={amSpotifyDownload}
+                          style={{ padding: "6px 18px", fontSize: 12 }}
+                        >
+                          {amSpotifyLoading ? "Загрузка..." : "Загрузить"}
+                        </button>
+                      </div>
+
+                      {amSpotifyError && (
+                        <div style={{ color: "#f87171", fontSize: 12, marginBottom: 8 }}>
+                          {amSpotifyError}
+                        </div>
+                      )}
+
+                      {amSpotifyResult && amSpotifyResult.tracks.length > 0 ? (
+                        <div
+                          style={{
+                            maxHeight: 380,
+                            overflowY: "auto",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                            paddingRight: 4,
+                          }}
+                        >
+                          {amSpotifyResult.tracks.map((t, i) => (
                             <div
-                              key={tr.key}
-                              onClick={() => amToggleKey(tr.key)}
-                              onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); amToggleKey(tr.key); } }}
-                              role="checkbox"
-                              aria-checked={selected}
-                              tabIndex={0}
+                              key={t.id ?? i}
                               style={{
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 12,
                                 padding: "10px 12px",
                                 borderRadius: 8,
-                                border: `1px solid ${selected ? "rgba(0,200,220,0.45)" : "#1f1f1f"}`,
-                                background: selected
-                                  ? "linear-gradient(180deg, rgba(0,200,220,0.08), rgba(0,200,220,0.02))"
-                                  : "#0d0d0d",
-                                cursor: "pointer",
-                                transition: "background .15s, border-color .15s",
-                                opacity: tr.processed ? 0.72 : 1,
+                                border: "1px solid #1f1f1f",
+                                background: "#0d0d0d",
                               }}
-                              onMouseEnter={(e) => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = "#131313"; }}
-                              onMouseLeave={(e) => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = "#0d0d0d"; }}
                             >
-                              {/* кастомный чекбокс */}
-                              <span style={{
-                                width: 18, height: 18, flexShrink: 0, borderRadius: 4,
-                                border: `1.5px solid ${selected ? "#00c8dc" : "#333"}`,
-                                background: selected ? "#00c8dc" : "transparent",
-                                display: "grid", placeItems: "center",
-                                transition: "all .15s",
-                              }}>
-                                {selected && (
-                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
-                                    <path d="M2 5.5L4 7.5L8 2.5" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
-                                )}
-                              </span>
-
-                              {/* исполнитель — трек */}
-                              <div style={{
-                                flex: 1, minWidth: 0,
-                                color: "#ddd", fontSize: 13,
-                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                              }}>
-                                <span style={{ color: "#00c8dc" }}>{tr.artist || "Unknown"}</span>
+                              <div
+                                style={{
+                                  flex: 1,
+                                  minWidth: 0,
+                                  color: "#ddd",
+                                  fontSize: 13,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                <span style={{ color: "#1db954" }}>{t.artist || "—"}</span>
                                 <span style={{ color: "#555" }}> — </span>
-                                <span style={{ color: "#fff" }}>{tr.title}</span>
+                                <span style={{ color: "#fff" }}>{t.title || "—"}</span>
                               </div>
-
-                              {/* статус / кнопка */}
-                              {tr.processed ? (
-                                <span style={{
-                                  display: "inline-flex", alignItems: "center", gap: 5,
-                                  padding: "3px 9px", borderRadius: 999,
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 5,
+                                  padding: "3px 9px",
+                                  borderRadius: 999,
                                   background: "rgba(34,197,94,0.12)",
                                   border: "1px solid rgba(34,197,94,0.3)",
-                                  color: "#22c55e", fontSize: 10, fontWeight: 600, letterSpacing: 0.4,
+                                  color: "#22c55e",
+                                  fontSize: 10,
+                                  fontWeight: 600,
+                                  letterSpacing: 0.4,
                                   flexShrink: 0,
-                                }}>
-                                  <span style={{ width: 6, height: 6, borderRadius: 999, background: "#22c55e" }} />
-                                  READY
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  disabled={processing}
-                                  onClick={(e) => { e.stopPropagation(); amImportTrack(tr.key); }}
+                                }}
+                              >
+                                <span
                                   style={{
-                                    flexShrink: 0,
-                                    padding: "5px 12px", borderRadius: 999,
-                                    border: "1px solid rgba(0,200,220,0.3)",
-                                    background: processing ? "rgba(0,200,220,0.05)" : "rgba(0,200,220,0.1)",
-                                    color: "#00c8dc", fontSize: 11, fontWeight: 600, letterSpacing: 0.3,
-                                    cursor: processing ? "wait" : "pointer",
-                                    minWidth: 100, transition: "all .15s",
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: 999,
+                                    background: "#22c55e",
                                   }}
-                                >
-                                  {processing ? "ОБРАБОТКА…" : "ОБРАБОТАТЬ"}
-                                </button>
-                              )}
+                                />
+                                READY
+                              </span>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : !amTracksLoading ? (
-                      <div style={{
-                        display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
-                        color: "#666", fontSize: 12, padding: "28px 16px", textAlign: "center",
-                        border: "1px dashed #222", borderRadius: 10,
-                        background: "rgba(255,255,255,0.01)",
-                      }}>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.5" aria-hidden>
-                          <path d="M9 18V5l12-2v13" />
-                          <circle cx="6" cy="18" r="3" />
-                          <circle cx="18" cy="16" r="3" />
-                        </svg>
-                        <div style={{ color: "#888" }}>Бакет пока пуст</div>
-                        <div>
-                          Загрузите треки в{" "}
-                          <code style={{ color: "#00c8dc", background: "rgba(0,200,220,0.08)", padding: "2px 6px", borderRadius: 4 }}>
-                            music-tracks/&lt;артист&gt;/&lt;трек&gt;.mp3
-                          </code>
+                          ))}
                         </div>
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    {/* Spotify загрузка по ссылке */}
-                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                      <input
-                        type="url"
-                        className={styles.input}
-                        placeholder="https://open.spotify.com/artist/... или /track/..."
-                        value={amSpotifyUrl}
-                        onChange={(e) => setAmSpotifyUrl(e.target.value)}
-                        disabled={amSpotifyLoading}
-                        style={{
-                          flex: 1,
-                          background: "#0a0a0a",
-                          border: "1px solid #333",
-                          borderRadius: 6,
-                          color: "#fff",
-                          padding: "10px 14px",
-                          fontSize: 13,
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className={styles.launchBtn}
-                        disabled={amSpotifyLoading || !amSpotifyUrl.trim()}
-                        onClick={amSpotifyDownload}
-                        style={{ padding: "6px 18px", fontSize: 12 }}
-                      >
-                        {amSpotifyLoading ? "Загрузка..." : "Загрузить"}
-                      </button>
-                    </div>
-
-                    {amSpotifyError && (
-                      <div style={{ color: "#f87171", fontSize: 12, marginBottom: 8 }}>
-                        {amSpotifyError}
-                      </div>
-                    )}
-
-                    {amSpotifyResult && amSpotifyResult.tracks.length > 0 ? (
-                      <div style={{
-                        maxHeight: 380, overflowY: "auto",
-                        display: "flex", flexDirection: "column", gap: 6, paddingRight: 4,
-                      }}>
-                        {amSpotifyResult.tracks.map((t, i) => (
-                          <div
-                            key={t.id ?? i}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 12,
-                              padding: "10px 12px", borderRadius: 8,
-                              border: "1px solid #1f1f1f", background: "#0d0d0d",
-                            }}
+                      ) : (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 10,
+                            color: "#666",
+                            fontSize: 12,
+                            padding: "28px 16px",
+                            textAlign: "center",
+                            border: "1px dashed #222",
+                            borderRadius: 10,
+                            background: "rgba(255,255,255,0.01)",
+                          }}
+                        >
+                          <svg
+                            width="28"
+                            height="28"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#333"
+                            strokeWidth="1.5"
+                            aria-hidden
                           >
-                            <div style={{
-                              flex: 1, minWidth: 0,
-                              color: "#ddd", fontSize: 13,
-                              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                            }}>
-                              <span style={{ color: "#1db954" }}>{t.artist || "—"}</span>
-                              <span style={{ color: "#555" }}> — </span>
-                              <span style={{ color: "#fff" }}>{t.title || "—"}</span>
-                            </div>
-                            <span style={{
-                              display: "inline-flex", alignItems: "center", gap: 5,
-                              padding: "3px 9px", borderRadius: 999,
-                              background: "rgba(34,197,94,0.12)",
-                              border: "1px solid rgba(34,197,94,0.3)",
-                              color: "#22c55e", fontSize: 10, fontWeight: 600, letterSpacing: 0.4,
-                              flexShrink: 0,
-                            }}>
-                              <span style={{ width: 6, height: 6, borderRadius: 999, background: "#22c55e" }} />
-                              READY
-                            </span>
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M7 14c3-1.5 7-1.5 10 0M7 11c4-2 9-2 12 0M7 8c5-2 10-2 13 0" />
+                          </svg>
+                          <div style={{ color: "#888" }}>Вставьте ссылку Spotify</div>
+                          <div>
+                            Артист или трек — загрузится до 5 треков, автоматически
+                            <br />
+                            пройдёт транскрипцию и извлечение припева.
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{
-                        display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
-                        color: "#666", fontSize: 12, padding: "28px 16px", textAlign: "center",
-                        border: "1px dashed #222", borderRadius: 10,
-                        background: "rgba(255,255,255,0.01)",
-                      }}>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.5" aria-hidden>
-                          <circle cx="12" cy="12" r="10" />
-                          <path d="M7 14c3-1.5 7-1.5 10 0M7 11c4-2 9-2 12 0M7 8c5-2 10-2 13 0" />
-                        </svg>
-                        <div style={{ color: "#888" }}>Вставьте ссылку Spotify</div>
-                        <div>
-                          Артист или трек — загрузится до 5 треков, автоматически
-                          <br/>пройдёт транскрипцию и извлечение припева.
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
 
               {/* Выбор припева — только для караоке */}
-              {amScenario === "karaoke" && amChoruses.length > 0 && (() => {
-                // Очистка: убираем хвостовые скобки (audio), (Вариант N (...)) и т.п.
-                const cleanName = (raw: string) => raw.replace(/\s*\(.*\)\s*$/, "").trim();
-                const label = (c: { name: string; artist?: string }) => {
-                  const clean = cleanName(c.name) || c.name;
-                  return c.artist ? `${c.artist} — ${clean}` : clean;
-                };
-                // Дедуп по уже очищенной метке (артист + название).
-                const seen = new Set<string>();
-                const uniqueChoruses = amChoruses.filter((c) => {
-                  const key = label(c).toLowerCase();
-                  if (seen.has(key)) return false;
-                  seen.add(key);
-                  return true;
-                });
-                const selected = uniqueChoruses.find((c) => c.id === amSelectedChorus);
-                return (
-                  <div className={styles.card}>
-                    <div className={styles.cardTitle}>Припев</div>
-                    <button
-                      className={styles.input}
-                      onClick={() => setAmChorusOpen(!amChorusOpen)}
-                      style={{
-                        width: "100%", textAlign: "left", cursor: "pointer",
-                        color: selected ? "#fff" : "#666", display: "flex",
-                        justifyContent: "space-between", alignItems: "center",
-                        background: "#0a0a0a", border: "1px solid #333", borderRadius: 6,
-                        padding: "10px 14px",
-                      }}
-                    >
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {selected ? label(selected) : "Выберите припев..."}
-                      </span>
-                      <span style={{ color: "#555", fontSize: 10, marginLeft: 8 }}>{amChorusOpen ? "\u25B2" : "\u25BC"}</span>
-                    </button>
-                    {amChorusOpen && (
-                      <div style={{
-                        background: "#0d0d0d", border: "1px solid #333", borderRadius: 6,
-                        maxHeight: 250, overflowY: "auto", marginTop: 6,
-                      }}>
-                        {uniqueChoruses.map((ch) => {
-                          const isActive = ch.id === amSelectedChorus;
-                          return (
-                            <div
-                              key={ch.id}
-                              onClick={() => { setAmSelectedChorus(ch.id); setAmChorusOpen(false); }}
-                              style={{
-                                padding: "10px 14px", cursor: "pointer",
-                                borderBottom: "1px solid #1a1a1a",
-                                background: isActive ? "rgba(0,200,220,0.1)" : "transparent",
-                                borderLeft: isActive ? "3px solid #00c8dc" : "3px solid transparent",
-                                color: isActive ? "#fff" : "#bbb",
-                                fontSize: 13,
-                              }}
-                            >
-                              {label(ch)}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+              {amScenario === "karaoke" &&
+                amChoruses.length > 0 &&
+                (() => {
+                  // Очистка: убираем хвостовые скобки (audio), (Вариант N (...)) и т.п.
+                  const cleanName = (raw: string) => raw.replace(/\s*\(.*\)\s*$/, "").trim();
+                  const label = (c: { name: string; artist?: string }) => {
+                    const clean = cleanName(c.name) || c.name;
+                    return c.artist ? `${c.artist} — ${clean}` : clean;
+                  };
+                  // Дедуп по уже очищенной метке (артист + название).
+                  const seen = new Set<string>();
+                  const uniqueChoruses = amChoruses.filter((c) => {
+                    const key = label(c).toLowerCase();
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                  });
+                  const selected = uniqueChoruses.find((c) => c.id === amSelectedChorus);
+                  return (
+                    <div className={styles.card}>
+                      <div className={styles.cardTitle}>Припев</div>
+                      <button
+                        className={styles.input}
+                        onClick={() => setAmChorusOpen(!amChorusOpen)}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          cursor: "pointer",
+                          color: selected ? "#fff" : "#666",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          background: "#0a0a0a",
+                          border: "1px solid #333",
+                          borderRadius: 6,
+                          padding: "10px 14px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {selected ? label(selected) : "Выберите припев..."}
+                        </span>
+                        <span style={{ color: "#555", fontSize: 10, marginLeft: 8 }}>
+                          {amChorusOpen ? "\u25B2" : "\u25BC"}
+                        </span>
+                      </button>
+                      {amChorusOpen && (
+                        <div
+                          style={{
+                            background: "#0d0d0d",
+                            border: "1px solid #333",
+                            borderRadius: 6,
+                            maxHeight: 250,
+                            overflowY: "auto",
+                            marginTop: 6,
+                          }}
+                        >
+                          {uniqueChoruses.map((ch) => {
+                            const isActive = ch.id === amSelectedChorus;
+                            return (
+                              <div
+                                key={ch.id}
+                                onClick={() => {
+                                  setAmSelectedChorus(ch.id);
+                                  setAmChorusOpen(false);
+                                }}
+                                style={{
+                                  padding: "10px 14px",
+                                  cursor: "pointer",
+                                  borderBottom: "1px solid #1a1a1a",
+                                  background: isActive ? "rgba(0,200,220,0.1)" : "transparent",
+                                  borderLeft: isActive
+                                    ? "3px solid #00c8dc"
+                                    : "3px solid transparent",
+                                  color: isActive ? "#fff" : "#bbb",
+                                  fontSize: 13,
+                                }}
+                              >
+                                {label(ch)}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
               {/* Сценарий */}
               <div className={styles.card}>
@@ -1576,7 +1791,9 @@ export function GeneratePage() {
                       setShowConfirm(true);
                     }}
                   >
-                    {launching ? t("gen_launching") : `Запустить ${amScenario === "karaoke" ? "караоке" : "стример"}`}
+                    {launching
+                      ? t("gen_launching")
+                      : `Запустить ${amScenario === "karaoke" ? "караоке" : "стример"}`}
                   </button>
                 </div>
               </div>

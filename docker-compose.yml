@@ -1,6 +1,23 @@
 version: '3.9'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: atome
+      POSTGRES_PASSWORD: atome123
+      POSTGRES_DB: atome_studio
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atome -d atome_studio"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   api:
     build:
       context: .
@@ -9,12 +26,13 @@ services:
       - "3001:3001"
     environment:
       - PORT=3001
+      - DATABASE_URL=postgresql://atome:atome123@postgres:5432/atome_studio
+      - JWT_SECRET=${JWT_SECRET:-local-dev-secret-key}
       - CF_API_TOKEN=${CF_API_TOKEN}
       - CF_ACCOUNT_ID=${CF_ACCOUNT_ID}
       - PH_API_KEY=${PH_API_KEY}
       - PH_PROJECT_ID=${PH_PROJECT_ID}
       - POSTMAN_API_KEY=${POSTMAN_API_KEY}
-      - JWT_SECRET=${JWT_SECRET}
       - MINIO_URL=${MINIO_URL:-http://minio:9000}
       - MINIO_BUCKET=${MINIO_BUCKET:-atome-videos}
       - SPORTZAVOD_URL=${SPORTZAVOD_URL:-http://sportzavod:8000}
@@ -22,6 +40,11 @@ services:
       - ORCHESTRATOR_URL=${ORCHESTRATOR_URL:-http://orchestrator:8001}
       - STREAMCUT_URL=${STREAMCUT_URL:-http://host.docker.internal:8003}
       - STREAMCUT_SERVICE_PASSWORD=${STREAMCUT_SERVICE_PASSWORD:-atome-service-pw}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     restart: unless-stopped
 
   web:
@@ -29,7 +52,7 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
     ports:
-      - "3000:80"
+      - "3002:80"
     environment:
       - PORT=80
       - API_INTERNAL_URL=http://api:3001
@@ -71,3 +94,4 @@ services:
 
 volumes:
   minio_data:
+  postgres_data:
