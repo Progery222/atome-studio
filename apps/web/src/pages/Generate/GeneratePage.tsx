@@ -23,15 +23,6 @@ function formatElapsed(iso?: string, nowMs = Date.now()): string {
   return `${min}m ${sec}s`;
 }
 
-function formatBytes(bytes: number): string {
-  if (!bytes || bytes < 0) return "—";
-  const units = ["B", "KB", "MB", "GB"];
-  let i = 0;
-  let n = bytes;
-  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
-  return `${n < 10 && i > 0 ? n.toFixed(1) : Math.round(n)} ${units[i]}`;
-}
-
 function formatEventClock(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -1296,35 +1287,15 @@ export function GeneratePage() {
                                 )}
                               </span>
 
-                              {/* иконка-нотка */}
-                              <span style={{
-                                width: 30, height: 30, flexShrink: 0, borderRadius: 6,
-                                background: "rgba(0,200,220,0.08)",
-                                display: "grid", placeItems: "center",
-                                color: "#00c8dc",
+                              {/* исполнитель — трек */}
+                              <div style={{
+                                flex: 1, minWidth: 0,
+                                color: "#ddd", fontSize: 13,
+                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                               }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                                  <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
-                                </svg>
-                              </span>
-
-                              {/* название / артист / размер */}
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{
-                                  color: "#fff", fontSize: 13, fontWeight: 500,
-                                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                                }}>
-                                  {tr.title}
-                                </div>
-                                <div style={{
-                                  color: "#888", fontSize: 11, marginTop: 2,
-                                  display: "flex", alignItems: "center", gap: 6,
-                                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                                }}>
-                                  <span style={{ color: "#00c8dc" }}>{tr.artist || "Unknown"}</span>
-                                  <span style={{ color: "#444" }}>•</span>
-                                  <span>{formatBytes(tr.size_bytes)}</span>
-                                </div>
+                                <span style={{ color: "#00c8dc" }}>{tr.artist || "Unknown"}</span>
+                                <span style={{ color: "#555" }}> — </span>
+                                <span style={{ color: "#fff" }}>{tr.title}</span>
                               </div>
 
                               {/* статус / кнопка */}
@@ -1436,26 +1407,14 @@ export function GeneratePage() {
                               border: "1px solid #1f1f1f", background: "#0d0d0d",
                             }}
                           >
-                            <span style={{
-                              width: 30, height: 30, flexShrink: 0, borderRadius: 6,
-                              background: "rgba(29,185,84,0.10)",
-                              display: "grid", placeItems: "center", color: "#1db954",
+                            <div style={{
+                              flex: 1, minWidth: 0,
+                              color: "#ddd", fontSize: 13,
+                              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                             }}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                                <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
-                              </svg>
-                            </span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{
-                                color: "#fff", fontSize: 13, fontWeight: 500,
-                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                              }}>{t.title || "—"}</div>
-                              <div style={{
-                                color: "#888", fontSize: 11, marginTop: 2,
-                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                              }}>
-                                <span style={{ color: "#1db954" }}>{t.artist || "—"}</span>
-                              </div>
+                              <span style={{ color: "#1db954" }}>{t.artist || "—"}</span>
+                              <span style={{ color: "#555" }}> — </span>
+                              <span style={{ color: "#fff" }}>{t.title || "—"}</span>
                             </div>
                             <span style={{
                               display: "inline-flex", alignItems: "center", gap: 5,
