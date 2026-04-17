@@ -1455,7 +1455,15 @@ export function GeneratePage() {
 
               {/* Выбор припева — только для караоке */}
               {amScenario === "karaoke" && amChoruses.length > 0 && (() => {
-                const selected = amChoruses.find((c) => c.id === amSelectedChorus);
+                // Дедуп: одинаковые name+variant встречаются раз, оставляем первый.
+                const seen = new Set<string>();
+                const uniqueChoruses = amChoruses.filter((c) => {
+                  const key = `${c.name}__${c.variant}`;
+                  if (seen.has(key)) return false;
+                  seen.add(key);
+                  return true;
+                });
+                const selected = uniqueChoruses.find((c) => c.id === amSelectedChorus);
                 return (
                   <div className={styles.card}>
                     <div className={styles.cardTitle}>Припев</div>
@@ -1480,7 +1488,7 @@ export function GeneratePage() {
                         background: "#0d0d0d", border: "1px solid #333", borderRadius: 6,
                         maxHeight: 250, overflowY: "auto", marginTop: 6,
                       }}>
-                        {amChoruses.map((ch) => {
+                        {uniqueChoruses.map((ch) => {
                           const isActive = ch.id === amSelectedChorus;
                           return (
                             <div
