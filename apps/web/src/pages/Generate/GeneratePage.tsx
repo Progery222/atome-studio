@@ -1451,10 +1451,16 @@ export function GeneratePage() {
 
               {/* Выбор припева — только для караоке */}
               {amScenario === "karaoke" && amChoruses.length > 0 && (() => {
-                // Дедуп: одинаковые name+variant встречаются раз, оставляем первый.
+                // Очистка: убираем хвостовые скобки (audio), (Вариант N (...)) и т.п.
+                const cleanName = (raw: string) => raw.replace(/\s*\(.*\)\s*$/, "").trim();
+                const label = (c: { name: string; artist?: string }) => {
+                  const clean = cleanName(c.name) || c.name;
+                  return c.artist ? `${c.artist} — ${clean}` : clean;
+                };
+                // Дедуп по уже очищенной метке (артист + название).
                 const seen = new Set<string>();
                 const uniqueChoruses = amChoruses.filter((c) => {
-                  const key = `${c.name}__${c.variant}`;
+                  const key = label(c).toLowerCase();
                   if (seen.has(key)) return false;
                   seen.add(key);
                   return true;
@@ -1475,7 +1481,7 @@ export function GeneratePage() {
                       }}
                     >
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {selected ? selected.name : "Выберите припев..."}
+                        {selected ? label(selected) : "Выберите припев..."}
                       </span>
                       <span style={{ color: "#555", fontSize: 10, marginLeft: 8 }}>{amChorusOpen ? "\u25B2" : "\u25BC"}</span>
                     </button>
@@ -1495,10 +1501,11 @@ export function GeneratePage() {
                                 borderBottom: "1px solid #1a1a1a",
                                 background: isActive ? "rgba(0,200,220,0.1)" : "transparent",
                                 borderLeft: isActive ? "3px solid #00c8dc" : "3px solid transparent",
+                                color: isActive ? "#fff" : "#bbb",
+                                fontSize: 13,
                               }}
                             >
-                              <div style={{ color: isActive ? "#fff" : "#bbb", fontSize: 13 }}>{ch.name}</div>
-                              <div style={{ color: "#555", fontSize: 11, marginTop: 2 }}>{ch.variant}</div>
+                              {label(ch)}
                             </div>
                           );
                         })}
