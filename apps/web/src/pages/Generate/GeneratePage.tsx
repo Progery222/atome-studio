@@ -373,13 +373,8 @@ export function GeneratePage() {
         if (d?.status === "done") {
           const tracks = Array.isArray(d?.tracks) ? d.tracks : [];
           setAmSpotifyResult({ count: tracks.length, tracks });
-          // Авто-обработка
-          for (const t of tracks) {
-            if (!t?.id) continue;
-            try {
-              await apiFetch(`/api/agentmusic/tracks/${t.id}/process`, { method: "POST" });
-            } catch {}
-          }
+          // Бэк уже сам запустил транскрипцию + extract chorus для каждого трека.
+          // Просто обновляем списки треков и припевов.
           await amLoadData();
           setAmSpotifyLoading(false);
           return;
