@@ -261,7 +261,7 @@ export function GeneratePage() {
   // MinIO tracks
   interface MinioTrack { key: string; artist: string; title: string; size_bytes: number; processed: boolean; }
   const [amMinioTracks, setAmMinioTracks] = useState<MinioTrack[]>([]);
-  const [amChoruses, setAmChoruses] = useState<Array<{ id: string; name: string; artist?: string; track_id: string; variant: string }>>([]);
+  const [amChoruses, setAmChoruses] = useState<Array<{ id: string; name: string; artist?: string; track_title?: string; track_id: string; variant: string }>>([]);
   const [amSelectedChorus, setAmSelectedChorus] = useState<string | null>(null);
   const [amTracksLoading, setAmTracksLoading] = useState(false);
   const [amSelectedKeys, setAmSelectedKeys] = useState<Set<string>>(new Set());
@@ -1476,13 +1476,19 @@ export function GeneratePage() {
 
               {/* Выбор припева — только для караоке */}
               {amScenario === "karaoke" && amChoruses.length > 0 && (() => {
-                // Очистка: убираем хвостовые скобки (audio), (Вариант N (...)) и т.п.
-                const cleanName = (raw: string) => raw.replace(/\s*\(.*\)\s*$/, "").trim();
-                const label = (c: { name: string; artist?: string }) => {
-                  const clean = cleanName(c.name) || c.name;
-                  return c.artist ? `${c.artist} — ${clean}` : clean;
+                // Собираем ярлык как «Артист — Название трека».
+                // Убираем артиста из name если он туда подставлен бэком для совместимости,
+                // и хвостовые скобки (audio)/(Вариант N ...).
+                const cleanName = (raw: string, artist?: string) => {
+                  let s = raw;
+                  if (artist && s.startsWith(`${artist} — `)) s = s.slice(artist.length + 3);
+                  return s.replace(/\s*\(.*\)\s*$/, "").trim();
                 };
-                // Дедуп по уже очищенной метке (артист + название).
+                const label = (c: { name: string; artist?: string; track_title?: string }) => {
+                  const title = (c.track_title && c.track_title.trim()) || cleanName(c.name, c.artist) || c.name;
+                  return c.artist ? `${c.artist} — ${title}` : title;
+                };
+                // Дедуп по ярлыку (на случай если один трек обработан дважды).
                 const seen = new Set<string>();
                 const uniqueChoruses = amChoruses.filter((c) => {
                   const key = label(c).toLowerCase();
