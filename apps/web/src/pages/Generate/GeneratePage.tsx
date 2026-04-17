@@ -325,6 +325,48 @@ export function GeneratePage() {
     setAmSelectedKeys(new Set(amMinioTracks.map((t) => t.key)));
   }, [amMinioTracks]);
 
+  // Источник треков: MinIO или Spotify
+  const [amSource, setAmSource] = useState<"minio" | "spotify">("minio");
+  const [amSpotifyUrl, setAmSpotifyUrl] = useState("");
+  const [amSpotifyLoading, setAmSpotifyLoading] = useState(false);
+  const [amSpotifyError, setAmSpotifyError] = useState("");
+  const [amSpotifyResult, setAmSpotifyResult] = useState<
+    { count: number; tracks: Array<{ id?: string; artist?: string; title?: string }> } | null
+  >(null);
+
+  const amSpotifyDownload = useCallback(async () => {
+    const url = amSpotifyUrl.trim();
+    if (!url) return;
+    setAmSpotifyLoading(true);
+    setAmSpotifyError("");
+    setAmSpotifyResult(null);
+    try {
+      const res = await apiFetch("/api/agentmusic/spotify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAmSpotifyError(data?.detail || data?.message || `HTTP ${res.status}`);
+      } else {
+        const tracks = Array.isArray(data?.tracks) ? data.tracks : [];
+        setAmSpotifyResult({ count: data?.count ?? tracks.length, tracks });
+        // Авто-обработка (транскрипция + припев) для каждого трека
+        for (const t of tracks) {
+          if (!t?.id) continue;
+          try {
+            await apiFetch(`/api/agentmusic/tracks/${t.id}/process`, { method: "POST" });
+          } catch {}
+        }
+        await amLoadData();
+      }
+    } catch (e) {
+      setAmSpotifyError(e instanceof Error ? e.message : "Ошибка сети");
+    }
+    setAmSpotifyLoading(false);
+  }, [amSpotifyUrl, amLoadData]);
+
   // StreamCut form state
   const [scUrl, setScUrl] = useState("");
   const [scLanguage, setScLanguage] = useState("auto");
@@ -1137,94 +1179,192 @@ export function GeneratePage() {
                 </div>
               </div>
 
-              {/* База треков из MinIO */}
+              {/* База треков: MinIO / Spotify */}
               <div className={styles.card}>
                 <div className={styles.cardTitleRow}>
                   <div className={styles.cardTitle}>
-                    База треков (MinIO) {amTracksLoading && <span className={styles.loading}> загрузка...</span>}
+                    База треков
+                    {amSource === "minio" && amTracksLoading && (
+                      <span className={styles.loading}> загрузка...</span>
+                    )}
                   </div>
                   <span style={{ color: "#666", fontSize: 12 }}>
-                    {amSelectedKeys.size > 0 ? `${amSelectedKeys.size} выбрано` : `${amMinioTracks.length} треков`}
+                    {amSource === "minio"
+                      ? amSelectedKeys.size > 0
+                        ? `${amSelectedKeys.size} выбрано`
+                        : `${amMinioTracks.length} треков`
+                      : amSpotifyResult
+                        ? `загружено: ${amSpotifyResult.count}`
+                        : "по ссылке Spotify"}
                   </span>
                 </div>
 
-                {/* Кнопки управления */}
-                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                  <button
-                    className={styles.launchBtn}
-                    onClick={amSelectAll}
-                    style={{ padding: "6px 14px", fontSize: 12 }}
-                  >
-                    Выбрать все
-                  </button>
-                  <button
-                    className={styles.launchBtn}
-                    onClick={() => setAmSelectedKeys(new Set())}
-                    style={{ padding: "6px 14px", fontSize: 12 }}
-                    disabled={amSelectedKeys.size === 0}
-                  >
-                    Снять выбор
-                  </button>
-                  <button
-                    className={styles.launchBtn}
-                    disabled={amBatchProcessing}
-                    onClick={amImportBatch}
-                    style={{ padding: "6px 14px", fontSize: 12, marginLeft: "auto" }}
-                  >
-                    {amBatchProcessing
-                      ? "Обработка..."
-                      : amSelectedKeys.size > 0
-                        ? `Обработать выбранные (${amSelectedKeys.size})`
-                        : "Обработать все необработанные"}
-                  </button>
+                {/* Переключатель источника */}
+                <div className={styles.serviceTabs} style={{ marginBottom: 12 }}>
+                  {(["minio", "spotify"] as const).map((src) => (
+                    <button
+                      key={src}
+                      type="button"
+                      className={`${styles.serviceTab} ${amSource === src ? styles.serviceTabActive : ""}`}
+                      onClick={() => setAmSource(src)}
+                    >
+                      <span
+                        className={styles.serviceTabDot}
+                        style={{ background: src === "minio" ? "#00c8dc" : "#1db954" }}
+                      />
+                      {src === "minio" ? "MinIO (music-tracks/)" : "Spotify (ссылка)"}
+                    </button>
+                  ))}
                 </div>
 
-                {/* Список треков */}
-                {amMinioTracks.length > 0 ? (
-                  <div style={{ maxHeight: 300, overflowY: "auto" }}>
-                    {amMinioTracks.map((tr) => (
-                      <div
-                        key={tr.key}
-                        style={{
-                          padding: "8px 0",
-                          borderBottom: "1px solid #222",
-                          fontSize: 13,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          opacity: tr.processed ? 0.6 : 1,
-                        }}
+                {amSource === "minio" ? (
+                  <>
+                    {/* Кнопки управления MinIO */}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                      <button
+                        className={styles.launchBtn}
+                        onClick={amSelectAll}
+                        style={{ padding: "6px 14px", fontSize: 12 }}
                       >
-                        <input
-                          type="checkbox"
-                          checked={amSelectedKeys.has(tr.key)}
-                          onChange={() => amToggleKey(tr.key)}
-                          style={{ accentColor: "#00c8dc" }}
-                        />
-                        <span style={{ flex: 1, color: "#ccc" }}>
-                          <span style={{ color: "#00c8dc" }}>{tr.artist}</span>
-                          {" — "}{tr.title}
-                        </span>
-                        {tr.processed ? (
-                          <span style={{ color: "#22c55e", fontSize: 11 }}>READY</span>
-                        ) : (
-                          <button
-                            className={styles.launchBtn}
-                            disabled={amProcessingKey === tr.key}
-                            onClick={() => amImportTrack(tr.key)}
-                            style={{ padding: "3px 10px", fontSize: 11, minWidth: 90 }}
+                        Выбрать все
+                      </button>
+                      <button
+                        className={styles.launchBtn}
+                        onClick={() => setAmSelectedKeys(new Set())}
+                        style={{ padding: "6px 14px", fontSize: 12 }}
+                        disabled={amSelectedKeys.size === 0}
+                      >
+                        Снять выбор
+                      </button>
+                      <button
+                        className={styles.launchBtn}
+                        disabled={amBatchProcessing}
+                        onClick={amImportBatch}
+                        style={{ padding: "6px 14px", fontSize: 12, marginLeft: "auto" }}
+                      >
+                        {amBatchProcessing
+                          ? "Обработка..."
+                          : amSelectedKeys.size > 0
+                            ? `Обработать выбранные (${amSelectedKeys.size})`
+                            : "Обработать все необработанные"}
+                      </button>
+                    </div>
+
+                    {/* Список треков MinIO */}
+                    {amMinioTracks.length > 0 ? (
+                      <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                        {amMinioTracks.map((tr) => (
+                          <div
+                            key={tr.key}
+                            style={{
+                              padding: "8px 0",
+                              borderBottom: "1px solid #222",
+                              fontSize: 13,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              opacity: tr.processed ? 0.6 : 1,
+                            }}
                           >
-                            {amProcessingKey === tr.key ? "..." : "Обработать"}
-                          </button>
-                        )}
+                            <input
+                              type="checkbox"
+                              checked={amSelectedKeys.has(tr.key)}
+                              onChange={() => amToggleKey(tr.key)}
+                              style={{ accentColor: "#00c8dc" }}
+                            />
+                            <span style={{ flex: 1, color: "#ccc" }}>
+                              <span style={{ color: "#00c8dc" }}>{tr.artist}</span>
+                              {" — "}{tr.title}
+                            </span>
+                            {tr.processed ? (
+                              <span style={{ color: "#22c55e", fontSize: 11 }}>READY</span>
+                            ) : (
+                              <button
+                                className={styles.launchBtn}
+                                disabled={amProcessingKey === tr.key}
+                                onClick={() => amImportTrack(tr.key)}
+                                style={{ padding: "3px 10px", fontSize: 11, minWidth: 90 }}
+                              >
+                                {amProcessingKey === tr.key ? "..." : "Обработать"}
+                              </button>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : !amTracksLoading ? (
-                  <div style={{ color: "#666", fontSize: 13, padding: 16, textAlign: "center" }}>
-                    Загрузите треки в MinIO бакет music-tracks/ (артист/трек.mp3)
-                  </div>
-                ) : null}
+                    ) : !amTracksLoading ? (
+                      <div style={{ color: "#666", fontSize: 13, padding: 16, textAlign: "center" }}>
+                        Загрузите треки в MinIO бакет music-tracks/ (артист/трек.mp3)
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    {/* Spotify загрузка по ссылке */}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                      <input
+                        type="url"
+                        className={styles.input}
+                        placeholder="https://open.spotify.com/artist/... или /track/..."
+                        value={amSpotifyUrl}
+                        onChange={(e) => setAmSpotifyUrl(e.target.value)}
+                        disabled={amSpotifyLoading}
+                        style={{
+                          flex: 1,
+                          background: "#0a0a0a",
+                          border: "1px solid #333",
+                          borderRadius: 6,
+                          color: "#fff",
+                          padding: "10px 14px",
+                          fontSize: 13,
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className={styles.launchBtn}
+                        disabled={amSpotifyLoading || !amSpotifyUrl.trim()}
+                        onClick={amSpotifyDownload}
+                        style={{ padding: "6px 18px", fontSize: 12 }}
+                      >
+                        {amSpotifyLoading ? "Загрузка..." : "Загрузить"}
+                      </button>
+                    </div>
+
+                    {amSpotifyError && (
+                      <div style={{ color: "#f87171", fontSize: 12, marginBottom: 8 }}>
+                        {amSpotifyError}
+                      </div>
+                    )}
+
+                    {amSpotifyResult && amSpotifyResult.tracks.length > 0 ? (
+                      <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                        {amSpotifyResult.tracks.map((t, i) => (
+                          <div
+                            key={t.id ?? i}
+                            style={{
+                              padding: "8px 0",
+                              borderBottom: "1px solid #222",
+                              fontSize: 13,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <span style={{ flex: 1, color: "#ccc" }}>
+                              <span style={{ color: "#1db954" }}>{t.artist || "—"}</span>
+                              {" — "}{t.title || "—"}
+                            </span>
+                            <span style={{ color: "#22c55e", fontSize: 11 }}>READY</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ color: "#666", fontSize: 13, padding: 16, textAlign: "center" }}>
+                        Вставьте ссылку на артиста или трек Spotify. Загрузится до 5 треков и
+                        автоматически обработается (транскрипция + припев).
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Выбор припева */}
