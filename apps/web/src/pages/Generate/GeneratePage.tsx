@@ -340,30 +340,60 @@ export function GeneratePage() {
     setAmSpotifyLoading(true);
     setAmSpotifyError("");
     setAmSpotifyResult(null);
+
+    // 1) Старт async-job на бэке (быстрый ответ с job_id)
+    let jobId: string | null = null;
     try {
-      const res = await apiFetch("/api/agentmusic/spotify", {
+      const startRes = await apiFetch("/api/agentmusic/spotify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setAmSpotifyError(data?.detail || data?.message || `HTTP ${res.status}`);
-      } else {
-        const tracks = Array.isArray(data?.tracks) ? data.tracks : [];
-        setAmSpotifyResult({ count: data?.count ?? tracks.length, tracks });
-        // Авто-обработка (транскрипция + припев) для каждого трека
-        for (const t of tracks) {
-          if (!t?.id) continue;
-          try {
-            await apiFetch(`/api/agentmusic/tracks/${t.id}/process`, { method: "POST" });
-          } catch {}
-        }
-        await amLoadData();
+      const startData = await startRes.json().catch(() => ({}));
+      jobId = startData?.job_id ?? null;
+      if (!jobId) {
+        setAmSpotifyError(startData?.detail || startData?.message || "Не удалось запустить загрузку");
+        setAmSpotifyLoading(false);
+        return;
       }
     } catch (e) {
       setAmSpotifyError(e instanceof Error ? e.message : "Ошибка сети");
+      setAmSpotifyLoading(false);
+      return;
     }
+
+    // 2) Polling статуса каждые 2с, максимум 5 минут.
+    const started = Date.now();
+    const maxMs = 5 * 60 * 1000;
+    while (Date.now() - started < maxMs) {
+      await new Promise((r) => setTimeout(r, 2000));
+      try {
+        const r = await apiFetch(`/api/agentmusic/spotify/job/${jobId}`);
+        const d = await r.json().catch(() => ({}));
+        if (d?.status === "done") {
+          const tracks = Array.isArray(d?.tracks) ? d.tracks : [];
+          setAmSpotifyResult({ count: tracks.length, tracks });
+          // Авто-обработка
+          for (const t of tracks) {
+            if (!t?.id) continue;
+            try {
+              await apiFetch(`/api/agentmusic/tracks/${t.id}/process`, { method: "POST" });
+            } catch {}
+          }
+          await amLoadData();
+          setAmSpotifyLoading(false);
+          return;
+        }
+        if (d?.status === "error") {
+          setAmSpotifyError(d?.current_message || d?.error || "Ошибка загрузки");
+          setAmSpotifyLoading(false);
+          return;
+        }
+      } catch {
+        // сетевая помеха — продолжаем polling
+      }
+    }
+    setAmSpotifyError("Таймаут: загрузка занимает слишком долго");
     setAmSpotifyLoading(false);
   }, [amSpotifyUrl, amLoadData]);
 
