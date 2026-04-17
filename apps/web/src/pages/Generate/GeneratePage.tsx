@@ -1192,10 +1192,6 @@ export function GeneratePage() {
                       className={`${styles.serviceTab} ${amSource === src ? styles.serviceTabActive : ""}`}
                       onClick={() => setAmSource(src)}
                     >
-                      <span
-                        className={styles.serviceTabDot}
-                        style={{ background: src === "minio" ? "#00c8dc" : "#1db954" }}
-                      />
                       {src === "minio" ? "MinIO (music-tracks/)" : "Spotify (ссылка)"}
                     </button>
                   ))}
@@ -1522,7 +1518,6 @@ export function GeneratePage() {
                       className={`${styles.serviceTab} ${amScenario === sc ? styles.serviceTabActive : ""}`}
                       onClick={() => setAmScenario(sc)}
                     >
-                      <span className={styles.serviceTabDot} style={{ background: sc === "karaoke" ? "#00c8dc" : "#ff7850" }} />
                       {sc === "karaoke" ? "Караоке" : "Стример + Футаж"}
                     </button>
                   ))}
