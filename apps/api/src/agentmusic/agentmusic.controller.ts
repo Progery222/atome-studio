@@ -71,7 +71,8 @@ export class AgentMusicController {
 
   @Post("tracks/:id/process")
   async processTrack(@Param("id") id: string) {
-    return proxy(`/api/tracks/${id}/process`, { method: "POST" });
+    // Whisper-транскрипция + извлечение припева — долго (2-5 мин)
+    return proxy(`/api/tracks/${id}/process`, { method: "POST" }, 300000);
   }
 
   @Get("tracks/minio")
