@@ -38,16 +38,17 @@ export class AgentMusicController {
 
   @Post("spotify")
   async spotify(@Body() body: { url: string }) {
-    // spotDL перебирает 4-5 провайдеров (YouTube/SoundCloud/Piped), может идти 1-2 минуты.
-    return proxy(
-      "/api/tracks/spotify",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      },
-      300000,
-    );
+    // async: мгновенно создаёт job, скачивание идёт в фоне. Клиент опрашивает /spotify/job/:id.
+    return proxy("/api/tracks/spotify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  @Get("spotify/job/:id")
+  async spotifyJobStatus(@Param("id") id: string) {
+    return proxy(`/api/tracks/spotify/job/${id}`);
   }
 
   @Post("upload")
