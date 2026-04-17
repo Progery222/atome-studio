@@ -1,15 +1,26 @@
-import { Body, Controller, Get, Param, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, HttpException, Param, Post, Req } from "@nestjs/common";
 import { Public } from "../auth/public.decorator";
 import type { Request } from "express";
 
 const AGENTMUSIC_URL = process.env.AGENTMUSIC_URL ?? "http://localhost:8080";
 
-async function proxy(path: string, init?: RequestInit) {
-  const res = await fetch(`${AGENTMUSIC_URL}${path}`, {
-    ...init,
-    signal: AbortSignal.timeout(30000),
-  });
-  return res.json();
+// Пробрасывает detail/сообщение и статус от agentMUSIC наверх, вместо немого "Internal server error".
+async function proxy(path: string, init?: RequestInit, timeoutMs = 30000) {
+  let res: Response;
+  try {
+    res = await fetch(`${AGENTMUSIC_URL}${path}`, {
+      ...init,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "upstream unreachable";
+    throw new HttpException({ detail: `agentMUSIC: ${msg}` }, 504);
+  }
+  const data = await res.json().catch(() => ({ detail: `agentMUSIC: HTTP ${res.status}` }));
+  if (!res.ok) {
+    throw new HttpException(data, res.status);
+  }
+  return data;
 }
 
 @Public()
@@ -27,11 +38,16 @@ export class AgentMusicController {
 
   @Post("spotify")
   async spotify(@Body() body: { url: string }) {
-    return proxy("/api/tracks/spotify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    // spotDL перебирает 4-5 провайдеров (YouTube/SoundCloud/Piped), может идти 1-2 минуты.
+    return proxy(
+      "/api/tracks/spotify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      300000,
+    );
   }
 
   @Post("upload")
