@@ -1162,23 +1162,6 @@ export function GeneratePage() {
           )}
           {service === "agentmusic" && (
             <>
-              {/* Сценарий */}
-              <div className={styles.card}>
-                <div className={styles.cardTitle}>Сценарий</div>
-                <div className={styles.serviceTabs}>
-                  {(["karaoke", "streamer"] as const).map((sc) => (
-                    <button
-                      key={sc}
-                      className={`${styles.serviceTab} ${amScenario === sc ? styles.serviceTabActive : ""}`}
-                      onClick={() => setAmScenario(sc)}
-                    >
-                      <span className={styles.serviceTabDot} style={{ background: sc === "karaoke" ? "#00c8dc" : "#ff7850" }} />
-                      {sc === "karaoke" ? "Караоке" : "Стример + Футаж"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* База треков: MinIO / Spotify — только для караоке */}
               {amScenario === "karaoke" && (
               <div className={styles.card}>
@@ -1420,7 +1403,24 @@ export function GeneratePage() {
                 );
               })()}
 
-              {/* Фон (только караоке) */}
+              {/* Сценарий */}
+              <div className={styles.card}>
+                <div className={styles.cardTitle}>Сценарий</div>
+                <div className={styles.serviceTabs}>
+                  {(["karaoke", "streamer"] as const).map((sc) => (
+                    <button
+                      key={sc}
+                      className={`${styles.serviceTab} ${amScenario === sc ? styles.serviceTabActive : ""}`}
+                      onClick={() => setAmScenario(sc)}
+                    >
+                      <span className={styles.serviceTabDot} style={{ background: sc === "karaoke" ? "#00c8dc" : "#ff7850" }} />
+                      {sc === "karaoke" ? "Караоке" : "Стример + Футаж"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Фон (только караоке) — между Сценарием и Базой треков */}
               {amScenario === "karaoke" && (
                 <div className={styles.card}>
                   <div className={styles.cardTitle}>Фон</div>
