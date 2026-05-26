@@ -9,18 +9,21 @@ import {
 } from "@nestjs/websockets";
 import type { Server, Socket } from "socket.io";
 
-const ORCHESTRATOR_URL = process.env.ORCHESTRATOR_URL ?? "http://localhost:8001";
+const ATOME_FARM_URL =
+  process.env.ATOME_FARM_URL ??
+  process.env.AUTONOMY_URL ??
+  "http://10.8.0.1:8001";
 const POLL_INTERVAL_MS = 5_000; // polling fallback every 5 s
 const RECONNECT_MS = 10_000; // try to reconnect WS bridge every 10 s
 
 /**
  * EventsGateway
  *
- * Bridges the browser (Socket.io) ↔ Orchestrator (/ws/events).
+ * Bridges legacy Socket.io clients to atome-farm (/ws/events).
  *
  * Strategy:
- * 1. Try to connect to Orchestrator via native WebSocket (Node 22 built-in).
- * 2. If that fails (service offline), fall back to polling GET /api/status
+ * 1. Try to connect to atome-farm via native WebSocket (Node 22 built-in).
+ * 2. If that fails (service offline), fall back to polling GET /health
  *    every 5 s and emitting the result as a 'farm_event' to all connected clients.
  * 3. Every 10 s we attempt to (re)establish the WS connection.
  */
@@ -43,7 +46,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   afterInit() {
     this.logger.log("EventsGateway initialised");
     this.connectWebSocket();
-    // Try to (re)connect every 10 s in case orchestrator comes back online
+    // Try to (re)connect every 10 s in case atome-farm comes back online
     this.reconnectTimer = setInterval(() => this.connectWebSocket(), RECONNECT_MS);
   }
 
@@ -61,6 +64,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     this.server?.emit("farm_event", event);
   }
 
+  /** Emit a typed payload on a custom channel (autonomy deltas etc). */
+  emitCustom<T>(channel: string, payload: T) {
+    this.server?.emit(channel, payload);
+  }
+
   // ─── WebSocket bridge ──────────────────────────────────────────────────────
 
   private connectWebSocket() {
@@ -76,7 +84,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
       this.ws = null;
     }
 
-    const wsUrl = `${ORCHESTRATOR_URL.replace(/^http/, "ws")}/ws/events`;
+    const wsUrl = `${ATOME_FARM_URL.replace(/^http/, "ws")}/ws/events`;
 
     try {
       // Node 22 has global WebSocket; use it directly
@@ -133,7 +141,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
   private async pollStatus() {
     try {
-      const res = await fetch(`${ORCHESTRATOR_URL}/api/status`, {
+      const res = await fetch(`${ATOME_FARM_URL}/health`, {
         signal: AbortSignal.timeout(4000),
       });
       if (!res.ok) return;
@@ -146,7 +154,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         timestamp: new Date().toISOString(),
       });
     } catch {
-      // Orchestrator still offline — silent
+      // atome-farm still offline — silent
     }
   }
 }

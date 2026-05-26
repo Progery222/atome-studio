@@ -2,6 +2,7 @@ import type { MetricsHistoryPoint, MetricsHistoryResponse } from "@atome/shared"
 import { useEffect, useState } from "react";
 import { Leaderboard } from "../../components/Leaderboard";
 import { type ChartSeries, MetricChart } from "../../components/MetricChart";
+import { PublishAnalytics } from "../../components/PublishAnalytics";
 import { useT } from "../../i18n";
 import { apiFetch } from "../../lib/api";
 import { useAnalyticsExtraStore } from "../../stores/analyticsExtra";
@@ -19,7 +20,16 @@ const PERIOD_LABELS: Record<Period, string> = {
 async function fetchHistory(period: Period): Promise<MetricsHistoryResponse> {
   try {
     const res = await apiFetch(`/api/metrics/history?period=${period}&resolution=1h`);
-    return await res.json();
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = (await res.json()) as Partial<MetricsHistoryResponse>;
+    if (!Array.isArray(data.points)) {
+      return { period, resolution: "1h", points: [] };
+    }
+    return {
+      period: data.period ?? period,
+      resolution: data.resolution ?? "1h",
+      points: data.points,
+    };
   } catch (e: any) {
     console.warn("fetchHistory failed:", e);
     return { period, resolution: "1h", points: [] };
@@ -133,7 +143,7 @@ export function AnalyticsPage() {
     },
     {
       label: "Publish Rate",
-      value: Math.round(kpis.publish_rate * 100),
+      value: Math.round(asPercent(kpis.publish_rate)),
       fmt: (v: number) => `${v}%`,
     },
     { label: "Active Accounts", value: kpis.active_accounts, fmt: (v: number) => String(v) },
@@ -148,6 +158,14 @@ export function AnalyticsPage() {
     <div className={styles.root}>
       <div className={styles.header}>
         <h1 className={styles.title}>Analytics</h1>
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <PublishAnalytics />
+      </div>
+
+      <div className={styles.header}>
+        <div style={{ flex: 1 }} />
         <div className={styles.periodToggle}>
           {(["7d", "14d", "30d"] as Period[]).map((p) => (
             <button
@@ -365,7 +383,9 @@ export function AnalyticsPage() {
                 <span className={styles.kpiLabel}>
                   {svc === "sportzavod" ? "SportZavod" : svc === "agentmusic" ? "agentMUSIC" : "content-zavod"}
                 </span>
-                <span className={styles.kpiSub}>{stats.jobs_count} jobs</span>
+                <span className={styles.kpiSub}>
+                  {stats.videos_count} videos · {stats.jobs_count} jobs
+                </span>
               </div>
             ))}
             <div className={styles.kpiCard}>
@@ -462,6 +482,10 @@ function fmtSec(s: number): string {
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return sec > 0 ? `${m}m ${sec}s` : `${m}m`;
+}
+
+function asPercent(value: number): number {
+  return Math.abs(value) <= 1 ? value * 100 : value;
 }
 
 function fmtCompact(n: number): string {

@@ -9,18 +9,34 @@ import type {
   PhoneRecoveryAttempt,
 } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
+import { getBreaker } from "../common/circuit-breaker";
+import { EventsGateway } from "../events/events.gateway";
+import { unwrapEnvelope } from "./envelope";
 
 @Injectable()
 export class AutonomyService {
   private readonly logger = new Logger(AutonomyService.name);
   private readonly baseUrl =
+    process.env.ATOME_FARM_URL ??
     process.env.AUTONOMY_URL ??
-    process.env.ORCHESTRATOR_AUTONOMY_URL ??
-    "http://localhost:8001";
+    "http://10.8.0.1:8001";
+  private readonly breaker = getBreaker("atome-farm-autonomy");
+  /** Last emitted snapshot key per channel to suppress no-op deltas */
+  private lastSnap: Map<string, string> = new Map();
+
+  constructor(private readonly events: EventsGateway) {}
+
+  private emitIfChanged<T>(channel: string, payload: T) {
+    const key = JSON.stringify(payload);
+    if (this.lastSnap.get(channel) === key) return;
+    this.lastSnap.set(channel, key);
+    this.events.emitCustom(channel, { ts: Date.now(), data: payload });
+  }
 
   // ── HTTP helpers ───────────────────────────────────────────────────────────
 
   private async get<T>(path: string, query?: Record<string, string | number | undefined>): Promise<T | null> {
+    if (this.breaker.shouldSkip()) return null;
     const qs = query
       ? "?" +
         Object.entries(query)
@@ -32,16 +48,20 @@ export class AutonomyService {
       const res = await fetch(`${this.baseUrl}${path}${qs}`, {
         signal: AbortSignal.timeout(5000),
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        this.breaker.onFailure(`GET ${path} -> ${res.status}`);
+        return null;
+      }
+      this.breaker.onSuccess();
       return res.json() as Promise<T>;
-    } catch {
-      this.logger.warn(`Orchestrator unavailable: GET ${path}`);
+    } catch (e) {
+      this.breaker.onFailure(`GET ${path}: ${(e as Error).message}`);
       return null;
     }
   }
 
   /**
-   * Orchestrator wraps list responses in envelopes like `{sessions: [...]}`.
+   * atome-farm may wrap list responses in envelopes like `{sessions: [...]}`.
    * This helper unwraps whichever envelope key is present and returns a plain array.
    */
   private async getList<T>(
@@ -49,13 +69,12 @@ export class AutonomyService {
     envelopeKey: string,
     query?: Record<string, string | number | undefined>
   ): Promise<T[]> {
-    const data = await this.get<Record<string, unknown>>(path, query);
-    if (!data) return [];
-    const payload = (data as Record<string, unknown>)[envelopeKey];
-    return Array.isArray(payload) ? (payload as T[]) : [];
+    const data = await this.get<unknown>(path, query);
+    return unwrapEnvelope<T>(data, envelopeKey);
   }
 
   private async post<T>(path: string, body?: unknown): Promise<T | null> {
+    // POST идёт всегда (write-action юзера) — обновим состояние брейкера по итогу.
     try {
       const res = await fetch(`${this.baseUrl}${path}`, {
         method: "POST",
@@ -63,10 +82,14 @@ export class AutonomyService {
         body: body ? JSON.stringify(body) : undefined,
         signal: AbortSignal.timeout(5000),
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        this.breaker.onFailure(`POST ${path} -> ${res.status}`);
+        return null;
+      }
+      this.breaker.onSuccess();
       return res.json() as Promise<T>;
-    } catch {
-      this.logger.warn(`Orchestrator unavailable: POST ${path}`);
+    } catch (e) {
+      this.breaker.onFailure(`POST ${path}: ${(e as Error).message}`);
       return null;
     }
   }
@@ -74,9 +97,13 @@ export class AutonomyService {
   // ── Sessions ───────────────────────────────────────────────────────────────
 
   async listSessions(activeOnly?: boolean): Promise<PhoneAutonomySession[]> {
-    return this.getList<PhoneAutonomySession>("/api/autonomy/sessions", "sessions", {
-      active_only: activeOnly ? "true" : undefined,
-    });
+    const sessions = await this.getList<PhoneAutonomySession>(
+      "/api/autonomy/sessions",
+      "sessions",
+      { active_only: activeOnly ? "true" : undefined }
+    );
+    if (!activeOnly) this.emitIfChanged("autonomy:sessions", sessions);
+    return sessions;
   }
 
   async getSession(serial: string): Promise<AutonomySessionDetail | null> {

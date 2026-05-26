@@ -23,6 +23,29 @@ interface Props {
 
 const NEON_COLORS = ["#00D2FF", "#FF0080", "#00d4aa", "#FBBF24", "#a78bfa"];
 
+/** Canvas не понимает var(--token); разрешаем через computed style. */
+function resolveCanvasColor(color: string): string {
+  if (!color || !color.includes("var(")) return color;
+  const probe = document.createElement("span");
+  probe.style.color = color;
+  probe.style.display = "none";
+  document.body.appendChild(probe);
+  const resolved = getComputedStyle(probe).color;
+  document.body.removeChild(probe);
+  return resolved && resolved !== "rgba(0, 0, 0, 0)" ? resolved : NEON_COLORS[0];
+}
+
+function colorWithAlpha(color: string, alphaHex = "44"): string {
+  const c = resolveCanvasColor(color);
+  const m = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (m) {
+    const a = parseInt(alphaHex, 16) / 255;
+    return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${a.toFixed(3)})`;
+  }
+  if (/^#[0-9a-fA-F]{6}$/.test(c)) return `${c}${alphaHex}`;
+  return c;
+}
+
 function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -44,7 +67,7 @@ function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
       const max = Math.max(...data);
       const range = max - min || 1;
       const pad = 4;
-      const color = series[0]?.color ?? NEON_COLORS[0];
+      const color = resolveCanvasColor(series[0]?.color ?? NEON_COLORS[0]);
       ctx.beginPath();
       data.forEach((v, i) => {
         const x = pad + (i / (data.length - 1)) * (w - pad * 2);
@@ -62,13 +85,11 @@ function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
       const cx = w / 2;
       const cy = h * 0.62;
       const r = Math.min(w, h) * 0.38;
-      // bg arc
       ctx.beginPath();
       ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI);
       ctx.strokeStyle = "rgba(255,255,255,0.06)";
       ctx.lineWidth = 10;
       ctx.stroke();
-      // value arc
       const angle = Math.PI + (val / 100) * Math.PI;
       ctx.beginPath();
       ctx.arc(cx, cy, r, Math.PI, angle);
@@ -77,7 +98,6 @@ function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
       ctx.lineWidth = 10;
       ctx.lineCap = "round";
       ctx.stroke();
-      // label
       ctx.fillStyle = "#fff";
       ctx.font = `bold ${Math.round(h * 0.22)}px Inter, sans-serif`;
       ctx.textAlign = "center";
@@ -98,11 +118,10 @@ function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
         ctx.moveTo(cx, cy);
         ctx.arc(cx, cy, r, startAngle, startAngle + slice);
         ctx.closePath();
-        ctx.fillStyle = ser.color ?? NEON_COLORS[i % NEON_COLORS.length];
+        ctx.fillStyle = resolveCanvasColor(ser.color ?? NEON_COLORS[i % NEON_COLORS.length]);
         ctx.fill();
         startAngle += slice;
       });
-      // inner hole
       ctx.beginPath();
       ctx.arc(cx, cy, r * 0.58, 0, 2 * Math.PI);
       ctx.fillStyle = "rgba(10,10,10,0.9)";
@@ -110,7 +129,6 @@ function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
       return;
     }
 
-    // line / area / bar
     const padL = 24,
       padR = 8,
       padT = 8,
@@ -118,7 +136,6 @@ function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
     const chartW = w - padL - padR;
     const chartH = h - padT - padB;
 
-    // grid lines
     const gridLines = 4;
     ctx.strokeStyle = "rgba(255,255,255,0.04)";
     ctx.lineWidth = 1;
@@ -130,7 +147,6 @@ function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
       ctx.stroke();
     }
 
-    // x labels
     if (labels && labels.length > 0) {
       ctx.fillStyle = "#8899AA";
       ctx.font = "10px Inter, sans-serif";
@@ -151,7 +167,7 @@ function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
     series.forEach((ser, si) => {
       const data = ser.data;
       if (data.length === 0) return;
-      const color = ser.color ?? NEON_COLORS[si % NEON_COLORS.length];
+      const color = resolveCanvasColor(ser.color ?? NEON_COLORS[si % NEON_COLORS.length]);
 
       if (type === "bar") {
         const bw = (chartW / data.length) * 0.6;
@@ -166,7 +182,6 @@ function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
         return;
       }
 
-      // line / area
       ctx.beginPath();
       data.forEach((v, i) => {
         const x = padL + (i / (data.length - 1)) * chartW;
@@ -180,7 +195,7 @@ function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
         ctx.lineTo(lastX, padT + chartH);
         ctx.lineTo(padL, padT + chartH);
         const grad = ctx.createLinearGradient(0, padT, 0, padT + chartH);
-        grad.addColorStop(0, `${color}44`);
+        grad.addColorStop(0, colorWithAlpha(color));
         grad.addColorStop(1, "transparent");
         ctx.fillStyle = grad;
         ctx.fill();
@@ -190,7 +205,6 @@ function drawChart(canvas: HTMLCanvasElement, option: MetricChartOption) {
           const y = padT + chartH - ((v - min) / (max - min)) * chartH;
           i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         });
-        // suppress unused lastX/lastY lint
         void lastX;
         void lastY;
       }
@@ -219,6 +233,10 @@ export function MetricChart({ option, className }: Props) {
   }, [option]);
 
   return (
-    <canvas ref={canvasRef} className={`${styles.canvas} ${className ?? ""}`} style={{ height }} />
+    <canvas
+      ref={canvasRef}
+      className={`${styles.canvas} ${className ?? ""}`}
+      style={{ height }}
+    />
   );
 }

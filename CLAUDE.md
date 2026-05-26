@@ -370,3 +370,18 @@ content-zavod/{YYYY-MM-DD}/{topic_slug}/{title_slug}.mp4              ← conten
 - **`pollJobUntilDone()` stopping timeout** — если джоб завис в `stopping`: после ~2 мин (40 попыток × 3с) автоматически ретраит POST `/api/jobs/:id/stop`; после ~10 мин (200 попыток) принудительно записывает `job_stopped` событие и завершает поллинг (`force-stopped after timeout`)
 - **`farm.service.ts:getSportzavodAccounts()`** — маппит `has_avatar: bool` → `heygen_avatar_id: "sz-{id}" | undefined`; без этого все аккаунты считаются "без аватара" и `readyAccounts` пуст
 - **`SportZavod/agent/sheets_manager.py:_FILL_DOWN_COLS`** — включает `"HeyGen Avatar ID"` и `"HeyGen Voice ID"`, чтобы объединённые ячейки в Google Sheet заполнялись вниз по всем аккаунтам группы; без этого `has_avatar` возвращает `false` для аккаунтов кроме первого в группе
+
+## Изоляция аккаунтов SportZavod (правило 2026-04-20)
+
+**SportZavod-аккаунты НЕ мержатся с аккаунтами фермы.** Они существуют только для генерации в SportZavod.
+
+| Источник | API | Где используется |
+|---|---|---|
+| Аккаунты фермы (orchestrator БД) | `GET /api/accounts` (`farm.service.ts:84`) | Страница `/accounts` (`useFarmStore.accounts`) |
+| Аккаунты SportZavod (Google Sheets) | `GET /api/sportzavod/accounts` (`farm.service.ts:100`) | **ТОЛЬКО** `/generate` при `service==='sportzavod'` (`useFarmStore.sportzavodAccounts`) |
+
+- НЕ показывать `sportzavodAccounts` на `/accounts`.
+- НЕ предлагать «импорт SportZavod → ферма» в UI/чате как автомат.
+- Если нужен SportZavod-аккаунт в ферме — это явный отдельный шаг (вручную/через чат-tool), не мерж.
+
+См. [[Specs/atome-studio-minimalist-dashboard-2026-04-20]] раздел «Изоляция источников аккаунтов».

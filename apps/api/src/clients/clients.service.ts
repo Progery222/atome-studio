@@ -1,7 +1,7 @@
 import type { Client } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
 
-/** Fallback mock data returned when orchestrator is unavailable */
+/** Fallback mock data returned when atome-farm is unavailable */
 const MOCK_CLIENTS: Client[] = [
   {
     client_id: "mock-client-1",
@@ -20,7 +20,10 @@ const MOCK_CLIENTS: Client[] = [
 @Injectable()
 export class ClientsService {
   private readonly logger = new Logger(ClientsService.name);
-  private readonly baseUrl = process.env.ORCHESTRATOR_URL ?? "http://localhost:8001";
+  private readonly baseUrl =
+    process.env.ATOME_FARM_URL ??
+    process.env.AUTONOMY_URL ??
+    "http://10.8.0.1:8001";
 
   private async get<T>(path: string): Promise<T | null> {
     try {
@@ -30,7 +33,7 @@ export class ClientsService {
       if (!res.ok) return null;
       return res.json() as Promise<T>;
     } catch {
-      this.logger.warn(`Orchestrator unavailable: GET ${path}`);
+      this.logger.warn(`atome-farm unavailable: GET ${path}`);
       return null;
     }
   }
@@ -46,7 +49,7 @@ export class ClientsService {
       if (!res.ok) return null;
       return res.json() as Promise<T>;
     } catch {
-      this.logger.warn(`Orchestrator unavailable: POST ${path}`);
+      this.logger.warn(`atome-farm unavailable: POST ${path}`);
       return null;
     }
   }
@@ -62,7 +65,7 @@ export class ClientsService {
       if (!res.ok) return null;
       return res.json() as Promise<T>;
     } catch {
-      this.logger.warn(`Orchestrator unavailable: PATCH ${path}`);
+      this.logger.warn(`atome-farm unavailable: PATCH ${path}`);
       return null;
     }
   }
@@ -90,7 +93,7 @@ export class ClientsService {
   async getClients(): Promise<Client[]> {
     const tenants = await this.get<Record<string, unknown>[]>("/api/tenants");
     if (!tenants) {
-      this.logger.warn("Returning mock clients — orchestrator offline");
+      this.logger.warn("Returning mock clients — atome-farm offline");
       return MOCK_CLIENTS;
     }
     return tenants.map((t) => this.normalizeClient(t));

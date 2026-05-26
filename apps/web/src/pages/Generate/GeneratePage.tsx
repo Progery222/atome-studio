@@ -10,6 +10,29 @@ import styles from "./GeneratePage.module.css";
 type Service = "sportzavod" | "contentzavod" | "streamcut" | "agentmusic";
 type VideoCount = 1 | 2 | 3 | 5 | 10;
 
+async function ensureContentPool(input: {
+  service_key: "sportzavod" | "agentmusic" | "streamcut" | "content-zavod";
+  source_key: string;
+  name?: string;
+  description?: string;
+  meta?: Record<string, unknown>;
+}) {
+  const sourceKey = input.source_key.trim();
+  if (!sourceKey) return null;
+  const res = await apiFetch("/api/content-pools/ensure", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      service_key: input.service_key,
+      source_key: sourceKey,
+      name: input.name || sourceKey,
+      description: input.description || "",
+      meta: input.meta || {},
+    }),
+  });
+  return res.ok ? res.json() : null;
+}
+
 function formatElapsed(iso?: string, nowMs = Date.now()): string {
   if (!iso) return "—";
   const started = Date.parse(iso);
@@ -256,7 +279,7 @@ export function GeneratePage() {
   const [launchError, setLaunchError] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
   // agentMUSIC form state
-  const [amScenario, setAmScenario] = useState<"karaoke" | "streamer">("karaoke");
+  const [amScenario, setAmScenario] = useState<"karaoke" | "auto_loop" | "tri_pack">("karaoke");
   const [amBgType, setAmBgType] = useState<"footage" | "animated">("footage");
   // MinIO tracks
   interface MinioTrack { key: string; artist: string; title: string; size_bytes: number; processed: boolean; }
@@ -371,8 +394,20 @@ export function GeneratePage() {
         const r = await apiFetch(`/api/agentmusic/spotify/job/${jobId}`);
         const d = await r.json().catch(() => ({}));
         if (d?.status === "done") {
-          const tracks = Array.isArray(d?.tracks) ? d.tracks : [];
+          const tracks = (Array.isArray(d?.tracks) ? d.tracks : []) as Array<{ id?: string; artist?: string; title?: string }>;
           setAmSpotifyResult({ count: tracks.length, tracks });
+          const artists = [...new Set(tracks.map((t) => t?.artist).filter(Boolean))] as string[];
+          await Promise.all(
+            artists.map((artist) =>
+              ensureContentPool({
+                service_key: "agentmusic",
+                source_key: artist,
+                name: artist,
+                description: "Imported from Spotify URL",
+                meta: { url, artist },
+              }).catch((e) => console.warn("ensure agentmusic pool failed", e))
+            )
+          );
           // Бэк уже сам запустил транскрипцию + extract chorus для каждого трека.
           // Просто обновляем списки треков и припевов.
           await amLoadData();
@@ -405,6 +440,28 @@ export function GeneratePage() {
   const [scMinDuration, setScMinDuration] = useState(15);
   const [scMaxDuration, setScMaxDuration] = useState(60);
   const [scSrtText, setScSrtText] = useState("");
+
+  const ensureSportThemePool = useCallback(async (themeKey: string, themeName?: string, count?: number) => {
+    await ensureContentPool({
+      service_key: "sportzavod",
+      source_key: themeKey,
+      name: themeName || themeKey,
+      description: count != null ? `${count} SportZavod accounts` : "",
+      meta: { theme_key: themeKey, theme_name: themeName, count },
+    }).catch((e) => console.warn("ensure sport pool failed", e));
+  }, []);
+
+  const fetchStreamCutInfoAndEnsurePool = useCallback(async (url: string) => {
+    const info = await scFetchVideoInfo(url);
+    const speaker = info?.uploader || info?.title || url;
+    await ensureContentPool({
+      service_key: "streamcut",
+      source_key: speaker,
+      name: speaker,
+      description: info?.title || url,
+      meta: { ...(info || {}), url },
+    }).catch((e) => console.warn("ensure streamcut pool failed", e));
+  }, [scFetchVideoInfo]);
   const nicheRef = useRef<HTMLDivElement>(null);
   const scPollRef = useRef<ReturnType<typeof setInterval>>();
 
@@ -421,6 +478,10 @@ export function GeneratePage() {
 
   useEffect(() => {
     fetchJobs();
+    const id = setInterval(() => {
+      fetchJobs();
+    }, 5000);
+    return () => clearInterval(id);
   }, [fetchJobs]);
 
   useEffect(() => {
@@ -576,13 +637,22 @@ export function GeneratePage() {
       await startGeneration({
         service: service as "sportzavod" | "contentzavod" | "agentmusic",
         account_ids:
-          service === "contentzavod" && selectedIds.size === 0 ? ["default"]
-            : service === "agentmusic" ? ["telegram"]
-            : [...selectedIds],
+          service === "contentzavod" && selectedIds.size === 0
+            ? ["default"]
+            : service === "agentmusic"
+              ? ["telegram"]
+              : [...selectedIds],
         videos_per_account: videosPerAcc,
-        topic: service === "contentzavod" ? topic
-          : service === "agentmusic" ? JSON.stringify({ scenario: amScenario, orientation: "portrait", bg_type: amBgType })
-          : undefined,
+        topic:
+          service === "contentzavod"
+            ? topic
+            : service === "agentmusic"
+              ? JSON.stringify({
+                  scenario: amScenario,
+                  orientation: "portrait",
+                  bg_type: amBgType,
+                })
+              : undefined,
       });
       setShowConfirm(false);
     } catch (e: any) {
@@ -593,11 +663,23 @@ export function GeneratePage() {
   };
 
   const handleAutoMode = async () => {
+    const accountIds =
+      selectedIds.size > 0
+        ? [...selectedIds]
+        : service === "sportzavod"
+          ? readyAccounts.map((account) => account.account_id)
+          : undefined;
+    if (service === "sportzavod" && (!accountIds || accountIds.length === 0)) {
+      setLaunchError("Нет аккаунтов с avatar для AUTO-генерации.");
+      return;
+    }
     setLaunching(true);
+    setLaunchError("");
     try {
-      await startAutoGeneration(selectedIds.size > 0 ? [...selectedIds] : undefined);
+      await startAutoGeneration(accountIds);
+      await fetchJobs();
     } catch (e: any) {
-      alert(e.message || "Failed to start auto generation");
+      setLaunchError(e.message || "Failed to start auto generation");
     } finally {
       setLaunching(false);
     }
@@ -665,7 +747,11 @@ export function GeneratePage() {
             </div>
           )}
           <div className={styles.confirmActions}>
-            <button className={styles.launchBtn} onClick={handleLaunch} disabled={launching}>
+            <button
+              className={styles.launchBtn}
+              onClick={handleLaunch}
+              disabled={launching}
+            >
               {launching ? t("gen_launching") : t("generate_run")}
             </button>
             <button
@@ -802,9 +888,14 @@ export function GeneratePage() {
                   </div>
                 </button>
               </div>
-              <button className={styles.autoBtn} onClick={handleAutoMode} disabled={launching}>
+              <button
+                className={styles.autoBtn}
+                onClick={handleAutoMode}
+                disabled={launching}
+              >
                 {launching ? t("gen_launching") : t("gen_auto_btn")}
               </button>
+              {launchError && <div className={styles.errorText}>{launchError}</div>}
             </div>
           )}
 
@@ -822,7 +913,10 @@ export function GeneratePage() {
                   <button
                     key={theme.theme_key}
                     className={styles.themeChip}
-                    onClick={() => handleScopeTheme(theme.theme_key)}
+                    onClick={async () => {
+                      await ensureSportThemePool(theme.theme_key, theme.theme_name, theme.count);
+                      handleScopeTheme(theme.theme_key);
+                    }}
                   >
                     {theme.theme_key}
                     <span className={styles.themeChipCount}>{theme.count}</span>
@@ -960,13 +1054,13 @@ export function GeneratePage() {
                   onChange={(e) => setScUrl(e.target.value)}
                   placeholder={t("gen_sc_url_ph")}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && scUrl.trim()) scFetchVideoInfo(scUrl.trim());
+                    if (e.key === "Enter" && scUrl.trim()) fetchStreamCutInfoAndEnsurePool(scUrl.trim());
                   }}
                 />
                 <button
                   type="button"
                   className={styles.scInfoBtn}
-                  onClick={() => scUrl.trim() && scFetchVideoInfo(scUrl.trim())}
+                  onClick={() => scUrl.trim() && fetchStreamCutInfoAndEnsurePool(scUrl.trim())}
                   disabled={scVideoInfoLoading || !scUrl.trim()}
                 >
                   {scVideoInfoLoading ? "..." : t("gen_sc_fetch_info")}
@@ -1550,13 +1644,13 @@ export function GeneratePage() {
               <div className={styles.card}>
                 <div className={styles.cardTitle}>Сценарий</div>
                 <div className={styles.serviceTabs}>
-                  {(["karaoke", "streamer"] as const).map((sc) => (
+                  {(["karaoke"] as const).map((sc) => (
                     <button
                       key={sc}
                       className={`${styles.serviceTab} ${amScenario === sc ? styles.serviceTabActive : ""}`}
                       onClick={() => setAmScenario(sc)}
                     >
-                      {sc === "karaoke" ? "Караоке" : "Стример + Футаж"}
+                      Караоке
                     </button>
                   ))}
                 </div>
@@ -1580,6 +1674,19 @@ export function GeneratePage() {
                 </div>
               )}
 
+              {/* Авто-режим — непрерывная генерация (рандомные клипы) */}
+              <button
+                className={styles.autoBtn}
+                disabled={launching}
+                onClick={() => {
+                  setAmScenario("auto_loop");
+                  setScopeLabel("agentMUSIC · auto_loop");
+                  setShowConfirm(true);
+                }}
+              >
+                {launching ? t("gen_launching") : t("gen_auto_btn")}
+              </button>
+
               {/* Количество видео */}
               <div className={styles.card}>
                 <div className={styles.cardTitle}>Количество видео</div>
@@ -1598,16 +1705,35 @@ export function GeneratePage() {
 
               {/* Запуск */}
               <div className={styles.card}>
-                <div className={styles.cardFooter}>
+                <div className={styles.cardFooter} style={{ display: "flex", gap: 8 }}>
                   <button
                     className={styles.launchBtn}
                     disabled={launching}
                     onClick={() => {
-                      setScopeLabel(`agentMUSIC · ${amScenario}`);
+                      setAmScenario("karaoke");
+                      setScopeLabel("agentMUSIC · karaoke");
                       setShowConfirm(true);
                     }}
+                    style={{ flex: 1 }}
                   >
-                    {launching ? t("gen_launching") : `Запустить ${amScenario === "karaoke" ? "караоке" : "стример"}`}
+                    {launching ? t("gen_launching") : "Запустить караоке"}
+                  </button>
+                  <button
+                    className={styles.launchBtn}
+                    disabled={launching}
+                    onClick={() => {
+                      setAmScenario("tri_pack");
+                      setScopeLabel("agentMUSIC · tri_pack");
+                      setShowConfirm(true);
+                    }}
+                    style={{
+                      flex: 1,
+                      borderColor: "#8B5CF6",
+                      color: "#C4B5FD",
+                      background: "linear-gradient(180deg, rgba(139,92,246,0.10) 0%, rgba(139,92,246,0.04) 100%)",
+                    }}
+                  >
+                    {launching ? t("gen_launching") : "Track Promo Spotify"}
                   </button>
                 </div>
               </div>
@@ -1763,6 +1889,13 @@ export function GeneratePage() {
                     const jPct = getJobDisplayPercent(j, nowMs);
                     const latestEvent = (jobEventsById[j.job_id] ?? []).at(-1);
                     const indeterminate = j.status === "running" && j.total === 0;
+                    const resultCount = j.results?.length ?? 0;
+                    const progressTotal = j.total || j.account_ids.length || resultCount;
+                    const statusDetail =
+                      j.current_message ||
+                      j.latest_log ||
+                      latestEvent?.message ||
+                      getJobStageText(j, t);
                     return (
                       <div key={j.job_id} className={styles.jobItem}>
                         <div className={styles.jobItemHead}>
@@ -1805,9 +1938,10 @@ export function GeneratePage() {
 
                             <div className={styles.jobItemBottom}>
                               <span>
-                                {j.progress}/{j.total}
+                                {j.progress}/{progressTotal}
                               </span>
-                              {j.current_phase && <span>{j.current_phase}</span>}
+                              <span>{translatePhase(j.current_phase || "running", t)}</span>
+                              {resultCount > 0 && <span>{resultCount} ready</span>}
                               {(j.status === "running" || j.status === "stopping") && (
                                 <span>{formatElapsed(j.started_at ?? j.created_at, nowMs)}</span>
                               )}
@@ -1825,11 +1959,11 @@ export function GeneratePage() {
                           <div className={styles.jobTimelinePreview}>
                             <div className={styles.jobTimelineRow}>
                               <span className={styles.jobTimelineTime}>
-                                {formatEventClock(latestEvent.created_at)}
+                                {formatEventClock(j.updated_at ?? latestEvent.created_at)}
                               </span>
                               <div className={styles.jobTimelineBody}>
                                 <span className={styles.jobTimelinePhase}>
-                                  {translatePhase(latestEvent.phase, t)}
+                                  {statusDetail}
                                 </span>
                               </div>
                             </div>

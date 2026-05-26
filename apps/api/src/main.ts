@@ -7,8 +7,14 @@ dotenv.config();
 // Railway иногда возвращает IPv6 адреса которые не работают внутри internal сети.
 setDefaultResultOrder("ipv4first");
 
+import * as cookieParser from "cookie-parser";
 import { NestFactory } from "@nestjs/core";
+import { JwtService } from "@nestjs/jwt";
+import helmet from "helmet";
 import { AppModule } from "./app.module";
+import { CsrfMiddleware } from "./auth/csrf.middleware";
+import { IpAllowlistMiddleware } from "./auth/ip-allowlist.middleware";
+import { installFarmWsProxy } from "./farm/farm-ws-proxy";
 
 function checkEnv() {
   const warns: string[] = [];
@@ -34,8 +40,8 @@ function checkEnv() {
       "content-zavod генерация не будет работать в prod",
     ],
     [
-      "ORCHESTRATOR_URL",
-      process.env.ORCHESTRATOR_URL ?? "http://localhost:8001",
+      "ATOME_FARM_URL",
+      process.env.ATOME_FARM_URL ?? process.env.AUTONOMY_URL ?? "http://10.8.0.1:8001",
       "Farm данные не будут доступны в prod",
     ],
   ];
@@ -65,6 +71,16 @@ function checkEnv() {
 async function bootstrap() {
   checkEnv();
   const app = await NestFactory.create(AppModule);
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+    })
+  );
+  app.use(cookieParser());
+  app.use(IpAllowlistMiddleware);
+  app.use(CsrfMiddleware);
   app.setGlobalPrefix("api");
   app.enableCors({ origin: true, credentials: true });
   // Health endpoint outside /api prefix — used by Railway to detect liveness
@@ -73,6 +89,7 @@ async function bootstrap() {
   });
   const port = process.env.PORT ?? 3001;
   await app.listen(port, "0.0.0.0");
+  installFarmWsProxy(app.getHttpServer(), app.get(JwtService));
   console.log(`Atome API running on port ${port}`);
 }
 bootstrap();

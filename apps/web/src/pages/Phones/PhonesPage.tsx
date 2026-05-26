@@ -42,6 +42,24 @@ function healthColor(score: number) {
   return "#ef4444";
 }
 
+function phoneDisplayName(phone: Phone) {
+  return phone.display_name || phone.display_id || phone.serial || phone.phone_id;
+}
+
+function phoneSearchText(phone: Phone) {
+  return [
+    phone.phone_id,
+    phone.serial,
+    phone.display_name,
+    phone.display_id,
+    phone.serial_suffix,
+    phone.farm_number != null ? String(phone.farm_number).padStart(3, "0") : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
 // ─── Phone Card ───────────────────────────────────────────────────────────────
 
 function PhoneCard({ phone }: { phone: Phone }) {
@@ -67,7 +85,7 @@ function PhoneCard({ phone }: { phone: Phone }) {
           className={styles.serial}
           onClick={(e) => e.stopPropagation()}
         >
-          {phone.serial || phone.phone_id}
+          {phoneDisplayName(phone)}
         </Link>
         <span className={styles.statusTag} style={{ color: col }}>
           {STATUS_LABEL[phone.status]}
@@ -160,8 +178,7 @@ function PhonesOverview() {
       const q = search.toLowerCase();
       list = list.filter(
         (p) =>
-          p.phone_id.toLowerCase().includes(q) ||
-          p.serial?.toLowerCase().includes(q) ||
+          phoneSearchText(p).includes(q) ||
           p.accounts?.some((a) => a.username.toLowerCase().includes(q))
       );
     }

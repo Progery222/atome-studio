@@ -1,6 +1,7 @@
 import type { GenerationCostReport, GenerationJob, GenerationStats } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { VideosService } from "../videos/videos.service";
 import { JobEventsService } from "./job-events.service";
 
 type ServiceName = "sportzavod" | "contentzavod" | "agentmusic";
@@ -21,7 +22,8 @@ export class GenerationService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jobEvents: JobEventsService
+    private readonly jobEvents: JobEventsService,
+    private readonly videos: VideosService
   ) {}
 
   /** Maps job_id → service name for later routing */
@@ -340,31 +342,59 @@ export class GenerationService {
   }
 
   async getCostStats(): Promise<GenerationCostReport> {
-    const rows = await this.prisma.generationJobLog.groupBy({
-      by: ["service"],
-      where: { status: "done", costUsd: { gt: 0 } },
-      _sum: { costUsd: true, videosCount: true },
-      _count: { id: true },
-    });
+    const [rows, loggedJobs, liveJobs, minioVideoCounts] = await Promise.all([
+      this.prisma.generationJobLog.groupBy({
+        by: ["service"],
+        where: { status: "done" },
+        _sum: { costUsd: true, videosCount: true },
+        _count: { id: true },
+      }),
+      this.prisma.generationJobLog.findMany({ select: { jobId: true } }),
+      this.getAllJobs(),
+      this.getMinioVideoCounts(),
+    ]);
+
+    const loggedJobIds = new Set(loggedJobs.map((row) => row.jobId));
+    const mutable: Record<string, { cost: number; videos: number; jobs: number }> = {};
+
+    const add = (service: string, cost: number, videos: number, jobs: number) => {
+      const current = (mutable[service] ??= { cost: 0, videos: 0, jobs: 0 });
+      current.cost += cost;
+      current.videos += videos;
+      current.jobs += jobs;
+    };
+
+    for (const row of rows) {
+      add(row.service, row._sum.costUsd ?? 0, row._sum.videosCount ?? 0, row._count.id);
+    }
+
+    for (const job of liveJobs) {
+      if (loggedJobIds.has(job.job_id)) continue;
+      const videos = Math.max(job.progress ?? 0, job.results?.length ?? 0);
+      if (videos <= 0 && !job.cost_usd) continue;
+      add(job.service, job.cost_usd ?? 0, videos, 1);
+    }
+
+    for (const [service, count] of Object.entries(minioVideoCounts)) {
+      const current = (mutable[service] ??= { cost: 0, videos: 0, jobs: 0 });
+      current.videos = Math.max(current.videos, count);
+    }
 
     const services: GenerationCostReport["services"] = {};
     let totalCost = 0;
     let totalVideos = 0;
     let totalJobs = 0;
 
-    for (const row of rows) {
-      const cost = row._sum.costUsd ?? 0;
-      const videos = row._sum.videosCount ?? 0;
-      const jobs = row._count.id;
-      services[row.service] = {
-        total_usd: +cost.toFixed(4),
-        avg_usd_per_video: videos > 0 ? +(cost / videos).toFixed(4) : 0,
-        videos_count: videos,
-        jobs_count: jobs,
+    for (const [service, stats] of Object.entries(mutable)) {
+      services[service] = {
+        total_usd: +stats.cost.toFixed(4),
+        avg_usd_per_video: stats.videos > 0 ? +(stats.cost / stats.videos).toFixed(4) : 0,
+        videos_count: stats.videos,
+        jobs_count: stats.jobs,
       };
-      totalCost += cost;
-      totalVideos += videos;
-      totalJobs += jobs;
+      totalCost += stats.cost;
+      totalVideos += stats.videos;
+      totalJobs += stats.jobs;
     }
 
     return {
@@ -376,6 +406,19 @@ export class GenerationService {
         jobs_count: totalJobs,
       },
     };
+  }
+
+  private async getMinioVideoCounts(): Promise<Record<string, number>> {
+    try {
+      const videos = await this.videos.getVideos();
+      return videos.reduce<Record<string, number>>((acc, video) => {
+        acc[video.source_service] = (acc[video.source_service] ?? 0) + 1;
+        return acc;
+      }, {});
+    } catch (error) {
+      this.logger.warn(`Unable to include MinIO video counts in cost stats: ${(error as Error).message}`);
+      return {};
+    }
   }
 
   private normalizeJob(

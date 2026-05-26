@@ -1,0 +1,61 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+}
+
+.panel {
+  width: min(560px, 92vw);
+  background: var(--bg-elev, #121319);
+  color: var(--fg, #e9ecf3);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.input {
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: inherit;
+  font-size: 15px;
+}
+
+.list {
+  max-height: 50vh;
+  overflow: auto;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.item {
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.item.active {
+  background: var(--bg-elev-2, #1a1c24);
+}
+
+.shortcut {
+  font-size: 11px;
+  color: var(--fg-dim, #9aa1b1);
+}
+
+.empty {
+  padding: 16px;
+  color: var(--fg-dim, #9aa1b1);
+  font-size: 13px;
+}

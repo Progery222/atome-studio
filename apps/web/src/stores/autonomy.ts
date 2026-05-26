@@ -56,6 +56,9 @@ interface AutonomyState {
 
   fetchAnomalies: (severity?: AnomalySeverity, signatureId?: string, since?: string) => Promise<void>;
   fetchRecoveries: () => Promise<void>;
+
+  /** Apply a sessions snapshot received via WS (autonomy:sessions channel). */
+  applySessionsSnapshot: (list: PhoneAutonomySession[]) => void;
 }
 
 export const useAutonomyStore = create<AutonomyState>((set, get) => ({
@@ -93,24 +96,27 @@ export const useAutonomyStore = create<AutonomyState>((set, get) => ({
       const data = await res.json();
       if (Array.isArray(data)) {
         const list = data as PhoneAutonomySession[];
-        // Hydrate sessionsBySerial with session only (detail fetched on demand)
-        const bySerial: Record<string, AutonomySessionDetail> = { ...get().sessionsBySerial };
-        for (const session of list) {
-          const existing = bySerial[session.serial];
-          bySerial[session.serial] = {
-            session,
-            last_observation: existing?.last_observation,
-            last_action: existing?.last_action,
-            last_anomaly: existing?.last_anomaly,
-          };
-        }
-        set({ sessionsList: list, sessionsBySerial: bySerial });
+        get().applySessionsSnapshot(list);
       }
     } catch {
       // keep previous
     } finally {
       set({ sessionsLoading: false });
     }
+  },
+
+  applySessionsSnapshot: (list) => {
+    const bySerial: Record<string, AutonomySessionDetail> = { ...get().sessionsBySerial };
+    for (const session of list) {
+      const existing = bySerial[session.serial];
+      bySerial[session.serial] = {
+        session,
+        last_observation: existing?.last_observation,
+        last_action: existing?.last_action,
+        last_anomaly: existing?.last_anomaly,
+      };
+    }
+    set({ sessionsList: list, sessionsBySerial: bySerial });
   },
 
   pauseSession: async (serial) => {

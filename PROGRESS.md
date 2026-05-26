@@ -123,6 +123,97 @@
 
 ---
 
+## Фаза 10 — Resilience & Observability (стоп-кровь)
+- [x] **10.1** `apps/api/src/common/circuit-breaker.ts` — CircuitBreaker (closed/open/half-open, 3 fail → open 60s, warn ≤ 1/min) + global registry
+- [x] **10.2** `apps/api/src/autonomy/autonomy.service.ts` — обёрнут breaker `orchestrator-autonomy`; убран спам `Orchestrator unavailable: GET ...`
+- [x] **10.3** `apps/api/src/queue/queue.service.ts` — обёрнут breaker `orchestrator-queue`
+- [x] **10.4** `apps/api/src/health/` — `HealthModule` + `GET /api/health` (Public, без JWT); возвращает `SystemHealth { state, generatedAt, uptimeSec, services[] }` агрегируя `ServicesService.getAll()` + circuit breaker registry
+- [x] **10.5** `packages/shared/src/index.ts` — типы `SystemHealth`, `SystemServiceHealth`, `SystemHealthState`
+- [x] **10.6** `apps/web/src/stores/health.ts` + `apps/web/src/hooks/useFarmHealth.ts` — Zustand store + 15s polling
+- [x] **10.7** `apps/web/src/components/SystemBanner/` — sticky-баннер сверху страницы (скрыт когда state===ok); показывает down/degraded сервисы с stale-временем
+
+> 🧪 **Тест:** `curl http://localhost:4000/api/health` → JSON со state и services[]; в `docker logs atome-api` `Orchestrator unavailable` ≤ 1/мин (вместо ≥ 1/5с); при остановке оркестратора в UI появляется красная плашка
+
+---
+
+## Фаза 11 — Security & Audit
+
+- [x] **11.1** `apps/api/src/auth/auth.service.ts` — убран хардкоженный fallback `admin@atome.studio/admin123`; пользователь сидится из `ADMIN_EMAIL`+`ADMIN_PASSWORD` (compose уже задаёт), без env warn в лог и /api/auth/login отвергает всех
+- [x] **11.2** `apps/api/src/main.ts` — подключён `helmet()` (без CSP, чтобы не сломать SPA inline-чанки); `crossOriginResourcePolicy: cross-origin` для совместимости с MinIO
+- [x] **11.3** `apps/api/src/app.module.ts` — `ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }])` глобально + `ThrottlerGuard` в `APP_GUARD`
+- [x] **11.4** `apps/api/src/auth/auth.controller.ts` — `@Throttle({ default: { ttl: 60_000, limit: 5 } })` на login/register (5 попыток/мин/IP, 6-я = 429)
+- [x] **11.5** `apps/api/src/audit/` — новый AuditModule (Global): `AuditService.log({userId,userEmail,action,target,ip,payload,status})` + `GET /api/audit?action=&userId=&limit=`
+- [x] **11.6** `apps/api/prisma/schema.prisma` — модель `AuditLog (id, userId?, userEmail?, action, target?, ip?, payloadJson?, status, createdAt)` + индексы по `[userId, createdAt]` и `[action, createdAt]`
+- [x] **11.7** `/opt/nginx-proxy.conf` — блок 444 для known scanner paths (owa/ecp/wp-admin/.git/.env/cgi-bin/...), location-блок для banking-фишинговых JS (lkk_ch/qr_modal/twint_ch), валидный `/robots.txt`, drop по UA (zgrab/nmap/sqlmap/nikto/wpscan), drop не-стандартных HTTP методов (PROPFIND и т.п.); + security headers (X-Frame-Options, HSTS, Referrer-Policy, Permissions-Policy)
+
+> 🧪 **Тест проверено в проде (v761503, 2026-04-18):**
+> - `curl /owa/auth/x.js` → `HTTP=000` (444 drop) ✓
+> - `curl /assets/js/qr_modal.js` → `HTTP=000` ✓
+> - `curl -A "zgrab/0.x" /` → `HTTP=000` ✓
+> - `curl /robots.txt` → `User-agent: *\nDisallow: /` ✓
+> - `curl /` (homepage) → `HTTP=200` ✓
+> - 5 wrong logins → 401, 6-й → 429 ✓
+> - `/api/audit` без токена → 401 ✓
+
+---
+
+## Фаза 12 — UX (точечно)
+
+- [x] **12.1** `apps/web/src/hooks/useKeyboardShortcuts.ts` + интеграция в Layout — `g + p/v/a/g/q/s/c/n/h` chord для навигации (skipped при фокусе на input/textarea/contenteditable, окно вооружения 1.2с)
+- [x] **12.2** Hook перенесён в App-level (`<GlobalShell>`), чтобы работал и на публичной Galaxy, и после login до Layout.
+- [x] **12.3** `components/CommandPalette/` — Cmd+K / Ctrl+K палитра со списком команд (навигация по всем страницам, toggle theme, logout), ArrowDown/ArrowUp + Enter, Esc для закрытия.
+- [x] **12.4** `styles/themes.css` + `stores/theme.ts` — light/dark темы через CSS-переменные и `data-theme` атрибут на `:root`; persist в localStorage.
+- [x] **12.5** `hooks/usePersistedState.ts` — generic useState обёртка в localStorage ключом `atome.ui.<page>.<field>`.
+- [x] **12.6** `components/EmptyState/` — общий компонент для пустых списков с title/description/CTA ссылкой.
+
+---
+
+## Фаза 13 — Security hardening (продолжение) + Audit full chain
+
+- [x] **13.1** JWT в **httpOnly cookie** `at` (Secure на HTTPS, SameSite=Lax, 8h TTL). `JwtAuthGuard` принимает Bearer **или** cookie (обратная совместимость). Фронт: `fetch` → `credentials: include`, legacy `localStorage` token читается как fallback. `lib/api.ts` обновлён.
+- [x] **13.2** CSRF double-submit: `csrf` cookie (не httpOnly, JS читает) + header `X-CSRF-Token` обязателен для POST/PUT/PATCH/DELETE под `/api/*` (кроме `/api/auth/login|register|logout` и Bearer-клиентов). Middleware `auth/csrf.middleware.ts`. Фронт отправляет автоматически в `apiFetch`.
+- [x] **13.3** `auth/ip-allowlist.middleware.ts` — whitelist IP для `/api/clients/*` и `/api/audit/*` через env `ADMIN_ALLOWED_IPS` (comma-separated). По умолчанию отключён (пустой env — skip).
+- [x] **13.4** `auth.controller.ts` — эндпоинты: `POST /auth/login`, `POST /auth/register`, `POST /auth/logout` (clearCookie), `GET /auth/me`. Login/register ставят `at` cookie + возвращают токен для legacy. Throttler: 20/мин/IP.
+- [x] **13.5** `AuditInterceptor` + `@Audited("action.name")` декоратор (`audit/audited.decorator.ts`). Логирует `{userId, userEmail, action, target (param.id/serial), ip, payload: {method, url, body}, status: ok|error}` в `AuditLog`.
+- [x] **13.6** `autonomy.controller.ts` — `@Audited` на `pause/resume/terminate`.
+- [x] **13.7** Prisma migration `20260418_add_audit_and_cost_budget` — таблицы `AuditLog` (индексы по `[userId, createdAt]` и `[action, createdAt]`) и `CostBudget` (unique `clientId`, dailyUsd, monthlyUsd, alertThreshold).
+- [x] **13.8** `pages/Audit/AuditPage.tsx` — таблица audit log с фильтром по action, super_admin only (route в `App.tsx` под `RoleGuard`).
+- [x] **13.9** `auth/auth.service.ts` — закомментирован хардкоженный admin fallback ещё в фазе 11; при отсутствии `ADMIN_EMAIL`/`ADMIN_PASSWORD` warn, USERS = []  → login rejects all.
+
+---
+
+## Фаза 14 — Realtime & code quality
+
+- [x] **14.1** `events/events.gateway.ts` — метод `emitCustom(channel, payload)` для произвольных каналов.
+- [x] **14.2** `autonomy.service.ts` — эмитит `autonomy:sessions` после `listSessions()` через `emitIfChanged` (JSON-снапшот key, emit только при изменении).
+- [x] **14.3** `autonomy.module.ts` — импортирует `EventsModule`.
+- [x] **14.4** `stores/farm.ts` — socket.io handler `autonomy:sessions` → `useAutonomyStore.applySessionsSnapshot(list)`.
+- [x] **14.5** `stores/autonomy.ts` — `applySessionsSnapshot(list)` переиспользуется fetch-ом и WS-каналом.
+- [x] **14.6** `hooks/useAutonomyPolling.ts` — дефолт 3000ms → 30_000ms (watchdog; живые обновления идут по WS).
+- [x] **14.7** `autonomy/envelope.ts` + `.spec.ts` — чистая функция `unwrapEnvelope<T>(data, key): T[]` с 3 vitest-тестами (эктрактит, пустой на invalid shape, правильно типизирует). `getList()` в AutonomyService пользуется ей.
+- [x] **14.8** `apps/api/vitest.config.ts` + `test` script; tsconfig исключает `*.spec.ts` из nest build.
+- [x] **14.9** `apps/web/package.json` — `e2e` script + `@playwright/test 1.59.1` devDep.
+- [x] **14.10** `apps/web/e2e/smoke.spec.ts` + `playwright.config.ts` — 5 тестов (health, login+cookie, CSRF 403, scanner drop on edge, combined: galaxy + login UI + g+p shortcut + Ctrl+K palette).
+- [x] **14.11** `.github/workflows/typecheck.yml` — CI: prisma generate + shared build + api tsc + web tsc + biome check + all vitest.
+
+> 🧪 **Тесты — все зелёные на проде (v761503):**
+> - `/api/health` → state=ok, 7 services
+> - `/api/auth/login` → 201, Set-Cookie `at=...` + `csrf=...`
+> - `/api/auth/me` с cookie → 200
+> - POST без CSRF-header → 403
+> - POST с CSRF-header → 201 (и audit-запись появляется)
+> - `/api/audit` → 1+ записей по `autonomy.pause`
+> - `/api/auth/logout` → 201
+> - vitest: 3 passed
+> - Playwright: **5/5 passed** (13.2s)
+>   - health endpoint responds
+>   - login API sets at cookie
+>   - CSRF blocks POST without token
+>   - scanner paths are dropped on https edge
+>   - galaxy loads + login + shortcuts + palette (combined)
+
+---
+
 ## Легенда
 
 | Символ | Статус |

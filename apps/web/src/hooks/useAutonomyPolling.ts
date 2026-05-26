@@ -5,7 +5,7 @@ import { useAutonomyStore } from "../stores/autonomy";
  * Polls autonomy sessions every `intervalMs` milliseconds.
  * Used by PhoneGridPage and AutonomyPage to keep session state fresh.
  */
-export function useAutonomyPolling(intervalMs = 3000, activeOnly = false) {
+export function useAutonomyPolling(intervalMs = 30_000, activeOnly = false) {
   const fetchAllSessions = useAutonomyStore((s) => s.fetchAllSessions);
 
   useEffect(() => {

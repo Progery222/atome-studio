@@ -229,7 +229,7 @@
 
 .editField {
   flex: 1;
-  max-width: 280px;
+  max-width: 420px;
 }
 
 .fieldInput {
@@ -299,6 +299,75 @@
   height: 14px;
   accent-color: var(--accent-cyan);
   cursor: pointer;
+}
+
+.poolEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.poolList {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.poolToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
+}
+
+.poolToggle:hover {
+  color: var(--text-primary);
+  border-color: rgba(0, 210, 255, 0.28);
+  background: rgba(0, 210, 255, 0.07);
+}
+
+.poolToggleActive {
+  color: #fff;
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.poolToggle span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.poolToggle small {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.poolEmpty {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-sm);
 }
 
 /* ─── Feedback banners ───────────────────────────────────────────────────── */

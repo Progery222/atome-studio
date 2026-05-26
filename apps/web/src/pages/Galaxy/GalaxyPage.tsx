@@ -17,10 +17,9 @@ const POLL_INTERVAL = 30_000;
 const EXIT_DURATION = 450;
 
 const NAV_ITEMS = [
-  { path: "/phones", label: "Phones" },
+  { path: "/dashboard", label: "Dashboard" },
   { path: "/accounts", label: "Accounts" },
   { path: "/generate", label: "Generate" },
-  { path: "/queue", label: "Queue" },
   { path: "/videos", label: "Videos" },
   { path: "/analytics", label: "Analytics" },
 ];

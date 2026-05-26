@@ -10,7 +10,7 @@ export interface Service {
   activeJobs?: number;
   /** RGB color — computed from status by adapter */
   col: [number, number, number];
-  /** Orbit index: 0=SportZavod, 1=content-zavod, 2=Orchestrator, 3=StreamCut, 4=agentMUSIC */
+  /** Orbit index: 0=SportZavod, 1=content-zavod, 2=atome-farm, 3=StreamCut, 4=agentMUSIC */
   oi: number;
   /** Initial angle on orbit (radians) */
   a: number;
@@ -43,7 +43,7 @@ export interface OrbitConfig {
 export const ORBIT_CONFIGS: OrbitConfig[] = [
   { a: 380, b: 120, tilt: -0.1, rgb: "210,175,55" }, // 0 — SportZavod (golden)
   { a: 320, b: 150, tilt: 0.45, rgb: "180,150,255" }, // 1 — content-zavod (lavender)
-  { a: 420, b: 100, tilt: 0.22, rgb: "150,130,230" }, // 2 — Orchestrator (purple)
+  { a: 420, b: 100, tilt: 0.22, rgb: "34,211,238" }, // 2 — atome-farm (cyan)
   { a: 460, b: 90, tilt: -0.35, rgb: "255,120,80" }, // 3 — StreamCut (coral)
   { a: 340, b: 130, tilt: -0.25, rgb: "0,200,220" }, // 4 — agentMUSIC (cyan)
 ];
@@ -71,8 +71,58 @@ export const EMPTY_FARM_STATS: FarmStats = {
 
 // ─── Domain models ────────────────────────────────────────────────────────────
 
+export type SocialPlatform = "tiktok" | "instagram" | "youtube" | "x";
+
+export type VhaPolicy = "off" | "manual" | "auto";
+
+export interface VhaInfo {
+  vha_id: string;
+  status?: string | null;
+  policy?: VhaPolicy | null;
+  current_job_id?: string | null;
+}
+
+export interface VhaPersona {
+  first_name?: string | null;
+  last_name?: string | null;
+  niche?: string | null;
+  city?: string | null;
+  age?: number | null;
+  sleep_start?: string | null;
+  sleep_end?: string | null;
+}
+
+export interface VhaProject {
+  project_id: string;
+  slug?: string | null;
+  name?: string | null;
+  niche?: string | null;
+}
+
+export interface VhaAccountLite {
+  account_id: string;
+  platform: string;
+  username?: string | null;
+  status?: string | null;
+  health_status?: string | null;
+  plan_id?: string | null;
+  plan_state?: string | null;
+  theme_key?: string | null;
+}
+
+export interface VhaLastDecision {
+  ts?: string | null;
+  action?: string | null;
+  reason?: string | null;
+  task_id?: string | null;
+}
+
 export interface Phone {
   phone_id: string;
+  farm_number?: number | null;
+  display_id?: string | null;
+  serial_suffix?: string | null;
+  display_name?: string | null;
   serial: string;
   tenant_id: string;
   model: string;
@@ -85,14 +135,70 @@ export interface Phone {
   actions_today: number;
   posts_today: number;
   accounts: Account[];
+  // VHA enrichment (from /api/dashboard/fleet)
+  vha?: VhaInfo | null;
+  persona?: VhaPersona | null;
+  project?: VhaProject | null;
+  vha_accounts?: VhaAccountLite[] | null;
+  last_decision?: VhaLastDecision | null;
+}
+
+export interface FleetGroup {
+  project_id: string;
+  name?: string | null;
+  niche?: string | null;
+  vha_count?: number;
+  phone_count?: number;
+}
+
+export type AccountPlanState =
+  | "planned"
+  | "bound"
+  | "linked"
+  | "created"
+  | "failed"
+  | "archived";
+
+export interface AccountPlan {
+  plan_id: string;
+  source: string;
+  source_external_id?: string | null;
+  platform: string;
+  username: string;
+  email?: string | null;
+  theme_key?: string | null;
+  theme_name?: string | null;
+  state: AccountPlanState;
+  bound_phone_id?: string | null;
+  bound_vha_id?: string | null;
+  bound_account_id?: string | null;
+  persona_data?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  bound_at?: string | null;
+  last_synced_at?: string | null;
+}
+
+export interface FleetResponse {
+  items: Phone[];
+  groups?: FleetGroup[];
+  total_phones?: number;
+  autonomy_enabled?: boolean;
+}
+
+export interface AutonomyStatus {
+  enabled: boolean;
+  interval_sec?: number;
+  enabled_serials?: string[];
+  running_loop?: boolean;
 }
 
 export interface Account {
   account_id: string;
   tenant_id: string;
   phone_id: string;
-  platform: "tiktok";
+  platform: SocialPlatform;
   username: string;
+  account_group?: string | null;
   niche: string;
   content_sources: string[];
   heygen_avatar_id?: string;
@@ -113,10 +219,14 @@ export interface QueueTask {
   task_id: string;
   account_id: string;
   phone_id: string;
+  phone_farm_number?: number | null;
+  phone_display_id?: string | null;
+  phone_serial_suffix?: string | null;
+  phone_display_name?: string | null;
   file_url: string;
   caption: string;
   hashtags: string[];
-  platform: "tiktok";
+  platform: SocialPlatform;
   source_service: "sportzavod" | "contentzavod" | "streamcut" | "agentmusic";
   status: "scheduled" | "in_progress" | "published" | "failed";
   scheduled_at: string;
@@ -410,6 +520,7 @@ export interface Client {
   phones_limit: number;
   phones_assigned: number;
   accounts_count: number;
+  bound_plans_count?: number;
   status: "active" | "inactive";
   created_at: string;
 }
@@ -514,4 +625,136 @@ export interface AutonomySessionDetail {
   last_observation?: PhoneObservation;
   last_action?: PhoneActionExecution;
   last_anomaly?: PhoneAnomalyEvent;
+}
+
+// ─── System health (per backend) ──────────────────────────────────────────────
+
+export type SystemHealthState = "ok" | "degraded" | "down" | "unknown";
+
+export interface SystemServiceHealth {
+  id: string;
+  name: string;
+  state: SystemHealthState;
+  /** ISO timestamp of last successful contact, or null */
+  lastSuccessAt: string | null;
+  /** seconds since last success, or null if never */
+  staleSeconds: number | null;
+  /** open circuit since (ISO) when state==="down" or "degraded" */
+  circuitOpenSince: string | null;
+  /** human note: "5 fails", "circuit open" */
+  detail?: string;
+}
+
+export interface SystemHealth {
+  state: SystemHealthState;
+  generatedAt: string;
+  uptimeSec: number;
+  services: SystemServiceHealth[];
+}
+// ─── Account creation wizard / jobs ───────────────────────────────────────────
+
+export type ServiceId =
+  | "sportzavod"
+  | "agentmusic"
+  | "streamcut"
+  | "content-zavod"
+  | string;
+export type PlatformId =
+  | "google"
+  | "instagram"
+  | "tiktok"
+  | "youtube"
+  | "x"
+  | "facebook";
+
+export interface ServiceRegistryItem {
+  id: ServiceId;
+  title: string;
+  themes: string[];
+}
+
+export interface ServicesRegistryResponse {
+  services: ServiceRegistryItem[];
+  platforms: PlatformId[];
+}
+
+export interface AvailablePhone {
+  phone_id: string;
+  serial: string;
+  phone_status: string;
+  accounts_count: number;
+  bound_plans_count?: number;
+  display_name?: string | null;
+  persona_name?: string | null;
+  vha_id?: string | null;
+  persona_first_name?: string | null;
+  persona_last_name?: string | null;
+  persona_niche?: string | null;
+  last_seen?: string | null;
+}
+
+export interface CreateJobBody {
+  services: ServiceId[];
+  themes: string[];
+  platforms: PlatformId[];
+  phone_ids?: string[];
+  auto_phones_count?: number;
+  count_per_phone?: number;
+  policy?: Record<string, unknown>;
+}
+
+export type JobStatus =
+  | "queued"
+  | "running"
+  | "done"
+  | "failed"
+  | "cancelled"
+  | "partial";
+
+export type StepState =
+  | "pending"
+  | "running"
+  | "done"
+  | "failed"
+  | "skipped"
+  | "pending_manual"
+  | "cancelled";
+
+export interface JobRow {
+  job_id: string;
+  status: JobStatus;
+  requested_services: string[];
+  requested_themes: string[];
+  requested_platforms: string[];
+  total_steps: number;
+  completed_steps: number;
+  failed_steps: number;
+  pending_manual_steps: number;
+  created_at: string;
+  finished_at?: string | null;
+}
+
+export interface JobDetail extends JobRow {
+  phone_ids: string[];
+  policy_json?: Record<string, unknown>;
+  error_message?: string | null;
+  started_at?: string | null;
+}
+
+export interface StepRow {
+  step_id: string;
+  job_id: string;
+  phone_id?: string | null;
+  serial?: string | null;
+  plan_id?: string | null;
+  theme_key?: string | null;
+  platform: string;
+  action: string;
+  state: StepState;
+  started_at?: string | null;
+  finished_at?: string | null;
+  duration_sec?: number | null;
+  error_code?: string | null;
+  error_message?: string | null;
+  alex_task_id?: string | null;
 }

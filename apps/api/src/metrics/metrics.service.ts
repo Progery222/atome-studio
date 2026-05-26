@@ -1,5 +1,6 @@
 import type { MetricsHistoryPoint, MetricsHistoryResponse } from "@atome/shared";
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 const PERIODS: Record<string, number> = {
@@ -18,8 +19,9 @@ export class MetricsService {
     const periodMs = PERIODS[period] ?? PERIODS["30d"];
     const since = new Date(Date.now() - periodMs);
 
-    // Use '1 day' bucket for all periods — fine for production, avoids too many hourly rows
-    const trunc = resolution === "1d" ? "day" : "hour";
+    const bucket = resolution === "1d" ? "day" : "hour";
+    // Inlined DATE_TRUNC unit: bound params in SELECT vs GROUP BY break PG GROUP BY rules.
+    const trunc = Prisma.raw(`'${bucket}'`);
 
     const rows = await this.prisma.$queryRaw<RawRow[]>`
       SELECT
@@ -29,8 +31,8 @@ export class MetricsService {
       FROM "GenerationJobLog"
       WHERE status = 'done'
         AND "createdAt" >= ${since}
-      GROUP BY DATE_TRUNC(${trunc}, "createdAt")
-      ORDER BY ts ASC
+      GROUP BY 1
+      ORDER BY 1 ASC
     `;
 
     const points: MetricsHistoryPoint[] = rows.map((r) => ({

@@ -2,6 +2,8 @@ import type { VideoFile } from "@atome/shared";
 import { Injectable, Logger } from "@nestjs/common";
 import { StreamCutService } from "../streamcut/streamcut.service";
 
+type VideoServiceName = VideoFile["source_service"];
+
 /**
  * VideosService
  *
@@ -110,18 +112,12 @@ export class VideosService {
         continue;
       }
 
-      const service = key.includes("agentmusic")
-        ? "agentmusic"
-        : key.includes("sportzavod")
-          ? "sportzavod"
-          : key.includes("streamcut")
-            ? "streamcut"
-            : "contentzavod";
+      const service = this.inferServiceFromKey(key);
 
       videos.push({
         filename: key,
-        account_id: this.inferAccountId(key),
-        tenant_id: this.inferTenantId(key),
+        account_id: this.inferAccountId(key, service),
+        tenant_id: service,
         source_service: service,
         url: `/api/videos/proxy/${this.encodeKey(key)}`,
         thumbnail_url: "",
@@ -143,7 +139,7 @@ export class VideosService {
     const tasks: Array<() => Promise<void>> = [];
 
     for (const video of videos) {
-      const jsonKey = this.resolveJsonKey(video);
+      const jsonKey = this.resolveJsonKeys(video).find((candidate) => jsonKeys.has(candidate));
       if (!jsonKey || !jsonKeys.has(jsonKey)) continue;
 
       tasks.push(async () => {
@@ -166,26 +162,38 @@ export class VideosService {
   }
 
   /**
-   * Compute companion JSON key for a video:
-   * - SportZavod:    replace .mp4 → .json
-   * - content-zavod: same dir prefix + /prompt.json
+   * Compute companion JSON keys for a video:
+   * - SportZavod / new generators: replace .mp4 → .json
+   * - legacy content-zavod: same dir prefix + /prompt.json
    */
-  private resolveJsonKey(video: VideoFile): string | null {
+  private resolveJsonKeys(video: VideoFile): string[] {
     const key = video.filename;
+    const directSidecar = key.replace(/\.mp4$/i, ".json");
     if (
       video.source_service === "sportzavod" ||
       video.source_service === "agentmusic" ||
       video.source_service === "streamcut"
     ) {
-      return key.replace(/\.mp4$/i, ".json");
+      return [directSidecar];
     }
-    // content-zavod: {account_id}/{date}/{topic_slug}/{title_slug}.mp4
+    // content-zavod supports both new `{video}.json` and legacy `prompt.json`.
     const dir = key.substring(0, key.lastIndexOf("/"));
-    return dir ? `${dir}/prompt.json` : null;
+    return dir ? [directSidecar, `${dir}/prompt.json`] : [directSidecar];
   }
 
   /** Map raw JSON from MinIO into VideoFile metadata fields */
   private applyMeta(video: VideoFile, data: Record<string, unknown>): void {
+    const pathService = this.inferServiceFromKey(video.filename);
+    const metaService =
+      this.normalizeService(data.source_service) ??
+      this.normalizeService(data.source) ??
+      this.normalizeService(data.service) ??
+      this.normalizeService(data.generator);
+    const sourceService = pathService === "contentzavod" ? (metaService ?? pathService) : pathService;
+    video.source_service = sourceService;
+    video.tenant_id = sourceService;
+    video.account_id = this.inferAccountId(video.filename, sourceService);
+
     // Если JSON-метаданные найдены — видео обработано
     const rawStatus = this.str(data.status);
     video.status =
@@ -194,36 +202,37 @@ export class VideosService {
         : "published";
 
     if (video.source_service === "sportzavod") {
-      video.title = this.str(data.title);
-      video.description = this.str(data.description);
-      video.caption = this.str(data.caption);
-      video.hashtags = this.strArr(data.hashtags);
+      this.applyFlatMeta(video, data);
     } else if (video.source_service === "agentmusic" || video.source_service === "streamcut") {
       // flat JSON with title, description, hashtags
-      video.title = this.str(data.title);
-      video.description = this.str(data.description);
-      video.hashtags = this.strArr(data.hashtags);
-
-      const parts: string[] = [];
-      if (video.title) parts.push(video.title);
-      if (video.description) parts.push(video.description);
-      if (video.hashtags?.length)
-        parts.push(video.hashtags.map((t) => `#${t.replace(/^#/, "")}`).join(" "));
-      if (parts.length) video.caption = parts.join("\n\n");
+      this.applyFlatMeta(video, data);
     } else {
-      // content-zavod prompt.json
+      // content-zavod supports both flat `{video}.json` and legacy prompt.json.
       const script = (data.script ?? {}) as Record<string, unknown>;
-      video.title = this.str(script.title);
-      video.description = this.str(script.description);
-      video.hashtags = this.strArr(script.tags);
-
-      const parts: string[] = [];
-      if (video.title) parts.push(video.title);
-      if (video.description) parts.push(video.description);
-      if (video.hashtags?.length)
-        parts.push(video.hashtags.map((t) => `#${t.replace(/^#/, "")}`).join(" "));
-      if (parts.length) video.caption = parts.join("\n\n");
+      video.title = this.str(data.title) ?? this.str(script.title);
+      video.description = this.str(data.description) ?? this.str(script.description);
+      video.hashtags =
+        this.strArr(data.hashtags) ?? this.strArr(data.tags) ?? this.strArr(script.tags);
+      video.caption = this.str(data.caption) ?? this.buildCaption(video);
     }
+  }
+
+  private applyFlatMeta(video: VideoFile, data: Record<string, unknown>): void {
+    video.title = this.str(data.title);
+    video.description = this.str(data.description);
+    video.caption = this.str(data.caption);
+    video.hashtags = this.strArr(data.hashtags) ?? this.strArr(data.tags);
+    if (!video.caption) video.caption = this.buildCaption(video);
+  }
+
+  private buildCaption(video: VideoFile): string | undefined {
+    const parts: string[] = [];
+    if (video.title) parts.push(video.title);
+    if (video.description) parts.push(video.description);
+    if (video.hashtags?.length) {
+      parts.push(video.hashtags.map((t) => `#${t.replace(/^#/, "")}`).join(" "));
+    }
+    return parts.length ? parts.join("\n\n") : undefined;
   }
 
   private str(v: unknown): string | undefined {
@@ -232,6 +241,25 @@ export class VideosService {
 
   private strArr(v: unknown): string[] | undefined {
     return Array.isArray(v) && v.length > 0 ? (v as string[]) : undefined;
+  }
+
+  private inferServiceFromKey(key: string): VideoServiceName {
+    const clean = key.toLowerCase();
+    if (clean.startsWith("sportzavod/") || clean.includes("/sportzavod/")) return "sportzavod";
+    if (clean.startsWith("streamcut/") || clean.includes("/streamcut/")) return "streamcut";
+    if (clean.startsWith("agentmusic/") || clean.includes("/agentmusic/")) return "agentmusic";
+    return "contentzavod";
+  }
+
+  private normalizeService(value: unknown): VideoServiceName | undefined {
+    if (typeof value !== "string") return undefined;
+    const clean = value.trim().toLowerCase().replace(/[-_\s]/g, "");
+    if (!clean) return undefined;
+    if (clean.includes("sportzavod")) return "sportzavod";
+    if (clean.includes("streamcut")) return "streamcut";
+    if (clean.includes("agentmusic")) return "agentmusic";
+    if (clean.includes("contentzavod") || clean.includes("contentzav")) return "contentzavod";
+    return undefined;
   }
 
   private encodeKey(key: string): string {
@@ -244,14 +272,12 @@ export class VideosService {
     return match ? match[1] : null;
   }
 
-  private inferAccountId(key: string): string {
+  private inferAccountId(key: string, service = this.inferServiceFromKey(key)): string {
     const parts = key.split("/");
+    if (service === "sportzavod") return parts[2] ?? parts[1] ?? "";
+    if (service === "streamcut") return "streamcut";
+    if (service === "agentmusic") return "agentmusic";
     return parts.length >= 2 ? parts[1] : "";
-  }
-
-  private inferTenantId(key: string): string {
-    const parts = key.split("/");
-    return parts.length >= 1 ? parts[0] : "";
   }
 
   getVideoUrl(key: string): string {

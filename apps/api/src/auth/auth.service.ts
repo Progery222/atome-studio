@@ -9,15 +9,23 @@ interface User {
   name: string;
 }
 
-// In-memory user store for MVP — replace with DB in Phase 2
-const USERS: User[] = [
-  {
+// In-memory user store for MVP — seeded from env (ADMIN_EMAIL/ADMIN_PASSWORD).
+// No hardcoded fallback: if env vars are missing, login simply fails.
+const USERS: User[] = [];
+const adminEmail = process.env.ADMIN_EMAIL?.trim();
+const adminPassword = process.env.ADMIN_PASSWORD;
+if (adminEmail && adminPassword) {
+  USERS.push({
     id: "admin_1",
-    email: "admin@atome.studio",
-    passwordHash: bcrypt.hashSync("admin123", 10),
-    name: "Super Admin",
-  },
-];
+    email: adminEmail,
+    passwordHash: bcrypt.hashSync(adminPassword, 10),
+    name: process.env.ADMIN_NAME?.trim() || "Admin",
+  });
+} else {
+  console.warn(
+    "[AUTH] ADMIN_EMAIL/ADMIN_PASSWORD not set — no users seeded; /api/auth/login will reject all attempts."
+  );
+}
 
 @Injectable()
 export class AuthService {

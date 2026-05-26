@@ -1,0 +1,67 @@
+.page {
+  padding: 20px;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filter {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: var(--bg-elev, #121319);
+  color: inherit;
+  font: inherit;
+  min-width: 320px;
+}
+
+.tableWrap {
+  overflow: auto;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  text-align: left;
+  padding: 10px 12px;
+  background: var(--bg-elev-2, #1a1c24);
+  color: var(--fg-dim, #9aa1b1);
+  font-weight: 500;
+  font-size: 12px;
+  position: sticky;
+  top: 0;
+}
+
+.table td {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+}
+
+.dim {
+  color: var(--fg-dim, #9aa1b1);
+  text-align: center;
+  padding: 28px !important;
+}
+
+.err {
+  color: #ff8a8a;
+}
+
+.error {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(210, 52, 52, 0.15);
+  color: #ffb1b1;
+}

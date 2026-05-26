@@ -8,6 +8,15 @@ import styles from "./PhoneGridPage.module.css";
 
 const ANOMALY_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
+function phoneDisplayName(phone: {
+  display_name?: string | null;
+  display_id?: string | null;
+  serial?: string | null;
+  phone_id: string;
+}) {
+  return phone.display_name || phone.display_id || phone.serial || phone.phone_id;
+}
+
 function isRecentAnomaly(ts?: string): boolean {
   if (!ts) return false;
   const age = Date.now() - new Date(ts).getTime();
@@ -65,6 +74,7 @@ export function PhoneGridPage() {
       <div className={styles.grid}>
         {phones.map((phone: any) => {
           const serial = phone.serial || phone.phone_id;
+          const displayName = phoneDisplayName(phone);
           const detail = sessionsBySerial[serial];
           const session = detail?.session;
           const lastAnomaly = detail?.last_anomaly;
@@ -94,7 +104,7 @@ export function PhoneGridPage() {
               )}
 
               <div className={styles.cardOverlay}>
-                <span className={styles.cardSerial}>{serial.slice(-6)}</span>
+                <span className={styles.cardSerial}>{displayName}</span>
                 <span
                   className={`${styles.cardStatus} ${
                     phone.status === "paused"

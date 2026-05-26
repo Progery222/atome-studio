@@ -10,7 +10,8 @@
     "dev": "concurrently \"npm run dev -w apps/web\" \"npm run dev -w apps/api\"",
     "build": "npm run build -w packages/shared && npm run build -w apps/web && npm run build -w apps/api",
     "dev:web": "npm run dev -w apps/web",
-    "dev:api": "npm run dev -w apps/api"
+    "dev:api": "npm run dev -w apps/api",
+    "typecheck": "npm run build -w packages/shared && tsc -p apps/api/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",

@@ -27,7 +27,7 @@ const CARDS: KPICard[] = [
   {
     key: "publish_rate",
     label: "Publish Rate",
-    format: (v) => `${Math.round(v)}%`,
+    format: (v) => `${Math.round(asPercent(v))}%`,
     color: "#00d4aa",
   },
   {
@@ -38,6 +38,10 @@ const CARDS: KPICard[] = [
   },
   { key: "uptime_percent", label: "Uptime", format: (v) => `${v.toFixed(1)}%`, color: "#a78bfa" },
 ];
+
+function asPercent(value: number): number {
+  return Math.abs(value) <= 1 ? value * 100 : value;
+}
 
 function CountUp({ value, format }: { value: number; format: (v: number) => string }) {
   const ref = useRef<HTMLSpanElement>(null);

@@ -1,0 +1,46 @@
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  font-size: 13px;
+  line-height: 1.4;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.banner.down {
+  background: rgba(210, 52, 52, 0.16);
+  color: #ffb1b1;
+  border-color: rgba(210, 52, 52, 0.4);
+}
+
+.banner.degraded {
+  background: rgba(200, 150, 8, 0.16);
+  color: #ffd98a;
+  border-color: rgba(200, 150, 8, 0.4);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 8px;
+}
+
+.dot.down {
+  background: #d23434;
+  box-shadow: 0 0 6px #d23434;
+}
+
+.dot.degraded {
+  background: #c89608;
+  box-shadow: 0 0 6px #c89608;
+}
+
+.detail {
+  opacity: 0.85;
+  font-size: 12px;
+}

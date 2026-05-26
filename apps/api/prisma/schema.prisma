@@ -51,3 +51,99 @@ model GenerationJobEvent {
   @@index([jobId, createdAt])
   @@index([service, createdAt])
 }
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  userEmail   String?
+  action      String   // e.g. "autonomy.pause", "generate.run", "client.create"
+  target      String?  // resource id (serial, jobId, clientId)
+  ip          String?
+  payloadJson Json?
+  status      String   @default("ok") // "ok" | "error"
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+model CostBudget {
+  id             String   @id @default(cuid())
+  clientId       String   @unique
+  dailyUsd       Float    @default(0)
+  monthlyUsd     Float    @default(0)
+  alertThreshold Float    @default(0.8)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ContentTheme {
+  id          String   @id @default(cuid())
+  serviceKey  String
+  themeKey    String
+  name        String
+  description String   @default("")
+  status      String   @default("active") // "active" | "archived"
+  source      String   @default("minio")  // "minio" | service key | "manual"
+  metaJson    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([serviceKey, themeKey])
+  @@index([serviceKey, status])
+}
+
+model ContentRouteRule {
+  id          String   @id @default(cuid())
+  targetType  String   // "phone" | "account"
+  targetId    String
+  themeIds    Json     @default("[]")
+  queueDepth  Int      @default(1)
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([targetType, targetId])
+  @@index([targetType, status])
+}
+
+model ContentVideo {
+  id          String   @id @default(cuid())
+  serviceKey  String
+  themeKey    String
+  bucket      String
+  minioKey    String
+  metadataKey String?
+  title       String   @default("")
+  caption     String   @default("")
+  hashtags    Json     @default("[]")
+  status      String   @default("ready") // "ready" | "unclassified" | "archived"
+  sizeBytes   BigInt?
+  lastModified DateTime?
+  metaJson    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deliveries ContentDelivery[]
+
+  @@unique([bucket, minioKey])
+  @@index([serviceKey, themeKey, status])
+  @@index([status, updatedAt])
+}
+
+model ContentDelivery {
+  id           String   @id @default(cuid())
+  accountId    String
+  phoneId      String?
+  videoId      String
+  status       String   // "published" | "failed" | "skipped"
+  publishedUrl String?
+  metaJson     Json?
+  createdAt    DateTime @default(now())
+
+  video ContentVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, videoId])
+  @@index([accountId, status])
+  @@index([videoId, status])
+}

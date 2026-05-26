@@ -2,6 +2,11 @@ node_modules/
 dist/
 .env
 *.local
+*.bak*
+*.tsbuildinfo
+test-results/
+playwright-report/
+coverage/
 .DS_Store
 ._*
 

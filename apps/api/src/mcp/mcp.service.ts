@@ -32,7 +32,7 @@ export class McpService {
     ]);
 
     const services: Service[] = [];
-    const names = ["SportZavod", "content-zavod", "StreamCut", "Orchestrator", "agentMUSIC"];
+    const names = ["SportZavod", "content-zavod", "StreamCut", "atome-farm", "agentMUSIC"];
 
     results.forEach((result, i) => {
       if (result.status === "fulfilled") {

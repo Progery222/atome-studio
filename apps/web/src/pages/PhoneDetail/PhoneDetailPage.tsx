@@ -74,7 +74,7 @@ export function PhoneDetailPage() {
       {/* Title row */}
       <div className={styles.titleRow}>
         <div>
-          <div className={styles.title}>{phone.serial || phone.phone_id}</div>
+          <div className={styles.title}>{phone.display_name || phone.display_id || phone.serial || phone.phone_id}</div>
           <div className={styles.sub}>{phone.model}</div>
         </div>
         <span className={styles.statusBadge} style={{ color: col, borderColor: col }}>

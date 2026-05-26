@@ -111,9 +111,9 @@ export function getGalaxyServices(): GalaxyService[] {
       ],
     },
     {
-      id: "orchestrator",
-      name: "Orchestrator",
-      type: "orchestrator",
+      id: "atome-farm",
+      name: "atome-farm",
+      type: "backend",
       color: [0.13, 0.83, 0.93],
       orbitRadius: 18.0,
       orbitTiltX: 0.4,
@@ -124,8 +124,8 @@ export function getGalaxyServices(): GalaxyService[] {
       metrics: { latency: "8ms", load: "42%", rps: "1.2k", errors: "0.00%" },
       subs: [
         { name: t("sub_publishing"), status: "healthy", color: "#34d399" },
-        { name: t("sub_scheduler"), status: "healthy", color: "#34d399" },
-        { name: "WebSocket Events", status: "healthy", color: "#34d399" },
+        { name: t("sub_task_queue"), status: "healthy", color: "#34d399" },
+        { name: "Farm WebSocket", status: "healthy", color: "#34d399" },
       ],
     },
     {
@@ -188,16 +188,14 @@ export function getGalaxyServices(): GalaxyService[] {
 export const GALAXY_SERVICES: GalaxyService[] = getGalaxyServices();
 
 const CONNECTIONS: GalaxyConnection[] = [
-  { from: "dashboard-api", to: "orchestrator", intensity: 0.9 },
+  { from: "dashboard-api", to: "atome-farm", intensity: 0.9 },
   { from: "dashboard-api", to: "sportzavod", intensity: 0.8 },
   { from: "dashboard-api", to: "contentzavod", intensity: 0.8 },
-  { from: "orchestrator", to: "farm", intensity: 0.95 },
-  { from: "orchestrator", to: "minio", intensity: 0.7 },
+  { from: "atome-farm", to: "farm", intensity: 0.95 },
+  { from: "atome-farm", to: "minio", intensity: 0.7 },
   { from: "sportzavod", to: "minio", intensity: 0.85 },
   { from: "contentzavod", to: "minio", intensity: 0.85 },
   { from: "farm", to: "minio", intensity: 0.6 },
-  { from: "sportzavod", to: "orchestrator", intensity: 0.7 },
-  { from: "contentzavod", to: "orchestrator", intensity: 0.7 },
 ];
 
 // ═══════════════════════════════════════════════════════════════════

@@ -8,7 +8,7 @@ interface PhoneStreamProps {
   serial: string;
   host?: string;
   port?: number;
-  orchestratorUrl?: string;
+  farmBackendUrl?: string;
   className?: string;
   onClick?: () => void;
   thumb?: boolean;

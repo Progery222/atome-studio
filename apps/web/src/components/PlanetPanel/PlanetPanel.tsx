@@ -20,7 +20,7 @@ export function PlanetPanel({ service, exiting: exitingProp = false, onClose }: 
 
   const TYPE_LABELS: Record<string, string> = {
     generator: t("planet_type_generator"),
-    orchestrator: t("planet_type_orchestrator"),
+    backend: t("planet_type_backend"),
     farm: t("planet_type_farm"),
     storage: t("planet_type_storage"),
     api: t("planet_type_api"),
@@ -37,7 +37,7 @@ export function PlanetPanel({ service, exiting: exitingProp = false, onClose }: 
       { label: t("action_video_lib"), style: "default", route: "/videos" },
       { label: t("action_accounts"), style: "default", route: "/accounts" },
     ],
-    orchestrator: [
+    "atome-farm": [
       { label: t("action_pub_queue"), style: "primary", route: "/queue" },
       { label: t("action_phones"), style: "default", route: "/phones" },
       { label: t("action_sys_overview"), style: "default", route: "/" },

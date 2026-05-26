@@ -240,7 +240,11 @@ export function VideosPage() {
 
   useEffect(() => {
     fetchVideos();
-  }, []);
+    const id = window.setInterval(() => {
+      fetchVideos({ silent: true });
+    }, 10_000);
+    return () => window.clearInterval(id);
+  }, [fetchVideos]);
 
   // Unique account list for filter dropdown
   const accountOptions = useMemo(() => {
@@ -394,7 +398,7 @@ export function VideosPage() {
           </button>
 
           {/* Refresh */}
-          <button className={styles.syncBtn} onClick={fetchVideos}>
+          <button className={styles.syncBtn} onClick={() => fetchVideos()}>
             {t("videos_refresh")}
           </button>
         </div>

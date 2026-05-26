@@ -9,13 +9,16 @@ const T = {
     nav_queue: "≡ Очередь",
     nav_videos: "▤ Видео",
     nav_analytics: "◈ Аналитика",
+    nav_account_stats: "◇ Аналитика аккаунтов",
+    nav_hide_sidebar: "Скрыть меню",
+    nav_show_sidebar: "Показать меню",
     nav_clients: "◈ Клиенты",
     logo: "⬡ Atome Studio",
 
     // Phones
     phones_title: "Телефоны",
     phones_refresh: "обновить",
-    phones_empty: "— нет телефонов · orchestrator недоступен",
+    phones_empty: "— список пуст",
     phones_online: "онлайн",
     phones_warmup: "прогрев",
     phones_paused: "пауза",
@@ -78,7 +81,7 @@ const T = {
     accounts_col_posts_today: "Посты сег.",
     accounts_col_posts_total: "Посты всего",
     accounts_col_phone: "Телефон",
-    accounts_empty: "— нет аккаунтов · orchestrator недоступен",
+    accounts_empty: "— список пуст · нажми Sync или создай аккаунты",
     accounts_empty_filter: "— ничего не найдено по фильтру",
 
     // CreateAccountModal
@@ -92,7 +95,7 @@ const T = {
     modal_create_btn: "+ Создать",
     modal_err_username: "введите username",
     modal_err_niche: "введите niche",
-    modal_err_offline: "orchestrator недоступен",
+    modal_err_offline: "atome-farm недоступен",
 
     // AccountDetail
     acc_back: "← Аккаунты",
@@ -109,7 +112,7 @@ const T = {
     acc_saving: "Сохранение…",
     acc_save_btn: "✓ Сохранить",
     acc_cancel: "Отмена",
-    acc_save_err: "Не удалось сохранить — orchestrator недоступен",
+    acc_save_err: "Не удалось сохранить — atome-farm недоступен",
     acc_phone_label: "Телефон",
     acc_warmup_day: "Warmup день",
     acc_last_post: "Последний пост",
@@ -313,7 +316,7 @@ const T = {
 
     // PlanetPanel — type labels
     planet_type_generator: "Генерация контента",
-    planet_type_orchestrator: "Оркестратор",
+    planet_type_backend: "Farm backend",
     planet_type_farm: "Парк устройств",
     planet_type_storage: "Хранилище",
     planet_type_api: "Backend API",
@@ -525,12 +528,15 @@ const T = {
     nav_queue: "≡ Queue",
     nav_videos: "▤ Videos",
     nav_analytics: "◈ Analytics",
+    nav_account_stats: "◇ Account analytics",
+    nav_hide_sidebar: "Hide sidebar",
+    nav_show_sidebar: "Show sidebar",
     nav_clients: "◈ Clients",
     logo: "⬡ Atome Studio",
 
     phones_title: "Phones",
     phones_refresh: "refresh",
-    phones_empty: "— no phones · orchestrator offline",
+    phones_empty: "— list is empty",
     phones_online: "online",
     phones_warmup: "warmup",
     phones_paused: "paused",
@@ -591,7 +597,7 @@ const T = {
     accounts_col_posts_today: "Posts Today",
     accounts_col_posts_total: "Posts Total",
     accounts_col_phone: "Phone",
-    accounts_empty: "— no accounts · orchestrator offline",
+    accounts_empty: "— list is empty · click Sync or create accounts",
     accounts_empty_filter: "— nothing found",
 
     modal_create_title: "Create Account",
@@ -604,7 +610,7 @@ const T = {
     modal_create_btn: "+ Create",
     modal_err_username: "enter username",
     modal_err_niche: "enter niche",
-    modal_err_offline: "orchestrator offline",
+    modal_err_offline: "atome-farm offline",
 
     acc_back: "← Accounts",
     acc_loading: "loading...",
@@ -620,7 +626,7 @@ const T = {
     acc_saving: "Saving…",
     acc_save_btn: "✓ Save",
     acc_cancel: "Cancel",
-    acc_save_err: "Failed to save — orchestrator offline",
+    acc_save_err: "Failed to save — atome-farm offline",
     acc_phone_label: "Phone",
     acc_warmup_day: "Warmup Day",
     acc_last_post: "Last Post",
@@ -816,7 +822,7 @@ const T = {
     side_no_data: "no data — api unavailable",
 
     planet_type_generator: "Content Generator",
-    planet_type_orchestrator: "Orchestrator",
+    planet_type_backend: "Farm backend",
     planet_type_farm: "Device Fleet",
     planet_type_storage: "Storage",
     planet_type_api: "Backend API",
@@ -1023,6 +1029,9 @@ const T = {
     nav_queue: "≡ 队列",
     nav_videos: "▤ 视频",
     nav_analytics: "◈ 分析",
+    nav_account_stats: "◇ 账户分析",
+    nav_hide_sidebar: "隐藏菜单",
+    nav_show_sidebar: "显示菜单",
     nav_clients: "◈ 客户",
     logo: "⬡ Atome Studio",
 
@@ -1314,7 +1323,7 @@ const T = {
     side_no_data: "无数据 — API不可用",
 
     planet_type_generator: "内容生成器",
-    planet_type_orchestrator: "编排器",
+    planet_type_backend: "Farm backend",
     planet_type_farm: "设备舰队",
     planet_type_storage: "存储",
     planet_type_api: "后端API",
@@ -1521,6 +1530,9 @@ const T = {
     nav_queue: "≡ Cola",
     nav_videos: "▤ Videos",
     nav_analytics: "◈ Analítica",
+    nav_account_stats: "◇ Analítica de cuentas",
+    nav_hide_sidebar: "Ocultar menú",
+    nav_show_sidebar: "Mostrar menú",
     nav_clients: "◈ Clientes",
     logo: "⬡ Atome Studio",
 
@@ -1812,7 +1824,7 @@ const T = {
     side_no_data: "sin datos — api no disponible",
 
     planet_type_generator: "Generador de contenido",
-    planet_type_orchestrator: "Orquestador",
+    planet_type_backend: "Farm backend",
     planet_type_farm: "Flota de dispositivos",
     planet_type_storage: "Almacenamiento",
     planet_type_api: "Backend API",

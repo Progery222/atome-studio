@@ -1,0 +1,24 @@
+name: typecheck
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install --ignore-scripts
+      - run: npx --yes prisma generate --schema apps/api/prisma/schema.prisma
+      - run: npm run build -w packages/shared
+      - run: npx tsc -p apps/api/tsconfig.json --noEmit
+      - run: npx tsc -p apps/web/tsconfig.json --noEmit
+      - run: npx @biomejs/biome check --diagnostic-level=error
+      - run: npm test --workspaces --if-present

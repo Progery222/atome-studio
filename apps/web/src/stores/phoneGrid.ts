@@ -9,12 +9,12 @@ export interface ScreenFrame {
 interface PhoneGridState {
   screens: Record<string, ScreenFrame>
   focusedSerial: string | null
-  orchestratorUrl: string
+  farmBackendUrl: string
   polling: boolean
   pollTimer: ReturnType<typeof setInterval> | null
   focusPollTimer: ReturnType<typeof setInterval> | null
 
-  setOrchestratorUrl: (url: string) => void
+  setFarmBackendUrl: (url: string) => void
   startPolling: (serials: string[]) => void
   stopPolling: () => void
   focusDevice: (serial: string) => void
@@ -56,22 +56,22 @@ async function fetchScreenshot(
 export const usePhoneGridStore = create<PhoneGridState>((set, get) => ({
   screens: {},
   focusedSerial: null,
-  orchestratorUrl: "",
+  farmBackendUrl: "",
   polling: false,
   pollTimer: null,
   focusPollTimer: null,
 
-  setOrchestratorUrl: (url) => {
-    localStorage.setItem("orchestratorUrl", url)
-    set({ orchestratorUrl: url })
+  setFarmBackendUrl: (url) => {
+    localStorage.setItem("farmBackendUrl", url)
+    set({ farmBackendUrl: url })
   },
 
   startPolling: (serials) => {
-    const { orchestratorUrl, pollTimer: existing } = get()
-    if (!orchestratorUrl || existing) return
+    const { farmBackendUrl, pollTimer: existing } = get()
+    if (!farmBackendUrl || existing) return
 
     const poll = async () => {
-      const { orchestratorUrl: url, focusedSerial } = get()
+      const { farmBackendUrl: url, focusedSerial } = get()
       if (!url) return
 
       // Fetch thumbnails for all devices in parallel
@@ -115,12 +115,13 @@ export const usePhoneGridStore = create<PhoneGridState>((set, get) => ({
   },
 
   focusDevice: (serial) => {
-    const { orchestratorUrl, focusPollTimer: existing } = get()
+    const { farmBackendUrl, focusPollTimer: existing } = get()
     if (existing) clearInterval(existing)
+    if (!farmBackendUrl) return
 
     // Fast poll for focused device (full quality, 5fps)
     const poll = async () => {
-      const url = get().orchestratorUrl
+      const url = get().farmBackendUrl
       if (!url) return
       const img = await fetchScreenshot(url, serial, false)
       if (img) {
@@ -147,9 +148,9 @@ export const usePhoneGridStore = create<PhoneGridState>((set, get) => ({
   },
 
   sendInput: async (serial, event) => {
-    const { orchestratorUrl } = get()
+    const { farmBackendUrl } = get()
     try {
-      await fetch(`${orchestratorUrl}/api/input/${serial}`, {
+      await fetch(`${farmBackendUrl}/api/input/${serial}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(event),
@@ -161,8 +162,8 @@ export const usePhoneGridStore = create<PhoneGridState>((set, get) => ({
   },
 
   sendLLMCommand: async (prompt) => {
-    const { orchestratorUrl } = get()
-    const res = await fetch(`${orchestratorUrl}/api/brain/decide`, {
+    const { farmBackendUrl } = get()
+    const res = await fetch(`${farmBackendUrl}/api/brain/decide`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt }),

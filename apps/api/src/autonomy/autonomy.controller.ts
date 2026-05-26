@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpException, Param, Post, Query } from "@nestjs/common";
+import { Audited } from "../audit/audited.decorator";
 import { AutonomyService } from "./autonomy.service";
 
 @Controller()
@@ -19,16 +20,19 @@ export class AutonomyController {
     return detail;
   }
 
+  @Audited("autonomy.pause")
   @Post("autonomy/sessions/:serial/pause")
   async pauseSession(@Param("serial") serial: string) {
     return this.autonomy.pauseSession(serial);
   }
 
+  @Audited("autonomy.resume")
   @Post("autonomy/sessions/:serial/resume")
   async resumeSession(@Param("serial") serial: string) {
     return this.autonomy.resumeSession(serial);
   }
 
+  @Audited("autonomy.terminate")
   @Post("autonomy/sessions/:serial/terminate")
   async terminateSession(@Param("serial") serial: string) {
     return this.autonomy.terminateSession(serial);

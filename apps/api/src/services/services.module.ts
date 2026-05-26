@@ -7,5 +7,6 @@ import { ServicesService } from "./services.service";
   imports: [McpModule],
   controllers: [ServicesController],
   providers: [ServicesService],
+  exports: [ServicesService],
 })
 export class ServicesModule {}

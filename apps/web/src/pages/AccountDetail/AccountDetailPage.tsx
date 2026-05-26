@@ -2,6 +2,7 @@ import type { Account } from "@atome/shared";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { LOCALE_MAP, useT } from "../../i18n";
+import { apiFetch } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import { useFarmStore } from "../../stores/farm";
 import { useLangStore } from "../../stores/lang";
@@ -14,7 +15,16 @@ const STATUS_COLOR: Record<string, string> = {
   banned: "#ef4444",
 };
 
-const CONTENT_SOURCES = ["sportzavod", "contentzavod"];
+const DEFAULT_SERVICES = ["sportzavod", "streamcut", "agentmusic", "content-zavod"];
+
+interface ContentPool {
+  id: string;
+  service_key: string;
+  pool_key: string;
+  name: string;
+  description?: string;
+  status: string;
+}
 
 type EditDraft = Pick<
   Account,
@@ -50,11 +60,53 @@ export function AccountDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [contentPools, setContentPools] = useState<ContentPool[]>([]);
+  const [selectedPoolIds, setSelectedPoolIds] = useState<Set<string>>(new Set());
+  const [poolServiceFilter, setPoolServiceFilter] = useState<string>("all");
 
   useEffect(() => {
     if (accounts.length === 0) fetchAccounts();
     fetchQueue();
   }, [accounts.length, fetchAccounts, fetchQueue]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadContent() {
+      try {
+        const poolsRes = await apiFetch("/api/content-pools");
+        const pools = await poolsRes.json();
+        if (!cancelled) setContentPools(Array.isArray(pools) ? pools : []);
+      } catch (e) {
+        console.warn("content pools load failed", e);
+      }
+    }
+    loadContent();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!id) return;
+    const accountID = id;
+    let cancelled = false;
+    async function loadAccountPools() {
+      try {
+        const res = await apiFetch(`/api/accounts/${encodeURIComponent(accountID)}/content-pools`);
+        const pools = await res.json();
+        if (!cancelled) {
+          const list = Array.isArray(pools) ? pools : [];
+          setSelectedPoolIds(new Set(list.map((pool: ContentPool) => pool.id)));
+        }
+      } catch (e) {
+        console.warn("account content pools load failed", e);
+      }
+    }
+    loadAccountPools();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   const acc = accounts.find((a) => a.account_id === id);
 
@@ -100,7 +152,20 @@ export function AccountDetailPage() {
     setSaving(true);
     setSaveError("");
     try {
-      await updateAccount(id, draft);
+      const selectedPools = contentPools.filter((pool) => selectedPoolIds.has(pool.id));
+      await updateAccount(id, {
+        ...draft,
+        content_sources: [...new Set(selectedPools.map((pool) => pool.service_key))],
+      });
+      const res = await apiFetch(`/api/accounts/${encodeURIComponent(id)}/content-pools`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pool_ids: [...selectedPoolIds] }),
+      });
+      const savedPools = await res.json();
+      if (Array.isArray(savedPools)) {
+        setSelectedPoolIds(new Set(savedPools.map((pool: ContentPool) => pool.id)));
+      }
       setSaved(true);
       setIsEditing(false);
       setDraft(null);
@@ -112,13 +177,26 @@ export function AccountDetailPage() {
     }
   };
 
-  const toggleSource = (src: string) => {
-    if (!draft) return;
-    const next = draft.content_sources.includes(src)
-      ? draft.content_sources.filter((s) => s !== src)
-      : [...draft.content_sources, src];
-    setDraft({ ...draft, content_sources: next });
+  const togglePool = (poolID: string) => {
+    setSelectedPoolIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(poolID)) next.delete(poolID);
+      else next.add(poolID);
+      return next;
+    });
   };
+
+  const serviceKeys = [
+    ...new Set([...DEFAULT_SERVICES, ...contentPools.map((pool) => pool.service_key)].filter(Boolean)),
+  ];
+  const visiblePools =
+    poolServiceFilter === "all"
+      ? contentPools
+      : contentPools.filter((pool) => pool.service_key === poolServiceFilter);
+  const selectedPools = contentPools.filter((pool) => selectedPoolIds.has(pool.id));
+  const selectedPoolsLabel = selectedPools.length
+    ? selectedPools.map((pool) => `${pool.service_key}/${pool.pool_key}`).join(", ")
+    : "—";
 
   return (
     <div className={styles.page}>
@@ -129,9 +207,9 @@ export function AccountDetailPage() {
       {/* Header */}
       <div className={styles.titleRow}>
         <div>
-          <div className={styles.title}>@{acc.username}</div>
+          <div className={styles.title}>{acc.phone_id || "Телефон не назначен"}</div>
           <div className={styles.sub}>
-            {acc.niche} · {acc.platform}
+            @{acc.username} · {acc.niche} · {acc.platform}
           </div>
         </div>
         <span className={styles.statusBadge} style={{ color: col, borderColor: col }}>
@@ -266,19 +344,42 @@ export function AccountDetailPage() {
               />
             </EditRow>
 
-            <EditRow label={t("acc_sources_edit")}>
-              <div className={styles.checkboxGroup}>
-                {CONTENT_SOURCES.map((src) => (
-                  <label key={src} className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      className={styles.checkbox}
-                      checked={draft.content_sources.includes(src)}
-                      onChange={() => toggleSource(src)}
-                    />
-                    {src}
-                  </label>
-                ))}
+            <EditRow label="Content pools">
+              <div className={styles.poolEditor}>
+                <select
+                  className={styles.fieldSelect}
+                  value={poolServiceFilter}
+                  onChange={(e) => setPoolServiceFilter(e.target.value)}
+                >
+                  <option value="all">Все заводы</option>
+                  {serviceKeys.map((service) => (
+                    <option key={service} value={service}>
+                      {service}
+                    </option>
+                  ))}
+                </select>
+                <div className={styles.poolList}>
+                  {visiblePools.length === 0 ? (
+                    <div className={styles.poolEmpty}>
+                      Нет тем для этого завода. Создай пул в разделе Content Pools.
+                    </div>
+                  ) : (
+                    visiblePools.map((pool) => {
+                      const selected = selectedPoolIds.has(pool.id);
+                      return (
+                        <button
+                          key={pool.id}
+                          type="button"
+                          className={`${styles.poolToggle} ${selected ? styles.poolToggleActive : ""}`}
+                          onClick={() => togglePool(pool.id)}
+                        >
+                          <span>{pool.service_key}/{pool.pool_key}</span>
+                          <small>{pool.status}</small>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </EditRow>
           </>
@@ -289,7 +390,7 @@ export function AccountDetailPage() {
             <ReadRow label={t("acc_timezone")} value={acc.timezone || "—"} />
             <ReadRow label={t("acc_frequency")} value={String(acc.post_frequency_hours)} />
             <ReadRow label="HeyGen avatar" value={acc.heygen_avatar_id || "—"} />
-            <ReadRow label={t("acc_sources")} value={acc.content_sources?.join(", ") || "—"} />
+            <ReadRow label="Content pools" value={selectedPoolsLabel} />
           </>
         )}
       </div>

@@ -14,7 +14,7 @@ interface StreamCutState {
   fetchJob: (id: string) => Promise<StreamCutJob | null>;
   createJob: (dto: Record<string, unknown>) => Promise<StreamCutJob | null>;
   deleteJob: (id: string) => Promise<void>;
-  fetchVideoInfo: (url: string) => Promise<void>;
+  fetchVideoInfo: (url: string) => Promise<StreamCutVideoInfo | null>;
   fetchFootageCategories: () => Promise<void>;
   clearVideoInfo: () => void;
 }
@@ -87,8 +87,10 @@ export const useStreamCutStore = create<StreamCutState>((set, get) => ({
       const res = await apiFetch(`/api/streamcut/video-info?url=${encodeURIComponent(url)}`);
       const info = (await res.json()) as StreamCutVideoInfo;
       set({ videoInfo: info });
+      return info;
     } catch {
       set({ videoInfo: null });
+      return null;
     } finally {
       set({ videoInfoLoading: false });
     }
