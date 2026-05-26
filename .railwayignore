@@ -3,6 +3,8 @@ content-zavod/
 apps/StreamCut/
 galaxy/
 files/
+scripts/
+tools/
 node_modules/
 apps/web/node_modules/
 apps/api/node_modules/

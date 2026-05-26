@@ -1,6 +1,7 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
+import { AppConfigService } from "../shared/config/app-config.service";
 
 interface User {
   id: string;
@@ -9,41 +10,43 @@ interface User {
   name: string;
 }
 
-// In-memory user store for MVP — seeded from env (ADMIN_EMAIL/ADMIN_PASSWORD).
-// No hardcoded fallback: if env vars are missing, login simply fails.
-const USERS: User[] = [];
-const adminEmail = process.env.ADMIN_EMAIL?.trim();
-const adminPassword = process.env.ADMIN_PASSWORD;
-if (adminEmail && adminPassword) {
-  USERS.push({
-    id: "admin_1",
-    email: adminEmail,
-    passwordHash: bcrypt.hashSync(adminPassword, 10),
-    name: process.env.ADMIN_NAME?.trim() || "Admin",
-  });
-} else {
-  console.warn(
-    "[AUTH] ADMIN_EMAIL/ADMIN_PASSWORD not set — no users seeded; /api/auth/login will reject all attempts."
-  );
-}
-
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwt: JwtService) {}
+  private readonly logger = new Logger(AuthService.name);
+  private readonly users: User[] = [];
+
+  constructor(
+    private readonly jwt: JwtService,
+    config: AppConfigService
+  ) {
+    const { adminEmail, adminPassword, adminName } = config.values;
+    if (adminEmail && adminPassword) {
+      this.users.push({
+        id: "admin_1",
+        email: adminEmail,
+        passwordHash: bcrypt.hashSync(adminPassword, 10),
+        name: adminName,
+      });
+    } else {
+      this.logger.warn(
+        "ADMIN_EMAIL/ADMIN_PASSWORD not set - no users seeded; /api/auth/login will reject all attempts."
+      );
+    }
+  }
 
   async register(email: string, password: string, name: string) {
-    const existing = USERS.find((u) => u.email === email);
+    const existing = this.users.find((u) => u.email === email);
     if (existing) throw new UnauthorizedException("Email already registered");
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user: User = { id: crypto.randomUUID(), email, passwordHash, name };
-    USERS.push(user);
+    this.users.push(user);
 
     return this.issueTokens(user);
   }
 
   async login(email: string, password: string) {
-    const user = USERS.find((u) => u.email === email);
+    const user = this.users.find((u) => u.email === email);
     if (!user) throw new UnauthorizedException("Invalid credentials");
 
     const valid = await bcrypt.compare(password, user.passwordHash);

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { AgentMusicModule } from "./agentmusic/agentmusic.module";
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
 import { JwtAuthGuard } from "./auth/jwt-auth.guard";
@@ -17,14 +18,15 @@ import { MetricsModule } from "./metrics/metrics.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { QueueModule } from "./queue/queue.module";
 import { ServicesModule } from "./services/services.module";
+import { SharedModule } from "./shared/shared.module";
 import { StreamCutModule } from "./streamcut/streamcut.module";
 import { VideosModule } from "./videos/videos.module";
-import { AgentMusicModule } from "./agentmusic/agentmusic.module";
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 1000 }]),
+    SharedModule,
     PrismaModule,
     AuthModule,
     McpModule,
@@ -46,7 +48,7 @@ import { AgentMusicModule } from "./agentmusic/agentmusic.module";
   providers: [
     // Apply JWT guard to every route globally; use @Public() to opt out
     { provide: APP_GUARD, useClass: JwtAuthGuard },
-    // Global rate limiter (120 req/min/IP); per-route override via @Throttle()
+    // Global rate limiter; per-route override via @Throttle()
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })

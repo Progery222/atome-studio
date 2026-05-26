@@ -8,6 +8,7 @@ dotenv.config();
 setDefaultResultOrder("ipv4first");
 
 import * as cookieParser from "cookie-parser";
+import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
 import helmet from "helmet";
@@ -15,61 +16,19 @@ import { AppModule } from "./app.module";
 import { CsrfMiddleware } from "./auth/csrf.middleware";
 import { IpAllowlistMiddleware } from "./auth/ip-allowlist.middleware";
 import { installFarmWsProxy } from "./farm/farm-ws-proxy";
-
-function checkEnv() {
-  const warns: string[] = [];
-  const errors: string[] = [];
-
-  if (!process.env.JWT_SECRET) errors.push("JWT_SECRET не задан — авторизация не будет работать");
-
-  const checks: Array<[string, string, string]> = [
-    [
-      "MINIO_URL",
-      process.env.MINIO_URL ?? "http://localhost:9000",
-      "Videos страница будет пустой в prod",
-    ],
-    ["MINIO_BUCKET", process.env.MINIO_BUCKET ?? "atome-videos", ""],
-    [
-      "SPORTZAVOD_URL",
-      process.env.SPORTZAVOD_URL ?? "http://localhost:8000",
-      "SportZavod генерация не будет работать в prod",
-    ],
-    [
-      "CONTENTZAVOD_URL",
-      process.env.CONTENTZAVOD_URL ?? "http://localhost:8002",
-      "content-zavod генерация не будет работать в prod",
-    ],
-    [
-      "ATOME_FARM_URL",
-      process.env.ATOME_FARM_URL ?? process.env.AUTONOMY_URL ?? "http://10.8.0.1:8001",
-      "Farm данные не будут доступны в prod",
-    ],
-  ];
-
-  for (const [name, value, hint] of checks) {
-    if (value.includes("localhost") || value.includes("127.0.0.1")) {
-      warns.push(`${name}=${value} (localhost${hint ? " — " + hint : ""})`);
-    }
-  }
-
-  const bucket = process.env.MINIO_BUCKET ?? "atome-videos";
-  if (bucket !== "atome-videos") {
-    warns.push(
-      `MINIO_BUCKET=${bucket} — ожидается 'atome-videos', иначе заводы пишут в другой бакет`
-    );
-  }
-
-  for (const w of warns) console.warn(`[ENV] WARN  ${w}`);
-  for (const e of errors) console.error(`[ENV] ERROR ${e}`);
-
-  if (errors.length > 0) {
-    console.error("[ENV] Исправь ошибки выше перед запуском");
-    process.exit(1);
-  }
-}
+import { AppConfigService } from "./shared/config/app-config.service";
+import { validateEnv } from "./shared/config/env";
 
 async function bootstrap() {
-  checkEnv();
+  const log = new Logger("Bootstrap");
+  try {
+    const { warnings } = validateEnv();
+    for (const warning of warnings) log.warn(warning);
+  } catch (error) {
+    log.error(`Invalid environment: ${(error as Error).message}`);
+    process.exit(1);
+  }
+
   const app = await NestFactory.create(AppModule);
   app.use(
     helmet({
@@ -87,9 +46,9 @@ async function bootstrap() {
   app.getHttpAdapter().get("/health", (_req: unknown, res: { json: (o: unknown) => void }) => {
     res.json({ status: "ok", uptime: Math.floor(process.uptime()) });
   });
-  const port = process.env.PORT ?? 3001;
+  const port = app.get(AppConfigService).values.port;
   await app.listen(port, "0.0.0.0");
   installFarmWsProxy(app.getHttpServer(), app.get(JwtService));
-  console.log(`Atome API running on port ${port}`);
+  log.log(`Atome API running on port ${port}`);
 }
 bootstrap();

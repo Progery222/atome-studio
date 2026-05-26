@@ -1,9 +1,12 @@
 node_modules/
 dist/
 .env
+.env copy.example
 *.local
 *.bak*
 *.tsbuildinfo
+bun.lock
+dy
 test-results/
 playwright-report/
 coverage/
@@ -11,6 +14,8 @@ coverage/
 ._*
 
 # External service repos (cloned locally for dev, deployed from own repos)
+SportZavod/
+content-zavod/
 apps/StreamCut/
 
 # Claude Code internal files

@@ -3,6 +3,8 @@ node_modules
 .claude
 **/.claude-flow
 **/.claude
+scripts
+tools
 *.md
 .git
 .gitignore

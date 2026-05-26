@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { loadAppConfig } from "../shared/config/env";
 
 function parseList(raw: string | undefined): string[] {
   return (raw ?? "")
@@ -14,6 +15,12 @@ function clientIp(req: Request): string {
 }
 
 const PROTECTED = [/^\/api\/clients(\/|$)/i, /^\/api\/audit(\/|$)/i];
+let cachedAdminAllowedIps: string[] | null = null;
+
+function adminAllowedIps(): string[] {
+  cachedAdminAllowedIps ??= parseList(loadAppConfig().adminAllowedIps);
+  return cachedAdminAllowedIps;
+}
 
 /**
  * Restrict /api/clients/* and /api/audit/* to IPs from ADMIN_ALLOWED_IPS env.
@@ -24,7 +31,7 @@ export function IpAllowlistMiddleware(req: Request, res: Response, next: NextFun
   const path = req.originalUrl || req.url || "";
   if (!PROTECTED.some((rx) => rx.test(path))) return next();
 
-  const allowed = parseList(process.env.ADMIN_ALLOWED_IPS);
+  const allowed = adminAllowedIps();
   if (allowed.length === 0) return next();
 
   const ip = clientIp(req);
