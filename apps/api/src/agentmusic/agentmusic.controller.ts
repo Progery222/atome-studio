@@ -36,6 +36,30 @@ export class AgentMusicController {
     return proxy("/api/choruses");
   }
 
+  @Get("jobs")
+  async getJobs() {
+    return proxy("/api/jobs");
+  }
+
+  @Get("jobs/:id")
+  async getJob(@Param("id") id: string) {
+    return proxy(`/api/jobs/${id}`);
+  }
+
+  @Get("videos")
+  async getVideos() {
+    return proxy("/api/videos");
+  }
+
+  @Post("generate")
+  async generate(@Body() body: Record<string, unknown>) {
+    return proxy("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    });
+  }
+
   @Post("spotify")
   async spotify(@Body() body: { url: string }) {
     // async: мгновенно создаёт job, скачивание идёт в фоне. Клиент опрашивает /spotify/job/:id.

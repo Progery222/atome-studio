@@ -276,7 +276,7 @@ export class ContentRoutingService {
     await this.syncCanonicalThemes();
     const objects = await this.listObjects();
     const jsonKeys = new Set(objects.filter((o) => o.key.endsWith(".json")).map((o) => o.key));
-    const videos = objects.filter((o) => /\.mp4$/i.test(o.key));
+    const videos = objects.filter((o) => /\.mp4$/i.test(o.key) && this.isRoutableVideoKey(o.key));
     let indexed = 0;
     let unclassified = 0;
 
@@ -360,7 +360,18 @@ export class ContentRoutingService {
     const themeById = new Map(themes.map((t) => [t.id, t]));
     const phoneById = new Map(phones.map((p) => [p.phone_id, p]));
     const rulesByKey = new Map(rules.map((r) => [`${r.targetType}:${r.targetId}`, r]));
-    const activeAccounts = accounts.filter((a) => a.status === "active" && a.account_id && a.phone_id);
+    const activeAccounts = accounts.filter((a) => a.status === "active" && a.account_id);
+    const knownAccountIds = new Set(activeAccounts.map((a) => a.account_id));
+    for (const rule of rules) {
+      if (rule.targetType !== "account" || knownAccountIds.has(rule.targetId)) continue;
+      activeAccounts.push({
+        account_id: rule.targetId,
+        phone_id: "",
+        username: rule.targetId,
+        status: "active",
+      } as Account);
+      knownAccountIds.add(rule.targetId);
+    }
     const accountsByPhone = new Map<string, Account[]>();
     const accountManifests: unknown[] = [];
 
@@ -389,7 +400,9 @@ export class ContentRoutingService {
       };
       await this.putJson(`routing/accounts/${this.safeKey(account.account_id)}/manifest.json`, manifest);
       accountManifests.push(manifest);
-      accountsByPhone.set(account.phone_id, [...(accountsByPhone.get(account.phone_id) ?? []), account]);
+      if (account.phone_id) {
+        accountsByPhone.set(account.phone_id, [...(accountsByPhone.get(account.phone_id) ?? []), account]);
+      }
     }
 
     let phoneManifestCount = 0;
@@ -468,6 +481,17 @@ export class ContentRoutingService {
       if (!truncated || !continuationToken) break;
     }
     return out;
+  }
+
+  private isRoutableVideoKey(key: string): boolean {
+    const clean = key.toLowerCase();
+    return !(
+      clean.startsWith("cache/") ||
+      clean.startsWith("downloads/") ||
+      clean.startsWith("processed/") ||
+      clean.startsWith("tmp/") ||
+      clean.startsWith("_smoke/")
+    );
   }
 
   private async fetchJson(key: string): Promise<VideoMeta | undefined> {
@@ -809,7 +833,9 @@ export class ContentRoutingService {
       meta?.artist ??
         meta?.artist_name ??
         meta?.artistName ??
-        this.artistFromTrackName(meta?.track_name ?? meta?.trackName),
+        this.artistFromTrackName(meta?.track_name ?? meta?.trackName) ??
+        meta?.track_name ??
+        meta?.trackName,
     );
   }
 
@@ -821,7 +847,11 @@ export class ContentRoutingService {
         item.track?.artist ??
         item.track?.artist_name ??
         item.track?.artistName ??
-        this.artistFromTrackName(item.track_name ?? item.trackName ?? item.title ?? item.name),
+        this.artistFromTrackName(item.track_name ?? item.trackName ?? item.title ?? item.name) ??
+        item.track_name ??
+        item.trackName ??
+        item.title ??
+        item.name,
     );
   }
 

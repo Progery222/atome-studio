@@ -69,11 +69,12 @@ export class VideosService {
       for (const job of jobs) {
         if (job.status !== "done" || !job.shorts?.length) continue;
         for (const s of job.shorts) {
+          const filename = this.keyFromPublicStorageUrl(s.url) ?? s.filename;
           const proxyUrl = s.url?.startsWith("/storage/")
             ? `/api/streamcut/storage/${s.url.slice("/storage/".length)}`
             : s.url;
           videos.push({
-            filename: s.filename,
+            filename,
             account_id: "streamcut",
             tenant_id: "streamcut",
             source_service: "streamcut",
@@ -94,6 +95,18 @@ export class VideosService {
     }
   }
 
+  private keyFromPublicStorageUrl(url: string | undefined): string | undefined {
+    if (!url) return undefined;
+    const marker = `/${this.bucket}/`;
+    const index = url.indexOf(marker);
+    if (index < 0) return undefined;
+    try {
+      return decodeURIComponent(url.slice(index + marker.length));
+    } catch {
+      return url.slice(index + marker.length);
+    }
+  }
+
   private parseXml(xml: string): { videos: VideoFile[]; jsonKeys: Set<string> } {
     const videos: VideoFile[] = [];
     const jsonKeys = new Set<string>();
@@ -106,6 +119,7 @@ export class VideosService {
       const sizeStr = this.extractTag(block, "Size") ?? "0";
 
       if (!key) continue;
+      if (this.isInternalStorageKey(key)) continue;
 
       if (key.endsWith(".json")) {
         jsonKeys.add(key);
@@ -128,6 +142,17 @@ export class VideosService {
     }
 
     return { videos, jsonKeys };
+  }
+
+  private isInternalStorageKey(key: string): boolean {
+    const clean = key.toLowerCase();
+    return (
+      clean.startsWith("cache/") ||
+      clean.startsWith("downloads/") ||
+      clean.startsWith("processed/") ||
+      clean.startsWith("tmp/") ||
+      clean.startsWith("_smoke/")
+    );
   }
 
   /**
