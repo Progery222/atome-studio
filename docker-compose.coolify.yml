@@ -15,14 +15,20 @@
 # resource). Do NOT inline the repo's docker-compose.yml defaults (atome123 / MinIO key) —
 # those are leaked-in-git and slated for rotation.
 #
-# CROSS-CALL: `api` reaches streamcut via the HOST gateway, the same pattern this
-# service already uses for SPORTZAVOD_URL / AGENTMUSIC_URL:
-#   STREAMCUT_URL -> http://host.docker.internal:18003  (streamcut backend host port)
-# ⚠️ The live Coolify env pins ATOME_STREAMCUT_URL=http://backend:8000, which OVERRIDES
-# the compose default below — so at cutover the Coolify env var MUST be updated to
-# http://host.docker.internal:18003 (editing this default alone is a no-op).
+# CROSS-CALL: `api` reaches streamcut backend over the dedicated external network
+# `studio-link` (streamcut backend joins it with alias `backend`).
+#   STREAMCUT_URL -> http://backend:8000
+# A DEDICATED 2-member net (no redis/postgres) is used on purpose: the shared `coolify`
+# net has coolify-redis aliased `redis` / coolify-db, which collide with the stacks'
+# generic service names (that collision broke streamcut's celery broker once). host
+# networking does NOT work on by01 (firewall FORWARD DROP). The `studio-link` network
+# must exist on the host: `docker network create studio-link`.
 # ----------------------------------------------------------------------------
 name: atome
+
+networks:
+  studio-link:
+    external: true
 
 services:
   postgres:
@@ -74,7 +80,7 @@ services:
       - SPORTZAVOD_URL=${ATOME_SPORTZAVOD_URL:-http://host.docker.internal:8000}
       - CONTENTZAVOD_URL=${ATOME_CONTENTZAVOD_URL:-http://contentzavod:8002}
       - ORCHESTRATOR_URL=${ATOME_ORCHESTRATOR_URL:-http://orchestrator:8001}
-      - STREAMCUT_URL=${ATOME_STREAMCUT_URL:-http://host.docker.internal:18003}
+      - STREAMCUT_URL=${ATOME_STREAMCUT_URL:-http://backend:8000}
       - STREAMCUT_SERVICE_PASSWORD=${ATOME_STREAMCUT_SERVICE_PASSWORD:?set ATOME_STREAMCUT_SERVICE_PASSWORD in Coolify env}
       - AGENTMUSIC_URL=${ATOME_AGENTMUSIC_URL:-http://host.docker.internal:18008}
     depends_on:
@@ -82,6 +88,9 @@ services:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - studio-link
 
   web:
     build:
