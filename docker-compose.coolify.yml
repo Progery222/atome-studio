@@ -1,0 +1,108 @@
+# docker-compose.coolify.yml
+# ----------------------------------------------------------------------------
+# ATOME-STUDIO Coolify resource (split out of the old combined "studio").
+# streamcut now lives in its OWN Coolify resource (Progery222/StreamCut).
+#
+# >>> BUILD-FROM-SOURCE so a push to this repo auto-deploys atome. <<<
+#  * api -> apps/api/Dockerfile   * web -> apps/web/Dockerfile  (this repo's own
+#    build contexts, same as docker-compose.yml).
+#
+# DATA (adopt-in-place): postgres binds the EXISTING host volume _data dir. Coolify
+# resolves ${VAR:-default} for volume SOURCES to the DEFAULT, so the bind source is a
+# HARDCODED literal. The old 0.0.0.0:15434 exposure stays CLOSED (no postgres host port).
+#
+# SECRETS: ONLY ${VAR} — values live in Coolify env (parity with the pre-split combined
+# resource). Do NOT inline the repo's docker-compose.yml defaults (atome123 / MinIO key) —
+# those are leaked-in-git and slated for rotation.
+#
+# CROSS-CALL: `api` reaches streamcut backend over the dedicated external network
+# `studio-link` (streamcut backend joins it with alias `backend`).
+#   STREAMCUT_URL -> http://backend:8000
+# A DEDICATED 2-member net (no redis/postgres) is used on purpose: the shared `coolify`
+# net has coolify-redis aliased `redis` / coolify-db, which collide with the stacks'
+# generic service names (that collision broke streamcut's celery broker once). host
+# networking does NOT work on by01 (firewall FORWARD DROP). The `studio-link` network
+# must exist on the host: `docker network create studio-link`.
+# ----------------------------------------------------------------------------
+name: atome
+
+networks:
+  studio-link:
+    external: true
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    pull_policy: missing
+    restart: unless-stopped
+    # No host port -> keeps the old 0.0.0.0:15434 exposure closed.
+    environment:
+      POSTGRES_USER: atome
+      POSTGRES_PASSWORD: ${ATOME_POSTGRES_PASSWORD:?set ATOME_POSTGRES_PASSWORD in Coolify env}
+      POSTGRES_DB: atome_studio
+    volumes:
+      - /var/lib/docker/volumes/atome-studio_postgres_data/_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atome -d atome_studio"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${ATOME_API_BIND:-0.0.0.0}:${ATOME_API_PORT:-18004}:3001"
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://atome:${ATOME_POSTGRES_PASSWORD}@postgres:5432/atome_studio
+      - API_KEY=${ATOME_API_KEY:?set ATOME_API_KEY in Coolify env}
+      - ADMIN_EMAIL=${ATOME_ADMIN_EMAIL:-admin@atome.studio}
+      - ADMIN_PASSWORD=${ATOME_ADMIN_PASSWORD:?set ATOME_ADMIN_PASSWORD in Coolify env}
+      - ADMIN_NAME=${ATOME_ADMIN_NAME:-Super Admin}
+      - ADMIN_ALLOWED_IPS=${ATOME_ADMIN_ALLOWED_IPS}
+      - JWT_SECRET=${ATOME_JWT_SECRET:?set ATOME_JWT_SECRET in Coolify env}
+      - CF_API_TOKEN=${ATOME_CF_API_TOKEN}
+      - CF_ACCOUNT_ID=${ATOME_CF_ACCOUNT_ID}
+      - PH_API_KEY=${ATOME_PH_API_KEY}
+      - PH_PROJECT_ID=${ATOME_PH_PROJECT_ID}
+      - POSTMAN_API_KEY=${ATOME_POSTMAN_API_KEY}
+      - MINIO_URL=${ATOME_MINIO_URL:-https://10.25.172.208:9000}
+      - MINIO_PUBLIC_URL=${ATOME_MINIO_PUBLIC_URL:-https://10.25.172.208:9000}
+      - MINIO_BUCKET=${ATOME_MINIO_BUCKET:-atome-videos}
+      - MINIO_ACCESS_KEY=${ATOME_MINIO_ACCESS_KEY:?set ATOME_MINIO_ACCESS_KEY in Coolify env}
+      - MINIO_SECRET_KEY=${ATOME_MINIO_SECRET_KEY:?set ATOME_MINIO_SECRET_KEY in Coolify env}
+      - MINIO_REGION=${ATOME_MINIO_REGION:-us-east-1}
+      - MINIO_TLS_VERIFY=${ATOME_MINIO_TLS_VERIFY:-false}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${ATOME_NODE_TLS_REJECT_UNAUTHORIZED:-0}
+      - SPORTZAVOD_URL=${ATOME_SPORTZAVOD_URL:-http://host.docker.internal:8000}
+      - CONTENTZAVOD_URL=${ATOME_CONTENTZAVOD_URL:-http://contentzavod:8002}
+      - ORCHESTRATOR_URL=${ATOME_ORCHESTRATOR_URL:-http://orchestrator:8001}
+      - STREAMCUT_URL=${ATOME_STREAMCUT_URL:-http://backend:8000}
+      - STREAMCUT_SERVICE_PASSWORD=${ATOME_STREAMCUT_SERVICE_PASSWORD:?set ATOME_STREAMCUT_SERVICE_PASSWORD in Coolify env}
+      - AGENTMUSIC_URL=${ATOME_AGENTMUSIC_URL:-http://host.docker.internal:18008}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - studio-link
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${ATOME_WEB_BIND:-0.0.0.0}:${ATOME_WEB_PORT:-8094}:443"
+    environment:
+      - PORT=443
+      - API_INTERNAL_URL=http://api:3001
+    volumes:
+      - /home/atom/repos/atome-studio/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
